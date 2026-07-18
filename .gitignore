@@ -1,0 +1,27 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+# Private runtime data
+.env
+runtime/
+data/speakers/
+data/recordings/
+*.wav
+*.pcm
+# Models
+models/
+*.onnx
+*.engine
+*.pt
+*.pth
+# Tool traces
+.vscode/
+.idea/
+.codex/
+.claude/
+.hermes/
+.DS_Store
