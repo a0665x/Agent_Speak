@@ -43,6 +43,22 @@ async def test_responses_include_browser_security_headers(tmp_path: Path) -> Non
 
 
 @pytest.mark.anyio
+async def test_openapi_docs_csp_allows_swagger_assets_without_weakening_webui(tmp_path: Path) -> None:
+    async with make_client(tmp_path) as client:
+        docs = await client.get("/docs")
+        webui = await client.get("/")
+
+    assert docs.status_code == 200
+    docs_csp = docs.headers["content-security-policy"]
+    assert "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'" in docs_csp
+    assert "style-src 'self' https://cdn.jsdelivr.net" in docs_csp
+    assert webui.headers["content-security-policy"] == (
+        "default-src 'self'; script-src 'self'; style-src 'self'; "
+        "connect-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+    )
+
+
+@pytest.mark.anyio
 async def test_capabilities_describe_the_active_injected_provider_set(tmp_path: Path) -> None:
     from tests.test_sessions_pipeline import providers
 

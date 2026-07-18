@@ -1,5 +1,8 @@
 # Testing
 
+OpenAPI docs regression: `/docs` depends on Swagger UI assets from jsDelivr and FastAPI's inline initializer. The security middleware must apply the docs-specific CSP only to `/docs` and `/redoc`, while `/` retains the stricter self-only WebUI CSP. `test_openapi_docs_csp_allows_swagger_assets_without_weakening_webui` guards both sides of this contract. Runtime verification must confirm `/openapi.json` returns JSON and the real `/docs` browser renders `.swagger-ui` without a visible fetch error.
+
+
 `./scripts/test.sh` runs pytest plus JavaScript syntax checking for contracts, typed provider boundaries, event ordering and WebSocket replay, pipeline completion/failure, separate stage failures, WAV bounds, VAD, speaker persistence/matching, routes, operations, and UI delivery.
 
 `./scripts/smoke_api.sh` exercises health, session creation, synthetic voiced turn, events and speaker lifecycle. `./scripts/mic_smoke.sh` uses USB ALSA capture and reports peak/RMS/nonzero ratios.

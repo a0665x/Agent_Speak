@@ -44,6 +44,14 @@ SECURITY_HEADERS = (
     (b"x-content-type-options", b"nosniff"),
     (b"referrer-policy", b"no-referrer"),
 )
+DOCS_SECURITY_HEADERS = (
+    (
+        b"content-security-policy",
+        b"default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://cdn.jsdelivr.net; connect-src 'self'; img-src 'self' data: https://fastapi.tiangolo.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+    ),
+    (b"x-content-type-options", b"nosniff"),
+    (b"referrer-policy", b"no-referrer"),
+)
 WAV_REQUEST_BODY = {
     "requestBody": {
         "required": True,
@@ -57,9 +65,11 @@ class SecurityHeadersMiddleware:
         self.app = app
 
     async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
+        headers = DOCS_SECURITY_HEADERS if scope.get("path") in {"/docs", "/redoc"} else SECURITY_HEADERS
+
         async def send_with_headers(message: dict[str, Any]) -> None:
             if message["type"] == "http.response.start":
-                message["headers"] = [*message.get("headers", []), *SECURITY_HEADERS]
+                message["headers"] = [*message.get("headers", []), *headers]
             await send(message)
 
         await self.app(scope, receive, send_with_headers)
