@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3efe7">
+  <title>Agent Speak — Voice Console</title>
+  <link rel="stylesheet" href="app.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to voice console</a>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Agent Speak home">
+      <svg aria-hidden="true" viewBox="0 0 32 32"><path d="M6 17h4l3-8 5 15 3-7h5"/></svg>
+      <span>Agent Speak</span>
+    </a>
+    <div class="status-pill" id="connection-status" role="status" aria-live="polite">
+      <span class="status-dot" aria-hidden="true"></span><span id="status-label">Connecting</span>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <section class="hero" aria-labelledby="hero-title">
+      <p class="eyebrow">Local voice workspace</p>
+      <h1 id="hero-title">Say it once.<br><em>See every stage.</em></h1>
+      <p class="hero-copy">Capture a turn, inspect the complete local pipeline, and keep voice data on this machine.</p>
+      <div class="capture-controls">
+        <button class="record-button" id="record-button" type="button" disabled aria-describedby="capture-help">
+          <span class="record-icon" aria-hidden="true"><span></span></span>
+          <span id="record-label">Start recording</span>
+        </button>
+        <label class="upload-button" id="audio-upload-label" for="audio-upload">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M5 15v4h14v-4"/></svg>
+          Upload audio
+        </label>
+        <input class="visually-hidden" id="audio-upload" type="file" accept="audio/*,.wav">
+      </div>
+      <p id="capture-help" class="helper">Recording auto-stops at 30 seconds. Source and converted audio must each be 8 MiB or smaller; browser audio is converted locally to 16-bit PCM WAV before upload.</p>
+      <p id="action-error" class="error-message" role="alert" hidden></p>
+    </section>
+
+    <section class="pipeline-card" aria-labelledby="pipeline-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">Live execution</p><h2 id="pipeline-title">Pipeline timeline</h2></div>
+        <span class="turn-state" id="turn-state" role="status" aria-live="polite">Waiting for a turn</span>
+      </div>
+      <ol class="pipeline" id="pipeline-list">
+        <li data-stage="vad"><span class="step-index">01</span><span><strong>VAD</strong><small>Energy gate</small></span><output>Waiting</output></li>
+        <li data-stage="asr"><span class="step-index">02</span><span><strong>ASR</strong><small>Speech to text</small></span><output>Waiting</output></li>
+        <li data-stage="correction"><span class="step-index">03</span><span><strong>Correction</strong><small>Text cleanup</small></span><output>Waiting</output></li>
+        <li data-stage="endpoint"><span class="step-index">04</span><span><strong>Endpoint</strong><small>Turn completion</small></span><output>Waiting</output></li>
+        <li data-stage="agent"><span class="step-index">05</span><span><strong>Agent</strong><small>Local response</small></span><output>Waiting</output></li>
+        <li data-stage="tts"><span class="step-index">06</span><span><strong>TTS</strong><small>WAV artifact</small></span><output>Waiting</output></li>
+      </ol>
+    </section>
+
+    <div class="content-grid">
+      <section class="results-card" aria-labelledby="results-title">
+        <div class="section-heading"><div><p class="eyebrow">Turn record</p><h2 id="results-title">Conversation</h2></div></div>
+        <article class="result-block">
+          <h3>Transcript</h3>
+          <p id="transcript" class="empty-copy">Your transcript will appear after a recorded turn.</p>
+        </article>
+        <article class="result-block response-block">
+          <h3>Response</h3>
+          <p id="agent-response" class="empty-copy">The development agent response will appear here.</p>
+          <audio id="tts-player" controls hidden aria-label="Synthesized response audio"></audio>
+        </article>
+        <div class="latency-summary"><span>Total stage latency</span><strong id="total-latency">—</strong></div>
+      </section>
+
+      <aside class="side-stack">
+        <section class="detail-card" aria-labelledby="capabilities-title">
+          <div class="section-heading compact"><div><p class="eyebrow">Runtime truth</p><h2 id="capabilities-title">Capabilities</h2></div></div>
+          <ul id="capability-list" class="capability-list" aria-busy="true"><li class="empty-copy">Loading providers…</li></ul>
+        </section>
+
+        <section class="detail-card" aria-labelledby="speakers-title">
+          <div class="section-heading compact"><div><p class="eyebrow">Convenience ID</p><h2 id="speakers-title">Speaker profiles</h2></div></div>
+          <p class="notice">Matching is local convenience identification, not biometric authentication.</p>
+          <form id="speaker-form" class="speaker-form">
+            <label for="speaker-name">New profile name</label>
+            <div class="inline-form"><input id="speaker-name" name="name" required maxlength="100" autocomplete="off"><button type="submit">Add</button></div>
+          </form>
+          <ul id="speaker-list" class="speaker-list"><li class="empty-copy">No speaker profiles yet.</li></ul>
+          <div class="speaker-actions" aria-label="Selected speaker actions">
+            <button id="enroll-button" type="button" disabled>Enroll last turn</button>
+            <button id="match-button" type="button" disabled>Match last turn</button>
+            <button id="rename-button" type="button" disabled>Rename selected</button>
+            <button id="delete-button" class="danger-button" type="button" disabled>Delete profile</button>
+          </div>
+          <p id="speaker-result" class="helper" aria-live="polite">Select a profile and record a turn to enroll.</p>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <footer><span>Agent Speak MVP</span><span>Development providers are labelled in capabilities.</span></footer>
+</body>
+</html>

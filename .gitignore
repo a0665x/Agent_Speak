@@ -1,27 +1,41 @@
-# Python
+.env
 .venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .coverage
 htmlcov/
-# Private runtime data
-.env
+*.egg-info/
+
+# Private runtime state: never commit recordings, features, databases, artifacts, or logs.
 runtime/
-data/speakers/
-data/recordings/
+data/
+models/
+*.db
+*.sqlite*
 *.wav
 *.pcm
-# Models
-models/
+*.webm
+*.ogg
+*.flac
+*.mp3
+*.m4a
+*.npy
+*.npz
+*.log
 *.onnx
 *.engine
 *.pt
 *.pth
-# Tool traces
+*.safetensors
+*.ckpt
+*.gguf
+
+# Local tool state.
 .vscode/
 .idea/
 .codex/
 .claude/
 .hermes/
 .DS_Store
+.gstack/
