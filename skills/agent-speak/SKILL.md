@@ -28,9 +28,9 @@ MCP 工具：
 - `status`：gateway health 與 provider capabilities。
 - `capabilities`：目前 provider 與限制。
 - `list_audio_devices`：有 timeout 的 ALSA capture/playback 探測。
-- `microphone_smoke`：錄製後立即刪除的短 WAV，不送 ASR。
-- `listen_once`：短暫錄音，再經 HTTP `/api/v1/audio/asr` 辨識。
-- `speak`：經 HTTP 合成；`playback=false` 是安全預設。只有明確要求播放且偵測到 speaker 才執行 `aplay`。
+- `microphone_smoke`：錄製後立即刪除的短 WAV，不送 ASR；每次必須傳 `user_confirmed=true`。
+- `listen_once`：短暫錄音，再經 HTTP `/api/v1/audio/asr` 辨識；每次必須傳 `user_confirmed=true`。
+- `speak`：經 HTTP 合成；`playback=false` 是安全預設。實體播放必須同時指定 `playback=true`、`user_confirmed=true`，且偵測到 playback device 才執行 `aplay`。
 
 ## 外部 Agent 互動迴圈
 
