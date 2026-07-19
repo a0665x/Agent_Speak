@@ -11,6 +11,8 @@ Agent Speak is a local-first Voice Agent gateway for Jetson AGX Orin: real bound
 
 Open `http://localhost:8765`. API docs: `http://localhost:8765/docs`.
 
+第一次使用 API，請先閱讀 [OpenAPI 常用操作繁中快速入門](docs/OPENAPI_QUICKSTART_ZH_TW.md)。內容包含 Swagger 操作、完整語音回合、單階段 API、TTS 下載、說話者資料與常見錯誤排除。
+
 Setup creates and uses the project `.venv`; it never installs into global Python. Copy `.env.example` to `.env` only when you need configuration overrides. Private data is created below ignored `data/` and `runtime/` paths.
 
 The service binds to `127.0.0.1` by default. To expose it on a LAN, explicitly set `AGENT_SPEAK_HOST=0.0.0.0` only on a trusted network with appropriate host firewall controls; the MVP has no authentication or transport encryption and must not be exposed to an untrusted LAN or the public internet.

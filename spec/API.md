@@ -18,6 +18,8 @@ Artifacts: `GET /artifacts/{name}`. Failures use `{error:{code,message,stage,ret
 
 OpenAPI is also a beginner-facing contract. `/docs` groups operations under six Traditional Chinese tags (system, conversation flow, audio stages, text stages, speakers, audio artifacts). Every HTTP endpoint provides a Chinese summary and an explicit input/output description. Pydantic fields expose descriptions, defaults where applicable, and representative examples; binary request schemas state the required 16-bit PCM WAV format and the 8 MiB/30-second bounds. `/openapi.json` is the machine-readable source of the same contract.
 
+User-facing examples and the recommended beginner call order are maintained in [`../docs/OPENAPI_QUICKSTART_ZH_TW.md`](../docs/OPENAPI_QUICKSTART_ZH_TW.md). Keep its paths, payloads, response fields, Tailscale URL, and error table synchronized whenever the public API contract changes.
+
 Concurrent full turns for one session are rejected with HTTP 409 and stable code `turn_in_progress`; turns in different sessions may proceed concurrently. TTS output is validated as bounded uncompressed 16-bit PCM WAV before private artifact storage and again before serving. HTTP responses include CSP, `X-Content-Type-Options: nosniff`, and `Referrer-Policy: no-referrer` headers.
 
 Audio is limited by `AGENT_SPEAK_MAX_AUDIO_BYTES` and `AGENT_SPEAK_MAX_AUDIO_SECONDS`. Supported WAV is uncompressed 16-bit PCM, mono/stereo, 8–48 kHz. Error codes include `invalid_wav`, `unsupported_wav`, `audio_too_large`, `audio_too_long`, `no_speech`, `stage_failed`, and resource-specific `*_not_found` codes.

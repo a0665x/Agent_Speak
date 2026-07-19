@@ -12,6 +12,7 @@ Jetson-oriented local voice pipeline and WebUI exposing VAD, ASR, correction, en
 - [Current state](project_herness.md)
 - [Architecture](ARCHITECTURE.md)
 - [API](API.md)
+- [OpenAPI 常用操作繁中快速入門](../docs/OPENAPI_QUICKSTART_ZH_TW.md)
 - [Runtime](RUNTIME.md)
 - [Testing](TESTING.md)
 - [UI](UI.md)
