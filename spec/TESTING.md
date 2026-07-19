@@ -11,4 +11,8 @@ OpenAPI docs regression: `/docs` depends on Swagger UI assets from jsDelivr and 
 
 UI work requires desktop/mobile viewport checks, console-error inspection, visible interaction feedback, API state, and horizontal-overflow verification. `tests/test_webui.py::test_capture_toggle_targets_the_explicit_upload_label` protects initialization by requiring the upload label to have an explicit DOM id used by `setCaptureDisabled`; the file input and label are sibling elements, so ancestor lookup such as `input.closest("label")` is invalid.
 
+Localization regressions are protected by tests requiring a Traditional Chinese first paint, the persistent English switch, beginner workflow guidance, and preservation of completed transcript/response nodes across language changes. Runtime browser smoke must switch languages, reload to prove persistence, then process a real WAV and switch again to prove result text is unchanged.
+
+OpenAPI usability tests require the Chinese API description, six tag groups, endpoint input/output descriptions, text examples, and WAV request constraints. Remote `/docs` verification must still prove rendered Swagger operations, zero browser errors, and a valid non-empty `/openapi.json`.
+
 When a sandbox prohibits all socket binding, ASGI HTTP/WebSocket integration remains executable but live Uvicorn, API smoke, and browser-daemon checks must be rerun on an unrestricted host; they must not be reported as passing from static checks alone.

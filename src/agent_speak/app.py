@@ -54,10 +54,29 @@ DOCS_SECURITY_HEADERS = (
 )
 WAV_REQUEST_BODY = {
     "requestBody": {
+        "description": "上傳單一 PCM WAV 音訊檔。Content-Type 必須是 audio/wav；大小最多 8 MiB、長度最多 30 秒（實際限制可由服務設定調整）。",
         "required": True,
-        "content": {"audio/wav": {"schema": {"type": "string", "format": "binary"}}},
+        "content": {
+            "audio/wav": {
+                "schema": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "16-bit PCM WAV 二進位內容；建議單聲道。上限 8 MiB、30 秒。",
+                }
+            }
+        },
     }
 }
+
+
+OPENAPI_TAGS = [
+    {"name": "系統", "description": "確認服務健康狀態與目前實際啟用的處理能力。"},
+    {"name": "對話流程", "description": "建立工作階段並一次執行完整語音對話流程。"},
+    {"name": "語音階段", "description": "單獨測試 VAD 與 ASR 語音處理階段。"},
+    {"name": "文字階段", "description": "單獨測試文字校正、結束判斷、Agent 與 TTS。"},
+    {"name": "說話者", "description": "管理本機便利識別資料；不是生物辨識身分驗證。"},
+    {"name": "音訊成品", "description": "讀取 TTS 產生的本機 WAV 音訊。"},
+]
 
 
 class SecurityHeadersMiddleware:
@@ -124,7 +143,15 @@ async def _read_audio(request: Request, settings: Settings, *, stage: str) -> by
 def create_app(settings: Settings | None = None, *, providers: ProviderSet | None = None) -> FastAPI:
     active = settings or Settings.from_env()
     active.prepare_directories()
-    app = FastAPI(title="Agent Speak", version=__version__)
+    app = FastAPI(
+        title="Agent Speak",
+        version=__version__,
+        description=(
+            "Agent Speak 是本機語音處理 API。新手可先建立工作階段，再把 PCM WAV 上傳至完整對話端點；"
+            "也可依序呼叫各階段端點。所有錯誤都使用一致的 error envelope。"
+        ),
+        openapi_tags=OPENAPI_TAGS,
+    )
     app.add_middleware(SecurityHeadersMiddleware)
     app.state.settings = active
     app.state.broker = SessionBroker(
@@ -176,12 +203,12 @@ def create_app(settings: Settings | None = None, *, providers: ProviderSet | Non
     async def unexpected_error(_: Request, __: Exception) -> JSONResponse:
         return _error_response(500, ErrorBody(code="internal_error", message="Internal server error"))
 
-    @app.get("/api/v1/health", response_model=HealthResponse)
+    @app.get("/api/v1/health", response_model=HealthResponse, tags=["系統"], summary="檢查服務健康狀態", description="輸入：可選 verbose 查詢參數。輸出：版本、狀態與本機儲存是否就緒。")
     async def health(verbose: bool = Query(default=False)) -> HealthResponse:
         del verbose
         return HealthResponse(version=__version__, storage_ready=active.data_dir.is_dir())
 
-    @app.get("/api/v1/capabilities", response_model=CapabilitiesResponse)
+    @app.get("/api/v1/capabilities", response_model=CapabilitiesResponse, tags=["系統"], summary="查看目前處理能力", description="輸入：無。輸出：六個處理階段實際啟用的提供者、版本與限制。")
     async def capabilities() -> CapabilitiesResponse:
         return CapabilitiesResponse(providers=app.state.pipeline.providers.capabilities())
 
@@ -199,11 +226,11 @@ def create_app(settings: Settings | None = None, *, providers: ProviderSet | Non
     async def web_script() -> Response:
         return Response(content=(web_dir / "app.js").read_text(encoding="utf-8"), media_type="text/javascript")
 
-    @app.post("/api/v1/sessions", response_model=SessionSummary, status_code=status.HTTP_201_CREATED)
+    @app.post("/api/v1/sessions", response_model=SessionSummary, status_code=status.HTTP_201_CREATED, tags=["對話流程"], summary="建立對話工作階段", description="輸入：無。輸出：新的工作階段識別碼、狀態與事件清單。")
     async def create_session() -> SessionSummary:
         return await app.state.broker.create()
 
-    @app.get("/api/v1/sessions/{session_id}", response_model=SessionSummary)
+    @app.get("/api/v1/sessions/{session_id}", response_model=SessionSummary, tags=["對話流程"], summary="取得對話工作階段", description="輸入：工作階段識別碼。輸出：目前狀態與已保留的流程事件。")
     async def get_session(session_id: str) -> SessionSummary:
         return app.state.broker.get(session_id)
 
@@ -222,44 +249,57 @@ def create_app(settings: Settings | None = None, *, providers: ProviderSet | Non
             return
 
     @app.post(
-        "/api/v1/sessions/{session_id}/turns", response_model=TurnResponse, openapi_extra=WAV_REQUEST_BODY
+        "/api/v1/sessions/{session_id}/turns", response_model=TurnResponse, openapi_extra=WAV_REQUEST_BODY,
+        tags=["對話流程"], summary="執行完整語音回合", description="輸入：PCM WAV 與工作階段識別碼。輸出：辨識、校正、Agent 回覆、WAV 網址與各階段耗時。"
     )
     async def full_turn(request: Request, session_id: str) -> TurnResponse:
         app.state.broker.get(session_id)
         audio = await _read_audio(request, active, stage="vad")
         return await app.state.pipeline.run(session_id, audio)
 
-    @app.post("/api/v1/audio/vad", response_model=VadOutput, openapi_extra=WAV_REQUEST_BODY)
+    @app.post("/api/v1/audio/vad", response_model=VadOutput, openapi_extra=WAV_REQUEST_BODY, tags=["語音階段"], summary="偵測音訊中的人聲", description="輸入：PCM WAV 音訊。輸出：是否有人聲、RMS 能量與音訊秒數。")
     async def vad(request: Request) -> VadOutput:
         audio = await _read_audio(request, active, stage="vad")
         return VadOutput.model_validate(await _invoke_stage("vad", lambda: app.state.pipeline.providers.vad.detect(audio)))
 
-    @app.post("/api/v1/audio/asr", response_model=TextOutput, openapi_extra=WAV_REQUEST_BODY)
+    @app.post("/api/v1/audio/asr", response_model=TextOutput, openapi_extra=WAV_REQUEST_BODY, tags=["語音階段"], summary="將語音辨識為文字", description="輸入：PCM WAV 音訊。輸出：ASR 辨識文字。")
     async def asr(request: Request) -> TextOutput:
         audio = await _read_audio(request, active, stage="asr")
         return TextOutput(text=await _invoke_stage("asr", lambda: app.state.pipeline.providers.asr.transcribe(audio)))
 
-    @app.post("/api/v1/text/correct", response_model=TextOutput)
+    @app.post("/api/v1/text/correct", response_model=TextOutput, tags=["文字階段"], summary="校正辨識文字", description="輸入：要清理的辨識文字。輸出：校正後、較易閱讀的文字。")
     async def correct(body: TextInput) -> TextOutput:
         return TextOutput(text=await _invoke_stage("correction", lambda: app.state.pipeline.providers.correction.correct(body.text)))
 
-    @app.post("/api/v1/text/end-detect", response_model=EndDetectOutput)
+    @app.post("/api/v1/text/end-detect", response_model=EndDetectOutput, tags=["文字階段"], summary="判斷語句是否結束", description="輸入：校正後文字。輸出：是否已完成語句及判定原因。")
     async def end_detect(body: TextInput) -> EndDetectOutput:
         complete, reason = await _invoke_stage("endpoint", lambda: app.state.pipeline.providers.endpoint.detect(body.text))
         return EndDetectOutput(complete=complete, reason=reason)
 
-    @app.post("/api/v1/agent/respond", response_model=TextOutput)
+    @app.post("/api/v1/agent/respond", response_model=TextOutput, tags=["文字階段"], summary="產生 Agent 回覆", description="輸入：使用者文字。輸出：目前 Agent 提供者產生的文字回覆。")
     async def respond(body: TextInput) -> TextOutput:
         return TextOutput(text=await _invoke_stage("agent", lambda: app.state.pipeline.providers.agent.respond(body.text)))
 
-    @app.post("/api/v1/tts/synthesize", response_model=TtsOutput)
+    @app.post("/api/v1/tts/synthesize", response_model=TtsOutput, tags=["文字階段"], summary="將文字合成語音", description="輸入：要朗讀的文字。輸出：可下載或播放的 WAV 站內網址。")
     async def synthesize(body: TextInput) -> TtsOutput:
         audio_url = await _invoke_stage(
             "tts", lambda: app.state.pipeline.store_audio(app.state.pipeline.providers.tts.synthesize(body.text))
         )
         return TtsOutput(audio_url=audio_url)
 
-    @app.get("/api/v1/artifacts/{name}")
+    @app.get(
+        "/api/v1/artifacts/{name}",
+        response_class=Response,
+        responses={
+            200: {
+                "description": "有效的 16-bit PCM WAV 音訊",
+                "content": {"audio/wav": {"schema": {"type": "string", "format": "binary"}}},
+            }
+        },
+        tags=["音訊成品"],
+        summary="取得合成 WAV 音訊",
+        description="輸入：TTS 回傳的 WAV 檔名。輸出：audio/wav 二進位音訊。",
+    )
     async def artifact(name: str) -> Response:
         if "/" in name or "\\" in name or not name.endswith(".wav"):
             raise PlatformError("artifact_not_found", "Artifact not found", status_code=404)
@@ -283,38 +323,39 @@ def create_app(settings: Settings | None = None, *, providers: ProviderSet | Non
             headers={"Content-Disposition": f'inline; filename="{name}"'},
         )
 
-    @app.post("/api/v1/speakers", response_model=SpeakerEnvelope, status_code=status.HTTP_201_CREATED)
+    @app.post("/api/v1/speakers", response_model=SpeakerEnvelope, status_code=status.HTTP_201_CREATED, tags=["說話者"], summary="建立說話者資料", description="輸入：名稱與選填備註。輸出：新建的本機說話者資料；此功能不是身分驗證。")
     async def create_speaker(body: SpeakerCreate) -> SpeakerEnvelope:
         speaker = await run_sync(app.state.speakers.create, body.name, body.notes)
         return SpeakerEnvelope(speaker=speaker, notice=SPEAKER_NOTICE)
 
-    @app.get("/api/v1/speakers", response_model=SpeakerList)
+    @app.get("/api/v1/speakers", response_model=SpeakerList, tags=["說話者"], summary="列出說話者資料", description="輸入：無。輸出：所有本機說話者資料與安全提醒。")
     async def list_speakers() -> SpeakerList:
         return SpeakerList(speakers=await run_sync(app.state.speakers.list), notice=SPEAKER_NOTICE)
 
-    @app.get("/api/v1/speakers/{speaker_id}", response_model=SpeakerEnvelope)
+    @app.get("/api/v1/speakers/{speaker_id}", response_model=SpeakerEnvelope, tags=["說話者"], summary="取得說話者資料", description="輸入：說話者識別碼。輸出：指定的本機資料與樣本數。")
     async def get_speaker(speaker_id: str) -> SpeakerEnvelope:
         return SpeakerEnvelope(speaker=await run_sync(app.state.speakers.get, speaker_id), notice=SPEAKER_NOTICE)
 
-    @app.patch("/api/v1/speakers/{speaker_id}", response_model=SpeakerEnvelope)
+    @app.patch("/api/v1/speakers/{speaker_id}", response_model=SpeakerEnvelope, tags=["說話者"], summary="更新說話者資料", description="輸入：說話者識別碼、完整名稱與備註。輸出：更新後的資料。")
     async def update_speaker(speaker_id: str, body: SpeakerUpdate) -> SpeakerEnvelope:
         speaker = await run_sync(app.state.speakers.update, speaker_id, body.name, body.notes)
         return SpeakerEnvelope(speaker=speaker, notice=SPEAKER_NOTICE)
 
-    @app.delete("/api/v1/speakers/{speaker_id}", status_code=status.HTTP_204_NO_CONTENT)
+    @app.delete("/api/v1/speakers/{speaker_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["說話者"], summary="刪除說話者資料", description="輸入：說話者識別碼。輸出：成功時為 204，並刪除其本機樣本。")
     async def delete_speaker(speaker_id: str) -> Response:
         await run_sync(app.state.speakers.delete, speaker_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @app.post(
-        "/api/v1/speakers/{speaker_id}/samples", response_model=SpeakerEnvelope, openapi_extra=WAV_REQUEST_BODY
+        "/api/v1/speakers/{speaker_id}/samples", response_model=SpeakerEnvelope, openapi_extra=WAV_REQUEST_BODY,
+        tags=["說話者"], summary="登錄說話者語音樣本", description="輸入：說話者識別碼與 PCM WAV。輸出：樣本數已更新的資料；只供便利識別。"
     )
     async def enroll_speaker(request: Request, speaker_id: str) -> SpeakerEnvelope:
         audio = await _read_audio(request, active, stage="speaker")
         speaker = await run_sync(app.state.speakers.enroll, speaker_id, audio)
         return SpeakerEnvelope(speaker=speaker, notice=SPEAKER_NOTICE)
 
-    @app.post("/api/v1/speakers/match", response_model=SpeakerMatchEnvelope, openapi_extra=WAV_REQUEST_BODY)
+    @app.post("/api/v1/speakers/match", response_model=SpeakerMatchEnvelope, openapi_extra=WAV_REQUEST_BODY, tags=["說話者"], summary="比對說話者語音", description="輸入：PCM WAV。輸出：最接近且達門檻的本機資料、分數與門檻；不是身分驗證。")
     async def match_speaker(request: Request) -> SpeakerMatchEnvelope:
         audio = await _read_audio(request, active, stage="speaker")
         result = await run_sync(app.state.speakers.match, audio)

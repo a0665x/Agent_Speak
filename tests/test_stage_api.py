@@ -200,7 +200,9 @@ def test_streamed_binary_endpoints_keep_wav_request_body_in_openapi(tmp_path: Pa
 
     for path in paths:
         schema = document["paths"][path]["post"]["requestBody"]["content"]["audio/wav"]["schema"]
-        assert schema == {"type": "string", "format": "binary"}
+        assert schema["type"] == "string"
+        assert schema["format"] == "binary"
+        assert "PCM WAV" in schema["description"]
 
 
 @pytest.mark.anyio

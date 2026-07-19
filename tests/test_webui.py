@@ -16,17 +16,55 @@ async def test_operator_console_and_local_assets_are_served(tmp_path: Path) -> N
         javascript = await client.get("/static/app.js")
 
     assert page.status_code == 200
-    assert '<html lang="en">' in page.text
+    assert '<html lang="zh-Hant-TW">' in page.text
     assert 'name="viewport" content="width=device-width, initial-scale=1"' in page.text
     assert 'href="#main"' in page.text
     assert 'id="record-button"' in page.text
     assert 'aria-live="polite"' in page.text
     assert 'id="turn-state" role="status" aria-live="polite"' in page.text
     assert all(stage in page.text for stage in ("VAD", "ASR", "Correction", "Endpoint", "Agent", "TTS"))
-    assert all(section in page.text for section in ("Transcript", "Response", "Capabilities", "Speaker profiles"))
+    assert all(section in page.text for section in ("辨識文字", "Agent 回覆", "目前能力", "說話者資料"))
     assert "https://" not in page.text and "http://" not in page.text
     assert css.headers["content-type"].startswith("text/css")
     assert javascript.headers["content-type"].startswith("text/javascript")
+
+
+@pytest.mark.anyio
+async def test_webui_defaults_to_traditional_chinese_with_persistent_english_switch(tmp_path: Path) -> None:
+    app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        page = (await client.get("/")).text
+        javascript = (await client.get("/static/app.js")).text
+
+    assert 'id="language-toggle"' in page
+    assert 'aria-label="切換語言"' in page
+    assert "開始錄音" in page
+    assert "English" in page
+    assert 'const DEFAULT_LOCALE = "zh-TW"' in javascript
+    assert 'localStorage.getItem("agent-speak-locale")' in javascript
+    assert 'localStorage.setItem("agent-speak-locale", locale)' in javascript
+    assert 'document.documentElement.lang = currentLocale === "zh-TW" ? "zh-Hant-TW" : "en"' in javascript
+    assert 'elements.transcript.removeAttribute("data-i18n")' in javascript
+    assert 'elements.response.removeAttribute("data-i18n")' in javascript
+    assert "function readStoredLocale()" in javascript
+    assert "function writeStoredLocale(locale)" in javascript
+    assert "state.speakerResultFactory" in javascript
+    assert "state.actionErrorFactory" in javascript
+
+
+@pytest.mark.anyio
+async def test_webui_explains_the_beginner_workflow_and_each_major_area(tmp_path: Path) -> None:
+    app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        page = (await client.get("/")).text
+
+    assert 'aria-labelledby="quick-start-title"' in page
+    assert all(step in page for step in ("錄音或上傳", "觀察處理流程", "查看文字與回覆"))
+    assert "先從這裡開始" in page
+    assert "這裡會依序顯示語音如何被處理" in page
+    assert "進階功能" in page
+    assert "名詞小抄" in page
+    assert all(term in page for term in ("VAD", "ASR", "TTS"))
 
 
 @pytest.mark.anyio
@@ -89,7 +127,7 @@ async def test_webui_enforces_capture_bounds_and_disables_both_ingress_controls(
     assert "validateAudioSize(wav)" in javascript
     assert "elements.record.disabled = disabled" in javascript
     assert "elements.upload.disabled = disabled" in javascript
-    assert "30 seconds" in page
+    assert "30 秒" in page
     assert "8 MiB" in page
 
 

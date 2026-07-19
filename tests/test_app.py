@@ -120,3 +120,30 @@ async def test_unexpected_failures_use_sanitized_stable_error_envelope(tmp_path:
         }
     }
     assert "private database detail" not in response.text
+
+
+@pytest.mark.anyio
+async def test_openapi_is_grouped_and_explains_beginner_inputs_outputs(tmp_path: Path) -> None:
+    async with make_client(tmp_path) as client:
+        schema = (await client.get("/openapi.json")).json()
+
+    assert "本機語音處理 API" in schema["info"]["description"]
+    tags = {tag["name"]: tag["description"] for tag in schema["tags"]}
+    assert {"系統", "對話流程", "語音階段", "文字階段", "說話者", "音訊成品"} <= set(tags)
+
+    correct = schema["paths"]["/api/v1/text/correct"]["post"]
+    assert correct["summary"] == "校正辨識文字"
+    assert "輸入" in correct["description"] and "輸出" in correct["description"]
+    text_schema = schema["components"]["schemas"]["TextInput"]["properties"]["text"]
+    assert text_schema["description"]
+    assert text_schema["examples"] == ["請幫我整理今天的工作重點"]
+
+    vad = schema["paths"]["/api/v1/audio/vad"]["post"]
+    wav_body = vad["requestBody"]["content"]["audio/wav"]["schema"]
+    assert "PCM WAV" in wav_body["description"]
+    assert "200" in vad["responses"]
+
+    artifact = schema["paths"]["/api/v1/artifacts/{name}"]["get"]["responses"]["200"]
+    assert artifact["content"] == {
+        "audio/wav": {"schema": {"type": "string", "format": "binary"}}
+    }
