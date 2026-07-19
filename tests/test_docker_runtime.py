@@ -242,7 +242,131 @@ def test_smoke_scripts_fall_back_to_project_venv_without_a_running_gateway(tmp_p
 def test_runtime_spec_documents_docker_aware_smoke_scripts() -> None:
     runtime = (ROOT / "spec" / "RUNTIME.md").read_text(encoding="utf-8")
     testing = (ROOT / "spec" / "TESTING.md").read_text(encoding="utf-8")
-    for name in ("health_smoke.sh", "smoke_api.sh"):
+    for name in ("health_smoke.sh", "smoke_api.sh", "tailscale_https.sh"):
         assert name in runtime
         assert name in testing
     assert "Docker" in runtime and "fallback" in runtime
+
+
+def _write_tailscale_smoke_fakes(tmp_path: Path, docker_gateway_running: bool) -> dict[str, str]:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir(exist_ok=True)
+    docker_log = tmp_path / "docker.log"
+
+    docker = fake_bin / "docker"
+    docker.write_text(
+        "#!/usr/bin/env bash\n"
+        "printf '%s\\n' \"$*\" >> \"$FAKE_DOCKER_LOG\"\n"
+        "if [[ \"${FAKE_DOCKER_PS_ERROR:-0}\" == 1 && \"$*\" == 'compose ps --status running -q gateway' ]]; then exit 42; fi\n"
+        + (
+            "if [[ \"$*\" == 'compose ps --status running -q gateway' ]]; then echo gateway-id; exit 0; fi\n"
+            if docker_gateway_running
+            else
+            "if [[ \"$*\" == 'compose ps --status running -q gateway' ]]; then exit 0; fi\n"
+        )
+        + "if [[ \"$1 $2\" == 'compose exec' ]]; then shift 5; exec python3 \"$@\"; fi\n"
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    docker.chmod(0o755)
+
+    tailscale = fake_bin / "tailscale"
+    tailscale.write_text(
+        "#!/usr/bin/env bash\n"
+        "printf '%s\\n' \"$*\" >> \"$FAKE_TAILSCALE_LOG\"\n"
+        "if [[ \"$*\" == 'status --json' ]]; then printf '%s\\n' '{\"BackendState\":\"Running\",\"Self\":{\"DNSName\":\"testnode.example.ts.net.\"}}'; exit 0; fi\n"
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    tailscale.chmod(0o755)
+
+    curl = fake_bin / "curl"
+    curl.write_text(
+        "#!/usr/bin/env bash\n"
+        "if [[ \"$*\" == *'/api/v1/health'* ]]; then\n"
+        "  if [[ \"${FAKE_INVALID_HEALTH:-0}\" == 1 ]]; then printf '%s' '{\"status\":\"broken\"}'; else printf '%s' '{\"status\":\"ok\",\"storage_ready\":true}'; fi\n"
+        "else printf '%s' '<html>Agent Speak</html>'; fi\n",
+        encoding="utf-8",
+    )
+    curl.chmod(0o755)
+
+    return os.environ | {
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+        "FAKE_DOCKER_LOG": str(docker_log),
+        "FAKE_TAILSCALE_LOG": str(tmp_path / "tailscale.log"),
+    }
+
+
+def test_tailscale_https_smoke_prefers_running_docker_gateway_without_host_venv(tmp_path: Path) -> None:
+    script = _copy_smoke_script(tmp_path, "tailscale_https.sh")
+    env = _write_tailscale_smoke_fakes(tmp_path, docker_gateway_running=True)
+
+    result = subprocess.run([str(script), "smoke"], cwd=tmp_path, env=env, capture_output=True, text=True)
+
+    assert result.returncode == 0, (result.stdout, result.stderr)
+    assert "TAILSCALE_HTTPS_SMOKE_OK" in result.stdout
+    assert "mode=docker" in result.stdout
+    calls = (tmp_path / "docker.log").read_text(encoding="utf-8")
+    assert "compose ps --status running -q gateway" in calls
+    assert calls.count("compose exec -T gateway python") >= 3
+
+
+def test_tailscale_https_smoke_falls_back_to_project_venv(tmp_path: Path) -> None:
+    script = _copy_smoke_script(tmp_path, "tailscale_https.sh")
+    env = _write_tailscale_smoke_fakes(tmp_path, docker_gateway_running=False)
+    venv_python = tmp_path / ".venv" / "bin" / "python"
+    venv_python.parent.mkdir(parents=True)
+    venv_python.write_text(
+        "#!/usr/bin/env bash\n"
+        "exec python3 \"$@\"\n",
+        encoding="utf-8",
+    )
+    venv_python.chmod(0o755)
+
+    result = subprocess.run([str(script), "smoke"], cwd=tmp_path, env=env, capture_output=True, text=True)
+
+    assert result.returncode == 0, (result.stdout, result.stderr)
+    assert "TAILSCALE_HTTPS_SMOKE_OK" in result.stdout
+    assert "mode=local" in result.stdout
+
+
+def test_tailscale_https_smoke_propagates_payload_validation_failure(tmp_path: Path) -> None:
+    script = _copy_smoke_script(tmp_path, "tailscale_https.sh")
+    env = _write_tailscale_smoke_fakes(tmp_path, docker_gateway_running=True)
+    env["FAKE_INVALID_HEALTH"] = "1"
+
+    result = subprocess.run([str(script), "smoke"], cwd=tmp_path, env=env, capture_output=True, text=True)
+
+    assert result.returncode != 0
+    assert "TAILSCALE_HTTPS_SMOKE_OK" not in result.stdout
+
+
+def test_tailscale_https_start_keeps_serve_configuration_on_host(tmp_path: Path) -> None:
+    script = _copy_smoke_script(tmp_path, "tailscale_https.sh")
+    env = _write_tailscale_smoke_fakes(tmp_path, docker_gateway_running=True)
+
+    result = subprocess.run([str(script), "start"], cwd=tmp_path, env=env, capture_output=True, text=True)
+
+    assert result.returncode == 0, (result.stdout, result.stderr)
+    assert "TAILSCALE_HTTPS_OK mode=docker" in result.stdout
+    tailscale_calls = (tmp_path / "tailscale.log").read_text(encoding="utf-8")
+    assert "status --json" in tailscale_calls
+    assert "serve --bg --yes --https=8765 http://127.0.0.1:8765" in tailscale_calls
+    docker_calls = (tmp_path / "docker.log").read_text(encoding="utf-8")
+    assert "tailscale serve" not in docker_calls
+
+
+def test_tailscale_https_does_not_hide_docker_detection_errors_as_local_fallback(tmp_path: Path) -> None:
+    script = _copy_smoke_script(tmp_path, "tailscale_https.sh")
+    env = _write_tailscale_smoke_fakes(tmp_path, docker_gateway_running=False)
+    env["FAKE_DOCKER_PS_ERROR"] = "1"
+    venv_python = tmp_path / ".venv" / "bin" / "python"
+    venv_python.parent.mkdir(parents=True)
+    venv_python.write_text("#!/usr/bin/env bash\nexec python3 \"$@\"\n", encoding="utf-8")
+    venv_python.chmod(0o755)
+
+    result = subprocess.run([str(script), "smoke"], cwd=tmp_path, env=env, capture_output=True, text=True)
+
+    assert result.returncode != 0
+    assert "Docker Gateway detection failed" in result.stderr
+    assert "mode=local" not in result.stdout
