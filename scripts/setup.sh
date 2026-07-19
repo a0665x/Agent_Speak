@@ -24,7 +24,7 @@ if [[ ! -x "$VENV_DIR/bin/python" ]]; then
   fi
 fi
 
-if ! "$VENV_DIR/bin/python" -c 'import fastapi, faster_whisper, httpx, numpy, piper, pytest, uvicorn, websockets' >/dev/null 2>&1; then
+if ! "$VENV_DIR/bin/python" -c 'import dotenv, fastapi, faster_whisper, httpx, mcp, numpy, piper, pytest, uvicorn, websockets' >/dev/null 2>&1; then
   if command -v uv >/dev/null 2>&1; then
     (cd "$ROOT_DIR" && uv pip install --python "$VENV_DIR/bin/python" -e '.[test]')
   else

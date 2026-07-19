@@ -24,11 +24,49 @@ def test_openapi_quickstart_only_references_real_operations(tmp_path: Path) -> N
         )
 
 
+def test_public_readme_and_agent_entrypoint_are_clone_ready() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    agent_entrypoint = ROOT / "AGENTS.md"
+
+    assert "git clone https://github.com/a0665x/Agent_Speak.git" in readme
+    assert "<repository-url>" not in readme
+    assert agent_entrypoint.is_file()
+    assert "spec/PROJECT_MAP.md" in agent_entrypoint.read_text(encoding="utf-8")
+    assert "skills/agent-speak/SKILL.md" in agent_entrypoint.read_text(encoding="utf-8")
+
+
+def test_portable_skill_has_valid_frontmatter_and_mcp_entrypoint() -> None:
+    skill = (ROOT / "skills" / "agent-speak" / "SKILL.md").read_text(encoding="utf-8")
+
+    assert skill.startswith("---\n")
+    frontmatter = skill.split("---\n", 2)[1]
+    assert "name: agent-speak" in frontmatter
+    assert "description:" in frontmatter
+    assert "version:" in frontmatter
+    assert "license: MIT" in frontmatter
+    assert (ROOT / "LICENSE").is_file()
+    entrypoint = (ROOT / "scripts" / "run_mcp.sh")
+    assert entrypoint.stat().st_mode & 0o111
+    assert 'source "$ROOT_DIR/.env"' not in entrypoint.read_text(encoding="utf-8")
+
+
+def test_public_ignore_rules_cover_local_agent_state_and_common_secrets() -> None:
+    ignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
+
+    for rule in (
+        ".codex/", ".agent/", ".agents/", ".env.*", "!.env.example", ".netrc", "id_rsa",
+        "*credentials*.yml", "*secret*.yaml",
+    ):
+        assert rule in ignore
+
+
 def test_openapi_quickstart_relative_markdown_links_exist() -> None:
     files = (
         ROOT / "README.md",
+        ROOT / "AGENTS.md",
         ROOT / "spec" / "PROJECT_MAP.md",
         ROOT / "spec" / "API.md",
+        ROOT / "spec" / "SKILL_AND_MCP.md",
         QUICKSTART,
     )
 

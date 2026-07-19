@@ -6,3 +6,4 @@
 4. Preserve `/api/v1` contracts/provider boundaries. Add a failing test first.
 5. Never commit `.env`, voice samples/features, databases, weights, generated audio, or traces.
 6. Update the relevant Level-2 spec. UI work also requires API and browser smoke.
+7. External Agent work starts with `SKILL_AND_MCP.md`: preserve Skill=knowledge, MCP=control, HTTP/WebSocket=data/events, and never route raw streams through MCP.

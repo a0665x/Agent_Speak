@@ -6,5 +6,7 @@
 - `scripts/`: setup, run, status, test, microphone and API smoke.
 - `data/`, `runtime/`: private ignored state.
 - `models/`: optional ignored model weights.
+- `skills/agent-speak/`: portable operational Skill for external Agent hosts.
+- `AGENTS.md`: repository-level Agent onboarding entrypoint.
 - `docs/superpowers/`: design and implementation plan.
 - `spec/`: progressive-disclosure project truth.

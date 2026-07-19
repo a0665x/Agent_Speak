@@ -1,16 +1,26 @@
 .env
+.env.*
+!.env.example
 .venv/
+venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
 .coverage
 htmlcov/
 *.egg-info/
+dist/
+build/
 
 # Private runtime state: never commit recordings, features, databases, artifacts, or logs.
 runtime/
 data/
 models/
+/models/**/*.bin
 *.db
 *.sqlite*
 *.wav
@@ -30,12 +40,43 @@ models/
 *.safetensors
 *.ckpt
 *.gguf
+*.tflite
+*.mlmodel
+*.trt
 
-# Local tool state.
+# Secrets and credentials (safe templates may be explicitly unignored).
+*.pem
+*.key
+*.p12
+*.pfx
+*credentials*.json
+*credentials*.yaml
+*credentials*.yml
+*secret*.json
+*secret*.yaml
+*secret*.yml
+*secrets*.yaml
+*secrets*.yml
+.netrc
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+
+# Local agent/tool and editor state is not portable repository content.
 .vscode/
 .idea/
 .codex/
+.agent/
+.agents/
 .claude/
 .hermes/
 .DS_Store
 .gstack/
+*.swp
+*.swo
+*~
+.cache/
+.local/
+/tmp/
+/temp/
