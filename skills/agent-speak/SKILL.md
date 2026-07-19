@@ -13,10 +13,10 @@ metadata:
 
 ## 啟動前檢查
 
-1. 在 repository 根目錄確認 Python 3.11、`arecord`、`aplay` 是否存在。
-2. 執行 `./scripts/setup.sh`，只使用專案 `.venv`。
-3. 執行 `./scripts/run.sh` 啟動 gateway；預設僅監聽 `127.0.0.1:8765`。
-4. 執行 `./scripts/status.sh` 或 MCP `status`；閱讀 `capabilities`，不要把 development provider 說成正式智慧 Agent。
+1. 在 repository 根目錄確認 Docker Engine、Compose v2 與 `/dev/snd` 是否存在。
+2. 執行 `./run.sh --build`；此命令建置並啟動隔離的 Gateway，預設只發布到 `127.0.0.1:8765`。
+3. Compose 預設將 host `/dev/snd` 映射進 container，模型與私有狀態分別持久化在 `models/`、`data/`、`runtime/`。
+4. 執行 `./run.sh --status` 或 MCP `status`；閱讀 `capabilities`，不要把 development provider 說成正式智慧 Agent。
 5. 呼叫 MCP `list_audio_devices`。只有 capture available 才能錄音；只有 playback available 才能承諾實體播放。
 
 ## 連接 MCP

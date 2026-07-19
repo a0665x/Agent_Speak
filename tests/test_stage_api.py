@@ -241,7 +241,7 @@ async def test_artifacts_are_private_revalidated_and_retained_with_a_bound(tmp_p
     settings = Settings(
         data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime", max_artifacts=2
     )
-    app = create_app(settings)
+    app = create_app(settings, providers=ProviderSet.development())
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         urls = [(await client.post("/api/v1/tts/synthesize", json={"text": text})).json()["audio_url"] for text in ("a", "b", "c")]
         removed = await client.get(urls[0])

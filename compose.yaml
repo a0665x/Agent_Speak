@@ -1,0 +1,66 @@
+name: agent-speak
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: agent-speak:local
+    restart: unless-stopped
+    init: true
+    user: "${AGENT_SPEAK_UID:-1000}:${AGENT_SPEAK_GID:-1000}"
+    group_add:
+      - "${AGENT_SPEAK_AUDIO_GID:-29}"
+    devices:
+      - /dev/snd:/dev/snd
+    ports:
+      - "${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}:8765"
+    environment:
+      AGENT_SPEAK_HOST: 0.0.0.0
+      AGENT_SPEAK_PORT: 8765
+      AGENT_SPEAK_URL: http://127.0.0.1:8765
+      AGENT_SPEAK_DATA_DIR: /app/data
+      AGENT_SPEAK_RUNTIME_DIR: /app/runtime
+      AGENT_SPEAK_MAX_AUDIO_BYTES: "${AGENT_SPEAK_MAX_AUDIO_BYTES:-8388608}"
+      AGENT_SPEAK_MAX_AUDIO_SECONDS: "${AGENT_SPEAK_MAX_AUDIO_SECONDS:-30}"
+      AGENT_SPEAK_VAD_RMS_THRESHOLD: "${AGENT_SPEAK_VAD_RMS_THRESHOLD:-0.015}"
+      AGENT_SPEAK_MAX_SESSIONS: "${AGENT_SPEAK_MAX_SESSIONS:-100}"
+      AGENT_SPEAK_MAX_SESSION_EVENTS: "${AGENT_SPEAK_MAX_SESSION_EVENTS:-128}"
+      AGENT_SPEAK_MAX_EVENT_QUEUE: "${AGENT_SPEAK_MAX_EVENT_QUEUE:-64}"
+      AGENT_SPEAK_MAX_ARTIFACTS: "${AGENT_SPEAK_MAX_ARTIFACTS:-100}"
+      AGENT_SPEAK_ASR_MODEL: "${AGENT_SPEAK_ASR_MODEL:-small}"
+      AGENT_SPEAK_ASR_LANGUAGE: "${AGENT_SPEAK_ASR_LANGUAGE:-zh}"
+      AGENT_SPEAK_ASR_COMPUTE_TYPE: "${AGENT_SPEAK_ASR_COMPUTE_TYPE:-int8}"
+      AGENT_SPEAK_ASR_CPU_THREADS: "${AGENT_SPEAK_ASR_CPU_THREADS:-4}"
+      AGENT_SPEAK_TTS_MODEL_PATH: "${AGENT_SPEAK_TTS_MODEL_PATH:-models/piper/zh_CN-huayan-medium.onnx}"
+      HOME: /app/models/home
+      HF_HOME: /app/models/huggingface
+      XDG_CACHE_HOME: /app/models/cache
+    volumes:
+      - ${AGENT_SPEAK_DATA_PATH:-./data}:/app/data
+      - ${AGENT_SPEAK_RUNTIME_PATH:-./runtime}:/app/runtime
+      - ${AGENT_SPEAK_MODELS_PATH:-./models}:/app/models
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/api/v1/health', timeout=3).read()"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 6
+
+  # One-shot test target. It intentionally has no production bind mounts and no
+  # /dev/snd mapping, so tests cannot access private voice state or audio hardware.
+  gateway-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: agent-speak:local
+    profiles: ["test"]
+    init: true
+    network_mode: none
+    environment:
+      AGENT_SPEAK_SKIP_MODEL_BOOTSTRAP: "1"
+      AGENT_SPEAK_DATA_DIR: /tmp/agent-speak-test/data
+      AGENT_SPEAK_RUNTIME_DIR: /tmp/agent-speak-test/runtime
+      HOME: /tmp/agent-speak-test/home
+      HF_HOME: /tmp/agent-speak-test/huggingface
+      XDG_CACHE_HOME: /tmp/agent-speak-test/cache

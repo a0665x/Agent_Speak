@@ -1,19 +1,33 @@
-# Runtime and Operations
+# Runtime
 
-Use `./scripts/setup.sh` once, `./scripts/run.sh` to start, `./scripts/status.sh` for state, and `./scripts/test.sh` for tests. `./scripts/smoke_api.sh` validates a running service. `./scripts/mic_smoke.sh` records a bounded sample and reports signal stats.
+## Docker-first operation
 
-For an external MCP host, keep the gateway running and configure the host to execute `./scripts/run_mcp.sh` over stdio. `AGENT_SPEAK_URL` defaults to `http://127.0.0.1:8765`. stdout is reserved for MCP JSON-RPC; operator errors belong on stderr. `arecord`/`aplay` calls use argv without a shell, validate device names, and have timeouts. Capture is limited to 1–30 seconds and temporary WAV files are removed. Playback is opt-in and reports `played=true` only after a detected playback device and successful `aplay` exit.
+Public operation uses one root entrypoint. Run `./run.sh --build` to build the multi-architecture Python image and start the Gateway. The same command owns normal lifecycle actions:
 
-Private phone access uses Tailscale Serve while the application remains bound to localhost. Run `./scripts/tailscale_https.sh start` to create a persistent tailnet-only HTTPS proxy from `AGENT_SPEAK_TAILSCALE_HTTPS_PORT` (default `8765`) to the local application port, then run `./scripts/tailscale_https.sh smoke`. Success prints `TAILSCALE_HTTPS_OK url=...` followed by `TAILSCALE_HTTPS_SMOKE_OK ... health=ok root=ok`. Use `status` to inspect all Serve routes and `stop` to remove only this project's HTTPS port. The phone must be signed into the same tailnet; this is Tailscale Serve, not public Funnel exposure.
+- `--up`, `--down`, `--down_up`, `--restart`
+- `--rebuild` for a no-cache rebuild
+- `--status`, `--logs`, `--test`, `--help`
 
-Configuration comes from `.env` copied from `.env.example`. Default bind is `127.0.0.1:8765`. External agent calls are opt-in. Runtime state and logs stay under ignored `runtime/` and `data/`. Binding `AGENT_SPEAK_HOST=0.0.0.0` exposes the unauthenticated, unencrypted MVP to the LAN and is appropriate only on a trusted network with host firewall controls; never expose it directly to an untrusted network or the public internet.
+`compose.yaml` publishes the service to `127.0.0.1:${AGENT_SPEAK_PORT:-8765}`, maps host `/dev/snd` into the container by default, adds the host audio group, and uses a healthcheck plus `restart: unless-stopped`. Host `data/`, `runtime/`, and `models/` directories are bind-mounted to `/app` and survive container recreation. Their host paths can be overridden with `AGENT_SPEAK_DATA_PATH`, `AGENT_SPEAK_RUNTIME_PATH`, and `AGENT_SPEAK_MODELS_PATH`. They are ignored by Git and excluded from the Docker build context together with credentials and private Agent state.
 
-Settings are validated with Pydantic and loaded from `AGENT_SPEAK_*` variables using the standard library; `pydantic-settings` is intentionally not required. Browser MediaRecorder output is decoded and converted client-side to 16-bit PCM WAV because the server intentionally accepts a single bounded audio format.
+The image supports Docker's native `linux/amd64` and `linux/arm64` platforms through `python:3.11-slim-bookworm`. It installs ALSA utilities and local inference dependencies. The entrypoint downloads Piper `zh_CN-huayan-medium` into persistent model storage only when missing. Faster-Whisper downloads lazily into `models/` on the first ASR request.
 
-Each operator script prints success signals and repair guidance.
+Optional settings are read by Docker Compose from an untracked `.env`; `.env.example` is the public reference. `run.sh` imports only a strict operational whitelist from `docker compose config --environment` rather than executing `.env` as shell code, so custom bind paths, identity overrides, and the advertised host/port match Compose's effective configuration. Compose passes validated `AGENT_SPEAK_*` values to the application. The container listens on `0.0.0.0:8765` internally, while host publication remains loopback-only by default.
 
-`status.sh` exits 0 only for a running service. It prints `STATUS_STOPPED` and exits 3 when the virtual environment exists but the health endpoint is not running, while setup/configuration errors use other nonzero exits.
+## MCP process
 
-For MVP resource control, `AGENT_SPEAK_MAX_SESSIONS`, `AGENT_SPEAK_MAX_SESSION_EVENTS`, `AGENT_SPEAK_MAX_EVENT_QUEUE`, and `AGENT_SPEAK_MAX_ARTIFACTS` bound in-memory sessions, retained event history, each subscriber queue, and generated TTS artifacts. Old inactive sessions, old retained events, and old artifacts are removed first; a slow event subscriber retains the latest queued events.
+After `./run.sh --build`, an external MCP host executes `./scripts/run_mcp.sh`. On the host, the script attaches a stdio MCP process to the running Gateway container with `docker compose exec -T`. Inside a container it runs Python directly. A local `.venv` path remains only as a developer fallback and is not the public quick start.
 
-`setup.sh` creates/uses only the project `.venv`. Before resolving model paths it changes to the repository root, loads and exports `.env`, and resolves a relative `AGENT_SPEAK_TTS_MODEL_PATH` from that root; this keeps setup and runtime configuration identical even when setup is invoked from another directory. It installs Faster-Whisper and Piper, and downloads the ignored `models/piper/zh_CN-huayan-medium.onnx` voice plus JSON sidecar when absent. The first ASR request lazily loads/downloads the configured Whisper model (default `small`); subsequent turns reuse it. Configure `AGENT_SPEAK_ASR_MODEL`, `AGENT_SPEAK_ASR_LANGUAGE`, `AGENT_SPEAK_ASR_COMPUTE_TYPE`, `AGENT_SPEAK_ASR_CPU_THREADS`, and `AGENT_SPEAK_TTS_MODEL_PATH` in `.env`. `health_smoke.sh` checks one endpoint; `smoke_api.sh` covers health, a live WebSocket turn, artifact creation, and speaker lifecycle against a running service. `mic_smoke.sh` writes its bounded capture to a temporary file and deletes it on exit.
+stdout is reserved for MCP JSON-RPC. ALSA subprocess calls use argv without a shell, validate device names, enforce timeouts, limit capture to 1–30 seconds, and delete temporary WAV files. Playback is opt-in and reports `played=true` only after `aplay` succeeds.
+
+## Private HTTPS phone access
+
+Tailscale Serve remains a host concern because the application is published on loopback. `./scripts/tailscale_https.sh start` proxies the configured private HTTPS port to `127.0.0.1:${AGENT_SPEAK_PORT:-8765}`. Run `./scripts/tailscale_https.sh smoke` before sharing a phone URL. Do not expose this unauthenticated MVP directly to an untrusted LAN or public internet.
+
+## Limits and state
+
+Pydantic validates all runtime settings. Browser MediaRecorder output is converted client-side to 16-bit PCM WAV. Audio bytes/duration, sessions, retained events, subscriber queues, and generated artifacts are bounded through `.env.example` settings.
+
+The Docker healthcheck calls `/api/v1/health`. `./run.sh --status` exits successfully only when the Gateway container is healthy and reports capture/playback availability from real `arecord -l` and `aplay -l` probes. `./run.sh --test` launches the dedicated `gateway-test` one-shot service with no production bind mounts, no `/dev/snd`, and no network; it skips model bootstrap, runs pytest and JavaScript syntax checking, and removes the test container afterward.
+
+Legacy scripts under `scripts/` remain developer and focused smoke utilities. They are not the main public lifecycle interface.

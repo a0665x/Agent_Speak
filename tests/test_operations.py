@@ -29,18 +29,18 @@ def test_operator_scripts_are_executable_syntax_checked_and_signal_success() -> 
         subprocess.run(["bash", "-n", str(path)], check=True)
 
 
-def test_environment_example_and_readme_cover_local_execution() -> None:
+def test_environment_example_and_readme_cover_docker_execution() -> None:
     env = (ROOT / ".env.example").read_text()
     readme = (ROOT / "README.md").read_text()
 
-    for key in ("AGENT_SPEAK_HOST", "AGENT_SPEAK_PORT", "AGENT_SPEAK_MAX_AUDIO_BYTES", "AGENT_SPEAK_MAX_AUDIO_SECONDS"):
+    for key in ("AGENT_SPEAK_PUBLISH_HOST", "AGENT_SPEAK_PORT", "AGENT_SPEAK_MAX_AUDIO_BYTES", "AGENT_SPEAK_MAX_AUDIO_SECONDS"):
         assert key in env
-    for command in ("./scripts/setup.sh", "./scripts/run.sh", "./scripts/status.sh", "./scripts/test.sh", "./scripts/mic_smoke.sh", "./scripts/smoke_api.sh"):
+    for command in ("./run.sh --build", "./run.sh --status", "./run.sh --test", "./run.sh --down"):
         assert command in readme
     assert "not authentication" in readme.lower()
-    assert "AGENT_SPEAK_HOST=127.0.0.1" in env
-    assert "LAN" in readme and "0.0.0.0" in readme
-    assert "trusted network" in readme.lower()
+    assert "AGENT_SPEAK_PUBLISH_HOST=127.0.0.1" in env
+    assert "/dev/snd" in readme and "Docker" in readme
+    assert "private HTTPS" in readme
 
 
 def test_runtime_companion_scripts_load_the_same_dotenv_as_run() -> None:

@@ -1,5 +1,7 @@
 # Testing
 
+Docker-first regression is `./run.sh --test`. It starts a one-shot container from the production image with model bootstrap disabled, runs the complete pytest suite, validates `web/app.js` with Node, prints `TESTS_OK`, and removes the test container. `tests/test_docker_runtime.py` guards the Dockerfile, ignored build context, `/dev/snd` mapping, persistent mounts, healthcheck/restart policy, root `run.sh` dispatch table, English-default bilingual README links, and Docker-aware Skill/spec contract. Release verification must also execute every lifecycle option against the real Docker daemon: `--build`, `--up`, `--status`, `--logs`, `--down`, `--down_up`, `--restart`, `--test`, and `--rebuild`.
+
 OpenAPI docs regression: `/docs` depends on Swagger UI assets from jsDelivr and FastAPI's inline initializer. The security middleware must apply the docs-specific CSP only to `/docs` and `/redoc`, while `/` retains the stricter self-only WebUI CSP. `test_openapi_docs_csp_allows_swagger_assets_without_weakening_webui` guards both sides of this contract. Runtime verification must confirm `/openapi.json` returns JSON and the real `/docs` browser renders `.swagger-ui` without a visible fetch error.
 
 
