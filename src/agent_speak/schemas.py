@@ -41,7 +41,7 @@ class CapabilitiesResponse(StrictModel):
 
 class HealthResponse(StrictModel):
     status: Literal["ok"] = Field(default="ok", description="服務健康狀態", examples=["ok"])
-    version: str = Field(description="Agent Speak 版本", examples=["0.1.0"])
+    version: str = Field(description="Agent Speak 版本", examples=["0.1.1"])
     storage_ready: bool = Field(description="本機資料目錄是否就緒", examples=[True])
 
 

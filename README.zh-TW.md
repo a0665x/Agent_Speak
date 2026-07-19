@@ -24,6 +24,19 @@ OpenAPI：http://127.0.0.1:8765/docs
 
 `./run.sh --build` 會建置並啟動隔離環境。Compose 預設映射 `/dev/snd`，私有狀態持久化於已排除版控的 `data/`、`runtime/`、`models/`。
 
+## 驗證安裝
+
+```sh
+./run.sh --status
+./scripts/health_smoke.sh
+./scripts/smoke_api.sh
+./run.sh --test
+```
+
+`--status` 會檢查容器健康狀態，並實際探測 ALSA 錄音與播放裝置。兩支 smoke 腳本會自動在執行中的 Gateway container 內運行，因此 Docker 安裝不需要主機 Python 環境：`health_smoke.sh` 驗證健康狀態與儲存空間可寫，`smoke_api.sh` 驗證 Session、WebSocket events、完整 ASR/TTS 回合、WAV 成品下載與說話者資料生命週期。`--test` 則在沒有正式資料掛載、網路及 `/dev/snd` 的隔離環境執行完整測試。
+
+成功時應看到 `STATUS_HEALTHY`、`HEALTH_SMOKE_OK mode=docker`、`API_SMOKE_OK mode=docker` 與 `TESTS_OK`。
+
 ## 單一操作入口
 
 ```text

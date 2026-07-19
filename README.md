@@ -24,6 +24,19 @@ OpenAPI: http://127.0.0.1:8765/docs
 
 `./run.sh --build` builds and starts the isolated stack. Compose maps `/dev/snd` by default and persists private state in ignored `data/`, `runtime/`, and `models/` directories.
 
+## Verify the installation
+
+```sh
+./run.sh --status
+./scripts/health_smoke.sh
+./scripts/smoke_api.sh
+./run.sh --test
+```
+
+`--status` checks container health plus real ALSA capture/playback discovery. The two smoke scripts automatically run inside the active Gateway container, so a Docker installation does not need a host Python environment: `health_smoke.sh` verifies health and writable storage, while `smoke_api.sh` exercises session creation, WebSocket events, a complete ASR/TTS turn, WAV artifact retrieval, and the speaker-profile lifecycle. `--test` runs the full isolated suite without production data mounts, network access, or `/dev/snd`.
+
+Expected success markers include `STATUS_HEALTHY`, `HEALTH_SMOKE_OK mode=docker`, `API_SMOKE_OK mode=docker`, and `TESTS_OK`.
+
 ## One operator command
 
 ```text

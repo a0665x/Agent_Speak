@@ -21,7 +21,7 @@ async def test_health_and_capabilities_expose_runtime_truth(tmp_path: Path) -> N
 
     assert health.status_code == 200
     assert health.json()["status"] == "ok"
-    assert health.json()["version"] == "0.1.0"
+    assert health.json()["version"] == "0.1.1"
     providers = {item["stage"]: item for item in capabilities.json()["providers"]}
     assert set(providers) == {"vad", "asr", "correction", "endpoint", "agent", "tts"}
     assert providers["vad"]["development"] is False
