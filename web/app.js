@@ -28,7 +28,7 @@ const translations = {
     promptRename: "請輸入所選本機資料的新名稱：", renamed: "說話者資料已重新命名。", confirmDelete: "刪除這筆本機說話者資料及其私人樣本？", deleted: "本機資料與樣本已刪除。",
     tryAgain: "請再試一次。", checkInput: "請檢查輸入後重試。", requestFailed: "請求失敗", tooLarge: "音訊超過 8 MiB 上傳限制。", serviceUnhealthy: "服務健康狀態異常",
     startService: "請啟動本機服務後重新載入。", recordClear: "請錄製 30 秒內的清楚語音。", tryWav: "請改為上傳 PCM WAV 檔案。", micFailed: "麥克風存取失敗", allowMic: "請允許權限或上傳音訊。", readableAudio: "請選擇瀏覽器可讀取的音訊檔案。", failedAt: "失敗階段",
-    limitationAsr: "目前只回傳測試文字，尚非真正語音辨識。", limitationCorrection: "目前只處理空白與句子大小寫。", limitationEndpoint: "目前只使用標點與文字長度判斷。", limitationAgent: "目前是範本回覆，尚未串接語言模型。", limitationTts: "目前輸出合成提示音，尚非自然語音。", limitationInjected: "外部注入的提供者；限制請查看部署設定。"
+    limitationAsr: "目前只回傳測試文字，尚非真正語音辨識。", limitationCorrection: "目前只處理空白與句子大小寫。", limitationEndpoint: "目前只使用標點與文字長度判斷。", limitationAgent: "目前是範本回覆，尚未串接語言模型。", limitationTts: "目前輸出合成提示音，尚非自然語音。", limitationInjected: "外部注入的提供者；限制請查看部署設定。", limitationWhisper: "本機 Faster-Whisper 語音辨識（CPU 推論）。", limitationPiper: "本機 Piper 中文語音合成。"
   },
   en: {
     skip: "Skip to voice console", brandAria: "Agent Speak home", connecting: "Connecting", localWorkspace: "Local voice workspace",
@@ -44,7 +44,7 @@ const translations = {
     ready: "Ready · local", reconnecting: "Event stream reconnecting", streamUnavailable: "Event stream unavailable", serviceUnavailable: "Service unavailable", uploadBounded: "Uploading bounded WAV", recording: "Recording · auto-stops at 30 seconds", turnAttention: "Turn needs attention", development: "Development", functional: "Functional", defaultLimitation: "Local deterministic signal analysis.",
     noProfilesLong: "No profiles yet. Add one to enroll the last turn.", sample: "enrolled sample(s)", selected: "selected.", profileCreated: "Speaker profile created.", enrolled: "enrolled. This is not authentication.", closest: "Closest profile", noMatch: "No profile met the local convenience threshold. Not authentication.", promptRename: "New name for the selected local profile:", renamed: "Speaker profile renamed.", confirmDelete: "Delete this local speaker profile and its private samples?", deleted: "Local profile and samples deleted.",
     tryAgain: "Please try again.", checkInput: "Check the input and retry.", requestFailed: "Request failed", tooLarge: "Audio exceeds the 8 MiB upload limit.", serviceUnhealthy: "Service is not healthy", startService: "Start the local service and reload.", recordClear: "Record clear speech for under 30 seconds.", tryWav: "Try uploading a PCM WAV file instead.", micFailed: "Microphone access failed", allowMic: "Allow permission or upload audio.", readableAudio: "Choose a browser-readable audio file.", failedAt: "Failed at",
-    limitationAsr: "Signal-derived fixture text; not speech recognition.", limitationCorrection: "Whitespace and sentence casing only.", limitationEndpoint: "Punctuation and text-length heuristic only.", limitationAgent: "Template response; no language model inference.", limitationTts: "Synthetic tone WAV; not natural speech.", limitationInjected: "Injected provider; consult deployment configuration for model limitations."
+    limitationAsr: "Signal-derived fixture text; not speech recognition.", limitationCorrection: "Whitespace and sentence casing only.", limitationEndpoint: "Punctuation and text-length heuristic only.", limitationAgent: "Template response; no language model inference.", limitationTts: "Synthetic tone WAV; not natural speech.", limitationInjected: "Injected provider; consult deployment configuration for model limitations.", limitationWhisper: "Local Faster-Whisper speech recognition (CPU inference).", limitationPiper: "Local Piper Mandarin speech synthesis."
   }
 };
 let currentLocale = DEFAULT_LOCALE;
@@ -264,7 +264,9 @@ function renderCapabilities(payload) {
     "Punctuation and text-length heuristic only.": "limitationEndpoint",
     "Template response; no language model inference.": "limitationAgent",
     "Synthetic tone WAV; not natural speech.": "limitationTts",
-    "Injected provider; consult deployment configuration for model limitations.": "limitationInjected"
+    "Injected provider; consult deployment configuration for model limitations.": "limitationInjected",
+    "Faster-Whisper local transcription; CPU inference.": "limitationWhisper",
+    "Piper local Mandarin speech synthesis.": "limitationPiper"
   };
   payload.providers.forEach((provider) => {
     const item = element("li"); const name = element("strong", provider.stage); const badge = element("span", provider.development ? t("development") : t("functional"), "provider-badge");

@@ -60,6 +60,10 @@ def test_public_contract_models_are_strictly_typed() -> None:
         PipelineEvent(sequence=0, type="stage.started", data={})
 
 
+def test_development_agent_uses_a_spoken_chinese_wrapper_for_chinese_input() -> None:
+    assert DevelopmentAgent().respond("你好，測試。") == "開發模式回覆：我聽到「你好，測試。」"
+
+
 def test_development_adapters_satisfy_typed_stage_protocols() -> None:
     assert isinstance(DevelopmentASR(), ASRProvider)
     assert isinstance(DevelopmentCorrection(), CorrectionProvider)

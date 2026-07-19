@@ -166,7 +166,7 @@ def create_app(settings: Settings | None = None, *, providers: ProviderSet | Non
     )
     app.state.pipeline = Pipeline(
         app.state.broker,
-        providers or ProviderSet.development(vad=default_vad),
+        providers or ProviderSet.configured(active, vad=default_vad),
         active.runtime_dir / "artifacts",
         max_audio_bytes=active.max_audio_bytes,
         max_audio_seconds=active.max_audio_seconds,

@@ -39,6 +39,8 @@ class DevelopmentEndpoint:
 
 class DevelopmentAgent:
     def respond(self, text: str) -> str:
+        if any("\u3400" <= character <= "\u9fff" for character in text):
+            return f"開發模式回覆：我聽到「{text}」"
         return f"Development response: I heard “{text}”"
 
 

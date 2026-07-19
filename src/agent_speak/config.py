@@ -23,6 +23,11 @@ class Settings(BaseModel):
     max_session_events: int = Field(default=128, ge=1, le=10_000)
     max_event_queue: int = Field(default=64, ge=1, le=10_000)
     max_artifacts: int = Field(default=100, ge=1, le=10_000)
+    asr_model: str = "small"
+    asr_language: str | None = "zh"
+    asr_compute_type: str = "int8"
+    asr_cpu_threads: int = Field(default=4, ge=1, le=32)
+    tts_model_path: Path = Path("models/piper/zh_CN-huayan-medium.onnx")
 
     @classmethod
     def from_env(cls) -> "Settings":

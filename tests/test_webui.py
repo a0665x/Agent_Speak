@@ -8,6 +8,18 @@ from agent_speak.config import Settings
 
 
 @pytest.mark.anyio
+async def test_real_speech_capabilities_have_localized_non_tone_descriptions(tmp_path: Path) -> None:
+    app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        javascript = (await client.get("/static/app.js")).text
+
+    assert '"Faster-Whisper local transcription; CPU inference.": "limitationWhisper"' in javascript
+    assert '"Piper local Mandarin speech synthesis.": "limitationPiper"' in javascript
+    assert 'limitationWhisper: "本機 Faster-Whisper 語音辨識（CPU 推論）。"' in javascript
+    assert 'limitationPiper: "本機 Piper 中文語音合成。"' in javascript
+
+
+@pytest.mark.anyio
 async def test_operator_console_and_local_assets_are_served(tmp_path: Path) -> None:
     app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:

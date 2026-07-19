@@ -25,8 +25,11 @@ async def test_health_and_capabilities_expose_runtime_truth(tmp_path: Path) -> N
     providers = {item["stage"]: item for item in capabilities.json()["providers"]}
     assert set(providers) == {"vad", "asr", "correction", "endpoint", "agent", "tts"}
     assert providers["vad"]["development"] is False
-    assert all(providers[name]["development"] for name in providers if name != "vad")
-    assert all(providers[name]["limitations"] for name in providers if name != "vad")
+    assert providers["asr"]["development"] is False
+    assert providers["tts"]["development"] is False
+    assert providers["asr"]["name"] == "faster-whisper-small"
+    assert providers["tts"]["name"] == "piper-zh_CN-huayan-medium"
+    assert all(providers[name]["development"] for name in ("correction", "endpoint", "agent"))
 
 
 @pytest.mark.anyio

@@ -85,7 +85,7 @@ async def post_oversized_first_chunk(app: object, path: str, limit: int) -> tupl
 @pytest.mark.anyio
 async def test_separate_development_stage_apis_and_artifact(tmp_path: Path) -> None:
     settings = Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime")
-    app = create_app(settings)
+    app = create_app(settings, providers=ProviderSet.development())
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         asr = await client.post("/api/v1/audio/asr", content=wav_bytes(), headers={"content-type": "audio/wav"})
         corrected = await client.post("/api/v1/text/correct", json={"text": "  hello   agent "})

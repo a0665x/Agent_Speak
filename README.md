@@ -1,6 +1,6 @@
 # Agent Speak
 
-Agent Speak is a local-first Voice Agent gateway for Jetson AGX Orin: real bounded WAV decode and energy VAD feed deterministic development ASR → correction → endpoint → agent → TTS providers. FastAPI exposes full-turn and separate stage APIs, ordered session events over REST/WebSocket, private speaker profiles, and a responsive browser console.
+Agent Speak is a local-first Voice Agent gateway for Jetson AGX Orin: real bounded WAV decode and energy VAD feed local Faster-Whisper ASR → correction → endpoint → pluggable agent → Piper TTS providers. FastAPI exposes full-turn and separate stage APIs, ordered session events over REST/WebSocket, private speaker profiles, and a responsive browser console.
 
 ## Quick start
 
@@ -35,12 +35,13 @@ Run the health/API smoke scripts while `./scripts/run.sh` is active in another t
 
 - Accepts 8–48 kHz uncompressed 16-bit mono/stereo WAV, bounded by bytes and duration.
 - Streams bounded ordered pipeline history and live stage events for each session.
-- Returns a valid local WAV artifact from deterministic tone TTS.
+- Runs local Faster-Whisper `small` ASR (Mandarin hint, CPU int8) and returns recognized speech instead of a hash placeholder.
+- Generates spoken Mandarin WAV with Piper `zh_CN-huayan-medium` instead of a synthetic beep.
 - Serves separate VAD, ASR, correction, endpoint, agent, and TTS stage APIs under `/api/v1`.
 - Captures browser microphone audio with MediaRecorder and converts it locally to PCM WAV before upload.
 - Persists speaker metadata/features in SQLite and private enrollment WAV files.
 
-The ASR, correction, endpoint, agent, and TTS defaults are deterministic development providers, not production inference. Their limitations are always exposed by `/api/v1/capabilities` and in the WebUI. Energy VAD is functional signal analysis.
+The correction, endpoint, and agent defaults remain deterministic development providers. The Agent currently returns a transparent echo response (localized for Chinese input) until an external Agent adapter is configured. Their limitations are exposed by `/api/v1/capabilities` and in the WebUI. Energy VAD, Faster-Whisper ASR, and Piper TTS perform real local inference.
 
 Read `spec/PROJECT_MAP.md` first for architecture, API, operations, testing, UI, and model replacement details.
 
