@@ -170,3 +170,79 @@ def test_skill_and_specs_document_docker_mcp_and_hardware_contract() -> None:
         assert "/dev/snd" in text
     assert "Docker" in project_map
     assert "scripts/run_mcp.sh" in mcp
+
+
+def _copy_smoke_script(tmp_path: Path, name: str) -> Path:
+    scripts_dir = tmp_path / "scripts"
+    scripts_dir.mkdir(exist_ok=True)
+    target = scripts_dir / name
+    target.write_text((ROOT / "scripts" / name).read_text(encoding="utf-8"), encoding="utf-8")
+    target.chmod(0o755)
+    return target
+
+
+def test_smoke_scripts_prefer_a_running_docker_gateway(tmp_path: Path) -> None:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    log = tmp_path / "docker.log"
+    docker = fake_bin / "docker"
+    docker.write_text(
+        "#!/usr/bin/env bash\n"
+        "printf '%s\\n' \"$*\" >> \"$FAKE_DOCKER_LOG\"\n"
+        "if [[ \"$*\" == 'compose ps --status running -q gateway' ]]; then echo gateway-id; exit 0; fi\n"
+        "if [[ \"$1 $2\" == 'compose exec' ]]; then input=$(cat); [[ \"$input\" == *urllib.request* ]] || exit 9; exit 0; fi\n"
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    docker.chmod(0o755)
+    env = os.environ | {
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+        "FAKE_DOCKER_LOG": str(log),
+        "API_BASE": "http://127.0.0.1:9876",
+    }
+
+    for name, success_marker in (
+        ("health_smoke.sh", "HEALTH_SMOKE_OK"),
+        ("smoke_api.sh", "API_SMOKE_OK"),
+    ):
+        script = _copy_smoke_script(tmp_path, name)
+        result = subprocess.run([str(script)], cwd=tmp_path, env=env, capture_output=True, text=True)
+        assert result.returncode == 0, (name, result.stdout, result.stderr)
+        assert success_marker in result.stdout
+
+    calls = log.read_text(encoding="utf-8")
+    assert calls.count("compose ps --status running -q gateway") == 2
+    assert calls.count("compose exec -T") >= 2
+    assert calls.count("API_BASE=http://127.0.0.1:8765") >= 2
+    assert "API_BASE=http://127.0.0.1:9876" not in calls
+
+
+def test_smoke_scripts_fall_back_to_project_venv_without_a_running_gateway(tmp_path: Path) -> None:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    docker = fake_bin / "docker"
+    docker.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+    docker.chmod(0o755)
+    venv_python = tmp_path / ".venv" / "bin" / "python"
+    venv_python.parent.mkdir(parents=True)
+    venv_python.write_text("#!/usr/bin/env bash\ncat >/dev/null\n", encoding="utf-8")
+    venv_python.chmod(0o755)
+    env = os.environ | {"PATH": f"{fake_bin}:{os.environ['PATH']}"}
+
+    for name, success_marker in (
+        ("health_smoke.sh", "HEALTH_SMOKE_OK"),
+        ("smoke_api.sh", "API_SMOKE_OK"),
+    ):
+        script = _copy_smoke_script(tmp_path, name)
+        result = subprocess.run([str(script)], cwd=tmp_path, env=env, capture_output=True, text=True)
+        assert result.returncode == 0, (name, result.stdout, result.stderr)
+        assert success_marker in result.stdout
+
+
+def test_runtime_spec_documents_docker_aware_smoke_scripts() -> None:
+    runtime = (ROOT / "spec" / "RUNTIME.md").read_text(encoding="utf-8")
+    testing = (ROOT / "spec" / "TESTING.md").read_text(encoding="utf-8")
+    for name in ("health_smoke.sh", "smoke_api.sh"):
+        assert name in runtime
+        assert name in testing
+    assert "Docker" in runtime and "fallback" in runtime

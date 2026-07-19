@@ -3,10 +3,32 @@ set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 VENV_DIR="$ROOT_DIR/.venv"
-if [[ -f "$ROOT_DIR/.env" ]]; then set -a; source "$ROOT_DIR/.env"; set +a; fi
-PORT=${AGENT_SPEAK_PORT:-8765}
-if [[ ! -x "$VENV_DIR/bin/python" ]]; then echo "Run ./scripts/setup.sh first." >&2; exit 1; fi
-API_BASE=${API_BASE:-http://127.0.0.1:$PORT} PYTHONPATH="$ROOT_DIR/src" "$VENV_DIR/bin/python" <<'PY'
+cd "$ROOT_DIR"
+
+MODE=local
+if command -v docker >/dev/null 2>&1 \
+  && docker compose ps --status running -q gateway 2>/dev/null | grep -q .; then
+  MODE=docker
+  # The Python process runs inside the Gateway network namespace, where the
+  # service always listens on its internal port regardless of host publishing.
+  API_BASE=http://127.0.0.1:8765
+  PYTHON_RUNNER=(docker compose exec -T -e "API_BASE=$API_BASE" gateway env PYTHONPATH=/app/src python -)
+else
+  if [[ -f "$ROOT_DIR/.env" ]]; then
+    set -a
+    source "$ROOT_DIR/.env"
+    set +a
+  fi
+  PORT=${AGENT_SPEAK_PORT:-8765}
+  API_BASE=${API_BASE:-http://127.0.0.1:$PORT}
+  if [[ ! -x "$VENV_DIR/bin/python" ]]; then
+    echo "Agent Speak is not running in Docker and the local .venv is unavailable. Run ./run.sh --build." >&2
+    exit 1
+  fi
+  PYTHON_RUNNER=(env "API_BASE=$API_BASE" "PYTHONPATH=$ROOT_DIR/src" "$VENV_DIR/bin/python" -)
+fi
+
+"${PYTHON_RUNNER[@]}" <<'PY'
 import asyncio, io, json, os, urllib.request, wave
 import websockets
 from agent_speak.config import Settings
@@ -49,11 +71,14 @@ async def main():
     assert [event["sequence"] for event in events] == list(range(1, len(events) + 1))
     _, created = call("POST", "/api/v1/speakers", {"name": "Smoke profile"})
     speaker_id = created["speaker"]["id"]
-    _, enrolled = call("POST", f"/api/v1/speakers/{speaker_id}/samples", sample, "audio/wav")
-    _, matched = call("POST", "/api/v1/speakers/match", sample, "audio/wav")
-    assert enrolled["speaker"]["sample_count"] == 1 and matched["match"]["id"] == speaker_id
-    status, _ = call("DELETE", f"/api/v1/speakers/{speaker_id}"); assert status == 204
+    try:
+        _, enrolled = call("POST", f"/api/v1/speakers/{speaker_id}/samples", sample, "audio/wav")
+        _, matched = call("POST", "/api/v1/speakers/match", sample, "audio/wav")
+        assert enrolled["speaker"]["sample_count"] == 1 and matched["match"]["id"] == speaker_id
+    finally:
+        status, _ = call("DELETE", f"/api/v1/speakers/{speaker_id}"); assert status == 204
 
 asyncio.run(main())
 PY
-echo "API_SMOKE_OK health_session_websocket_turn_artifact_speaker_lifecycle"
+
+echo "API_SMOKE_OK mode=$MODE health_session_websocket_turn_artifact_speaker_lifecycle"

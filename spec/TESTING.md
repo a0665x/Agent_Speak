@@ -7,7 +7,9 @@ OpenAPI docs regression: `/docs` depends on Swagger UI assets from jsDelivr and 
 
 `./scripts/test.sh` runs pytest plus JavaScript syntax checking for contracts, typed provider boundaries, event ordering and WebSocket replay, pipeline completion/failure, separate stage failures, WAV bounds, VAD, speaker persistence/matching, routes, operations, and UI delivery.
 
-`./scripts/smoke_api.sh` exercises health, session creation, synthetic voiced turn, events and speaker lifecycle. `./scripts/mic_smoke.sh` uses USB ALSA capture and reports peak/RMS/nonzero ratios.
+`./scripts/health_smoke.sh` and `./scripts/smoke_api.sh` automatically prefer a running Docker Compose `gateway`, execute the checks inside the production container, and therefore work in a fresh Release install without a host `.venv`. If the Compose Gateway is not running, both scripts fall back to the project `.venv`. The health smoke validates `status=ok` and writable storage; the API smoke exercises health, session creation, synthetic voiced turn, ordered WebSocket events, WAV artifact, and speaker create/enroll/match/delete lifecycle. Expected markers include `HEALTH_SMOKE_OK mode=docker|local` and `API_SMOKE_OK mode=docker|local`.
+
+`./scripts/mic_smoke.sh` uses USB ALSA capture and reports peak/RMS/nonzero ratios.
 
 `tests/test_mcp_server.py` 是 MCP control-plane 的硬體隔離回歸測試。它注入 fake HTTP client 與 subprocess runner，因此 CI 不需要真實 microphone、speaker、gateway 或 model；覆蓋 status/capabilities、command timeout、缺少 ALSA utilities、有效 PCM WAV 驗證、暫存清理、不安全 device 拒絕、逐次使用者同意、ASR HTTP delegation，以及 synthesized 與 physically played 的區別。`tests/test_mcp_stdio.py` 會實際啟動 `scripts/run_mcp.sh`、完成 MCP initialize/list_tools，並確認敏感工具公開 `user_confirmed` schema。可重現 focused command：`.venv/bin/pytest -q tests/test_mcp_server.py tests/test_mcp_stdio.py`。實體 hardware smoke 仍是獨立驗收，不可從 mocked tests 推論。
 
