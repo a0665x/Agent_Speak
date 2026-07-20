@@ -77,3 +77,14 @@ def test_openapi_quickstart_relative_markdown_links_exist() -> None:
                 continue
             path = (source.parent / target.split("#", 1)[0]).resolve()
             assert path.exists(), f"broken Markdown link in {source}: {target}"
+
+
+def test_codex_voice_recorder_is_documented() -> None:
+    ui = (ROOT / "spec" / "UI.md").read_text(encoding="utf-8")
+    testing = (ROOT / "spec" / "TESTING.md").read_text(encoding="utf-8")
+
+    assert "`/codex`" in ui
+    assert "Zone Vibe 100" in ui
+    assert "clipboard" in ui.lower()
+    assert "Codex CLI" in testing
+    assert "physical playback" in testing
