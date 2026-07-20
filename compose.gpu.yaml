@@ -1,9 +1,23 @@
 services:
-  gateway:
+  asr-worker:
     build:
       args:
         AGENT_SPEAK_IMAGE_VARIANT: nvidia
     image: agent-speak:gpu-local
+    runtime: nvidia
+    environment:
+      AGENT_SPEAK_ACCELERATOR: nvidia
+      AGENT_SPEAK_EFFECTIVE_ACCELERATOR: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  correction-worker:
+    image: "${AGENT_SPEAK_LLAMA_CUDA_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-cuda}"
     runtime: nvidia
     deploy:
       resources:

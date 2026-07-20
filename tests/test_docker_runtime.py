@@ -38,26 +38,34 @@ def test_docker_first_files_and_audio_mapping_exist() -> None:
     assert test_service["profiles"] == ["test"]
 
 
-def test_gpu_override_is_nvidia_only_and_keeps_test_service_hermetic() -> None:
+def test_realtime_workers_are_internal_and_gpu_override_targets_inference_only() -> None:
     base = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))
     gpu = yaml.safe_load((ROOT / "compose.gpu.yaml").read_text(encoding="utf-8"))
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
 
-    gateway = gpu["services"]["gateway"]
-    devices = gateway["deploy"]["resources"]["reservations"]["devices"]
-    assert devices == [{"driver": "nvidia", "count": "all", "capabilities": ["gpu"]}]
-    assert gateway["image"] == "agent-speak:gpu-local"
-    assert gateway["build"]["args"]["AGENT_SPEAK_IMAGE_VARIANT"] == "nvidia"
-    assert gateway["runtime"] == "nvidia"
-    assert "privileged" not in gateway
-    assert "devices" not in gateway
+    assert {"model-bootstrap", "asr-worker", "correction-worker"} <= base["services"].keys()
+    assert "ports" not in base["services"]["asr-worker"]
+    assert "ports" not in base["services"]["correction-worker"]
+    assert gpu["services"]["asr-worker"]["runtime"] == "nvidia"
+    assert gpu["services"]["correction-worker"]["runtime"] == "nvidia"
+    assert "gateway" not in gpu["services"] or "runtime" not in gpu["services"]["gateway"]
+    assert "/dev/snd" not in base["services"]["asr-worker"].get("devices", [])
     assert "gateway-test" not in gpu["services"]
 
     assert base["services"]["gateway"]["environment"]["AGENT_SPEAK_ACCELERATOR"] == "${AGENT_SPEAK_ACCELERATOR:-auto}"
     assert "AGENT_SPEAK_IMAGE_VARIANT" in dockerfile
     assert "nvidia-cublas-cu12" in pyproject
     assert "nvidia-cudnn-cu12" in pyproject
+
+
+def test_test_services_have_no_audio_gpu_models_or_network() -> None:
+    config = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))
+    for name in ("gateway-test", "frontend-test"):
+        service = config["services"][name]
+        assert service["network_mode"] == "none"
+        assert "devices" not in service
+        assert not service.get("volumes")
 
 
 def test_root_run_script_exposes_single_docker_operator_interface() -> None:
@@ -74,6 +82,10 @@ def test_root_run_script_exposes_single_docker_operator_interface() -> None:
     assert "ps --all -q gateway" in source
     assert "arecord -l" in source and "aplay -l" in source
     assert "gateway-test" in source
+    assert "frontend-test" in source
+    assert "AGENT_SPEAK_EFFECTIVE_ACCELERATOR" in source
+    assert "correction_device=" in source
+    assert "/realtime" in source
     assert "node --check web/codex-recorder-core.js" in source
     assert "node --check web/codex.js" in source
     assert "node tests/codex_recorder_core.test.js" in source

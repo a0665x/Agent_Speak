@@ -1,4 +1,17 @@
-FROM python:3.11-slim-bookworm
+FROM node:22-bookworm-slim AS realtime-frontend-deps
+
+WORKDIR /workspace/frontend/realtime
+COPY frontend/realtime/package.json frontend/realtime/package-lock.json ./
+RUN npm ci
+COPY frontend/realtime ./
+
+FROM realtime-frontend-deps AS frontend-test
+CMD ["npm", "test"]
+
+FROM realtime-frontend-deps AS realtime-frontend-build
+RUN npm run build
+
+FROM python:3.11-slim-bookworm AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -29,6 +42,7 @@ ENV LD_LIBRARY_PATH=/usr/local/lib/python3.11/site-packages/nvidia/cublas/lib:/u
 # so documentation/script edits do not invalidate the expensive inference dependency layer.
 # .dockerignore excludes private state, models, credentials, caches, and local Agent data.
 COPY . .
+COPY --from=realtime-frontend-build /workspace/web/realtime /app/web/realtime
 COPY docker/entrypoint.sh /usr/local/bin/agent-speak-entrypoint
 RUN chmod 0755 /usr/local/bin/agent-speak-entrypoint
 

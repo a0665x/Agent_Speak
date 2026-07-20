@@ -96,6 +96,7 @@ configure_accelerator() {
       ;;
   esac
   export AGENT_SPEAK_ACCELERATOR=$requested
+  export AGENT_SPEAK_EFFECTIVE_ACCELERATOR=$ACCELERATOR_SELECTED
   echo "ACCELERATOR_SELECTED mode=$ACCELERATOR_SELECTED reason=$ACCELERATOR_REASON"
 }
 
@@ -126,7 +127,7 @@ wait_for_health() {
     if [[ -n "$container_id" ]]; then
       health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container_id" 2>/dev/null || true)
       if [[ "$health" == "healthy" ]]; then
-        echo "GATEWAY_READY web=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765} docs=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/docs"
+        echo "GATEWAY_READY web=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765} realtime=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/realtime docs=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/docs"
         return 0
       fi
       if [[ "$health" == "unhealthy" || "$health" == "exited" ]]; then
@@ -210,11 +211,20 @@ print(next(item["device"] for item in payload["providers"] if item["stage"] == "
     if [[ -z "$asr_device" ]]; then
       asr_device=unknown
     fi
-    echo "STATUS_${health^^} web=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765} docs=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/docs capture=$capture playback=$playback accelerator=$ACCELERATOR_SELECTED asr_device=$asr_device"
+    correction_device=$(compose exec -T gateway python -c '
+import json
+import urllib.request
+payload = json.load(urllib.request.urlopen("http://127.0.0.1:8765/api/v1/capabilities", timeout=3))
+print(next(item["device"] for item in payload["providers"] if item["stage"] == "correction"))
+' 2>/dev/null || printf 'unknown')
+    if [[ -z "$correction_device" ]]; then
+      correction_device=unknown
+    fi
+    echo "STATUS_${health^^} web=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765} realtime=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/realtime docs=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/docs capture=$capture playback=$playback accelerator=$ACCELERATOR_SELECTED asr_device=$asr_device correction_device=$correction_device"
     [[ "$health" == "healthy" ]]
     ;;
   --logs)
-    compose logs --tail 100 gateway
+    compose logs --tail 100 gateway asr-worker correction-worker
     ;;
   --test)
     compose run --rm --no-deps gateway-test bash -lc '
@@ -222,9 +232,10 @@ print(next(item["device"] for item in payload["providers"] if item["stage"] == "
       node --check web/app.js &&
       node --check web/codex-recorder-core.js &&
       node --check web/codex.js &&
-      node tests/codex_recorder_core.test.js &&
-      echo TESTS_OK
+      node tests/codex_recorder_core.test.js
     '
+    compose run --rm --no-deps frontend-test
+    echo TESTS_OK
     ;;
   --help|-h|help)
     usage
