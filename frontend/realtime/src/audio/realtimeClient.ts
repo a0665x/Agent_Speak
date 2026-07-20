@@ -85,7 +85,7 @@ export class RealtimeClient {
       this.socket.addEventListener('error', () => void this.stop('socket_error'));
       this.socket.addEventListener('close', () => void this.stop('socket_closed'));
       this.worklet.port.onmessage = event => {
-        if (event.data?.type === 'pcm' && this.socket?.readyState === WebSocket.OPEN) {
+        if (event.data?.type === 'pcm' && this.socket?.readyState === 1) {
           this.socket.send(event.data.buffer as ArrayBuffer);
         } else if (event.data?.type === 'envelope') {
           this.onEvent({ type: 'audio.envelope', data: { samples: event.data.samples } });
@@ -104,7 +104,7 @@ export class RealtimeClient {
   async stop(reason = 'user'): Promise<void> {
     const socket = this.socket;
     this.socket = undefined;
-    if (socket?.readyState === WebSocket.OPEN) {
+    if (socket?.readyState === 1) {
       socket.send(JSON.stringify({ type: 'stream.stop' }));
     }
     this.worklet?.disconnect();
@@ -144,7 +144,7 @@ export class RealtimeClient {
 }
 
 function socketReady(socket: WebSocket): Promise<void> {
-  if (socket.readyState === WebSocket.OPEN) return Promise.resolve();
+  if (socket.readyState === 1) return Promise.resolve();
   return new Promise((resolve, reject) => {
     socket.addEventListener('open', () => resolve(), { once: true });
     socket.addEventListener('error', () => reject(new Error('WebSocket connection failed')), { once: true });
