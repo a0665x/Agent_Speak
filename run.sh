@@ -4,6 +4,10 @@ set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 cd "$ROOT_DIR"
 
+COMPOSE=(docker compose -f compose.yaml)
+ACCELERATOR_SELECTED=cpu
+ACCELERATOR_REASON="forced CPU"
+
 usage() {
   cat <<'EOF'
 Agent Speak — Docker-first operator
@@ -43,7 +47,7 @@ load_compose_environment() {
     case "$key" in
       AGENT_SPEAK_DATA_PATH|AGENT_SPEAK_RUNTIME_PATH|AGENT_SPEAK_MODELS_PATH|\
       AGENT_SPEAK_PUBLISH_HOST|AGENT_SPEAK_PORT|AGENT_SPEAK_UID|AGENT_SPEAK_GID|\
-      AGENT_SPEAK_AUDIO_GID)
+      AGENT_SPEAK_AUDIO_GID|AGENT_SPEAK_ACCELERATOR|AGENT_SPEAK_ASR_CUDA_COMPUTE_TYPE)
         # Explicit process environment wins. Otherwise import only this strict
         # operational whitelist from Compose's safely parsed .env output.
         if [[ ! -v "$key" ]]; then
@@ -52,7 +56,47 @@ load_compose_environment() {
         fi
         ;;
     esac
-  done < <(docker compose config --environment 2>/dev/null)
+  done < <(compose config --environment 2>/dev/null)
+}
+
+compose() {
+  "${COMPOSE[@]}" "$@"
+}
+
+configure_accelerator() {
+  local requested=${AGENT_SPEAK_ACCELERATOR:-auto}
+  local failure=""
+  case "$requested" in
+    cpu)
+      ACCELERATOR_SELECTED=cpu
+      ACCELERATOR_REASON="forced CPU"
+      ;;
+    auto|nvidia)
+      if ! command -v nvidia-smi >/dev/null 2>&1 || ! nvidia-smi -L >/dev/null 2>&1; then
+        failure="NVIDIA GPU or driver is unavailable"
+      elif ! docker info --format '{{json .Runtimes}}' 2>/dev/null | grep -q '"nvidia"'; then
+        failure="NVIDIA Docker runtime is unavailable"
+      fi
+      if [[ -z "$failure" ]]; then
+        COMPOSE+=( -f compose.gpu.yaml )
+        ACCELERATOR_SELECTED=nvidia
+        ACCELERATOR_REASON="NVIDIA preflight passed"
+      elif [[ "$requested" == nvidia ]]; then
+        echo "ERROR: NVIDIA acceleration is required: $failure" >&2
+        return 1
+      else
+        ACCELERATOR_SELECTED=cpu
+        ACCELERATOR_REASON="$failure"
+        echo "WARNING: $failure; falling back to CPU." >&2
+      fi
+      ;;
+    *)
+      echo "ERROR: AGENT_SPEAK_ACCELERATOR must be auto, cpu, or nvidia (got: $requested)" >&2
+      return 2
+      ;;
+  esac
+  export AGENT_SPEAK_ACCELERATOR=$requested
+  echo "ACCELERATOR_SELECTED mode=$ACCELERATOR_SELECTED reason=$ACCELERATOR_REASON"
 }
 
 prepare_runtime() {
@@ -78,7 +122,7 @@ wait_for_health() {
   local attempts=${AGENT_SPEAK_HEALTH_ATTEMPTS:-90}
   local container_id health
   for ((i=1; i<=attempts; i++)); do
-    container_id=$(docker compose ps --all -q gateway 2>/dev/null || true)
+    container_id=$(compose ps --all -q gateway 2>/dev/null || true)
     if [[ -n "$container_id" ]]; then
       health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container_id" 2>/dev/null || true)
       if [[ "$health" == "healthy" ]]; then
@@ -86,14 +130,14 @@ wait_for_health() {
         return 0
       fi
       if [[ "$health" == "unhealthy" || "$health" == "exited" ]]; then
-        docker compose logs --tail 80 gateway >&2 || true
+        compose logs --tail 80 gateway >&2 || true
         echo "ERROR: gateway became $health" >&2
         return 1
       fi
     fi
     sleep 1
   done
-  docker compose logs --tail 80 gateway >&2 || true
+  compose logs --tail 80 gateway >&2 || true
   echo "ERROR: gateway health timeout" >&2
   return 1
 }
@@ -105,36 +149,43 @@ fi
 
 require_docker
 load_compose_environment
+set +e
+configure_accelerator
+accelerator_status=$?
+set -e
+if (( accelerator_status != 0 )); then
+  exit "$accelerator_status"
+fi
 prepare_runtime
 
 case "$1" in
   --build)
-    docker compose build
-    docker compose up -d
+    compose build
+    compose up -d
     wait_for_health
     ;;
   --up)
-    docker compose up -d
+    compose up -d
     wait_for_health
     ;;
   --down)
-    docker compose down
+    compose down
     echo "GATEWAY_DOWN persistent_data_preserved=true"
     ;;
   --down_up|--restart)
-    docker compose down
-    docker compose up -d
+    compose down
+    compose up -d
     wait_for_health
     ;;
   --rebuild)
-    docker compose down
-    docker compose build --no-cache
-    docker compose up -d
+    compose down
+    compose build --no-cache
+    compose up -d
     wait_for_health
     ;;
   --status)
-    docker compose ps
-    container_id=$(docker compose ps --all -q gateway)
+    compose ps
+    container_id=$(compose ps --all -q gateway)
     if [[ -z "$container_id" ]]; then
       echo "STATUS_STOPPED"
       exit 1
@@ -142,8 +193,8 @@ case "$1" in
     health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container_id")
     capture=unavailable
     playback=unavailable
-    capture_listing=$(docker compose exec -T gateway arecord -l 2>&1 || true)
-    playback_listing=$(docker compose exec -T gateway aplay -l 2>&1 || true)
+    capture_listing=$(compose exec -T gateway arecord -l 2>&1 || true)
+    playback_listing=$(compose exec -T gateway aplay -l 2>&1 || true)
     if grep -Eq '^card [0-9]+:' <<<"$capture_listing"; then
       capture=available
     fi
@@ -154,10 +205,10 @@ case "$1" in
     [[ "$health" == "healthy" ]]
     ;;
   --logs)
-    docker compose logs --tail 100 gateway
+    compose logs --tail 100 gateway
     ;;
   --test)
-    docker compose run --rm --no-deps gateway-test bash -lc '
+    compose run --rm --no-deps gateway-test bash -lc '
       python -m pytest -q -p no:cacheprovider &&
       node --check web/app.js &&
       node --check web/codex-recorder-core.js &&

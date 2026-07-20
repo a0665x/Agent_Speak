@@ -79,6 +79,101 @@ def test_root_run_script_exposes_single_docker_operator_interface() -> None:
     assert ".venv" not in source
 
 
+def _accelerator_env(
+    tmp_path: Path, *, gpu: bool, runtime: bool
+) -> tuple[dict[str, str], Path, Path]:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    docker_log = tmp_path / "docker.log"
+    nvidia_log = tmp_path / "nvidia.log"
+    nvidia_log.write_text("", encoding="utf-8")
+    docker = fake_bin / "docker"
+    runtimes = '{"io.containerd.runc.v2":{},"nvidia":{}}' if runtime else '{"runc":{}}'
+    docker.write_text(
+        "#!/usr/bin/env bash\n"
+        "printf '%s\\n' \"$*\" >> \"$FAKE_DOCKER_LOG\"\n"
+        "if [[ \"$*\" == 'compose config --environment' ]]; then exit 0; fi\n"
+        "if [[ \"$*\" == 'info --format {{json .Runtimes}}' ]]; then "
+        f"printf '%s\\n' '{runtimes}'; exit 0; fi\n"
+        "if [[ \"$*\" == *'ps --all -q gateway'* ]]; then echo fake-container; exit 0; fi\n"
+        "if [[ \"$1\" == inspect ]]; then echo healthy; exit 0; fi\n"
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    docker.chmod(0o755)
+    nvidia_smi = fake_bin / "nvidia-smi"
+    nvidia_smi.write_text(
+        "#!/usr/bin/env bash\n"
+        "printf '%s\\n' \"$*\" >> \"$FAKE_NVIDIA_LOG\"\n"
+        + ("echo 'GPU 0: Fake NVIDIA GPU'; exit 0\n" if gpu else "exit 1\n"),
+        encoding="utf-8",
+    )
+    nvidia_smi.chmod(0o755)
+    env = os.environ | {
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+        "FAKE_DOCKER_LOG": str(docker_log),
+        "FAKE_NVIDIA_LOG": str(nvidia_log),
+        "AGENT_SPEAK_ACCELERATOR": "auto",
+    }
+    return env, docker_log, nvidia_log
+
+
+def test_auto_mode_routes_every_command_through_gpu_override(tmp_path: Path) -> None:
+    env, log, _ = _accelerator_env(tmp_path, gpu=True, runtime=True)
+
+    result = subprocess.run([str(ROOT / "run.sh"), "--up"], cwd=ROOT, env=env, capture_output=True, text=True)
+
+    assert result.returncode == 0, result.stderr
+    calls = log.read_text(encoding="utf-8")
+    assert "compose -f compose.yaml -f compose.gpu.yaml up -d" in calls
+    assert "ACCELERATOR_SELECTED mode=nvidia" in result.stdout
+
+
+def test_auto_mode_falls_back_to_cpu_when_runtime_is_missing(tmp_path: Path) -> None:
+    env, log, _ = _accelerator_env(tmp_path, gpu=True, runtime=False)
+
+    result = subprocess.run([str(ROOT / "run.sh"), "--up"], cwd=ROOT, env=env, capture_output=True, text=True)
+
+    assert result.returncode == 0, result.stderr
+    calls = log.read_text(encoding="utf-8")
+    assert "compose -f compose.yaml up -d" in calls
+    assert "compose.gpu.yaml" not in calls
+    assert "NVIDIA Docker runtime is unavailable" in result.stderr
+
+
+def test_cpu_mode_never_calls_nvidia_smi(tmp_path: Path) -> None:
+    env, log, nvidia_log = _accelerator_env(tmp_path, gpu=True, runtime=True)
+    env["AGENT_SPEAK_ACCELERATOR"] = "cpu"
+
+    result = subprocess.run([str(ROOT / "run.sh"), "--down"], cwd=ROOT, env=env, capture_output=True, text=True)
+
+    assert result.returncode == 0, result.stderr
+    assert "compose.gpu.yaml" not in log.read_text(encoding="utf-8")
+    assert nvidia_log.read_text(encoding="utf-8") == ""
+
+
+def test_strict_nvidia_mode_fails_before_compose_start(tmp_path: Path) -> None:
+    env, log, _ = _accelerator_env(tmp_path, gpu=False, runtime=True)
+    env["AGENT_SPEAK_ACCELERATOR"] = "nvidia"
+
+    result = subprocess.run([str(ROOT / "run.sh"), "--up"], cwd=ROOT, env=env, capture_output=True, text=True)
+
+    assert result.returncode != 0
+    assert "NVIDIA acceleration is required" in result.stderr
+    assert " up -d" not in log.read_text(encoding="utf-8")
+
+
+def test_invalid_accelerator_mode_fails_before_compose_start(tmp_path: Path) -> None:
+    env, log, _ = _accelerator_env(tmp_path, gpu=True, runtime=True)
+    env["AGENT_SPEAK_ACCELERATOR"] = "rocm"
+
+    result = subprocess.run([str(ROOT / "run.sh"), "--up"], cwd=ROOT, env=env, capture_output=True, text=True)
+
+    assert result.returncode == 2
+    assert "AGENT_SPEAK_ACCELERATOR must be auto, cpu, or nvidia" in result.stderr
+    assert " up -d" not in log.read_text(encoding="utf-8")
+
+
 def test_run_script_dispatches_expected_compose_commands(tmp_path: Path) -> None:
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
@@ -87,7 +182,7 @@ def test_run_script_dispatches_expected_compose_commands(tmp_path: Path) -> None
     docker.write_text(
         "#!/usr/bin/env bash\n"
         "printf '%s\\n' \"$*\" >> \"$FAKE_DOCKER_LOG\"\n"
-        "if [[ \"$1 $2\" == 'compose ps' ]]; then echo 'fake-container'; fi\n"
+        "if [[ \"$*\" == *'ps --all -q gateway'* ]]; then echo 'fake-container'; fi\n"
         "if [[ \"$1\" == 'inspect' ]]; then echo 'healthy'; fi\n",
         encoding="utf-8",
     )
@@ -95,15 +190,15 @@ def test_run_script_dispatches_expected_compose_commands(tmp_path: Path) -> None
     env = os.environ | {"PATH": f"{fake_bin}:{os.environ['PATH']}", "FAKE_DOCKER_LOG": str(log)}
 
     expectations = {
-        "--build": ("compose build", "compose up -d"),
-        "--up": ("compose up -d",),
-        "--down": ("compose down",),
-        "--down_up": ("compose down", "compose up -d"),
-        "--restart": ("compose down", "compose up -d"),
-        "--rebuild": ("compose down", "compose build --no-cache", "compose up -d"),
-        "--status": ("compose ps",),
-        "--logs": ("compose logs --tail",),
-        "--test": ("compose run --rm --no-deps", "gateway-test"),
+        "--build": ("compose -f compose.yaml build", "compose -f compose.yaml up -d"),
+        "--up": ("compose -f compose.yaml up -d",),
+        "--down": ("compose -f compose.yaml down",),
+        "--down_up": ("compose -f compose.yaml down", "compose -f compose.yaml up -d"),
+        "--restart": ("compose -f compose.yaml down", "compose -f compose.yaml up -d"),
+        "--rebuild": ("compose -f compose.yaml down", "compose -f compose.yaml build --no-cache", "compose -f compose.yaml up -d"),
+        "--status": ("compose -f compose.yaml ps",),
+        "--logs": ("compose -f compose.yaml logs --tail",),
+        "--test": ("compose -f compose.yaml run --rm --no-deps", "gateway-test"),
     }
     for option, fragments in expectations.items():
         log.write_text("", encoding="utf-8")
@@ -133,7 +228,7 @@ def test_run_script_prepares_custom_persistent_paths_and_reports_effective_host(
     docker = fake_bin / "docker"
     docker.write_text(
         "#!/usr/bin/env bash\n"
-        "if [[ \"$*\" == 'compose config --environment' ]]; then\n"
+        "if [[ \"$*\" == *'config --environment' ]]; then\n"
         f"  echo 'AGENT_SPEAK_DATA_PATH={paths['private-data']}'\n"
         f"  echo 'AGENT_SPEAK_RUNTIME_PATH={paths['private-runtime']}'\n"
         f"  echo 'AGENT_SPEAK_MODELS_PATH={paths['private-models']}'\n"
@@ -143,7 +238,7 @@ def test_run_script_prepares_custom_persistent_paths_and_reports_effective_host(
         "  echo 'AGENT_SPEAK_GID=1235'\n"
         "  echo 'AGENT_SPEAK_AUDIO_GID=1236'\n"
         "fi\n"
-        "if [[ \"$1 $2\" == 'compose ps' ]]; then echo 'fake-container'; fi\n"
+        "if [[ \"$*\" == *'ps --all -q gateway'* ]]; then echo 'fake-container'; fi\n"
         "if [[ \"$1\" == 'inspect' ]]; then echo 'healthy'; fi\n"
         "if [[ \"$*\" == *'arecord -l'* || \"$*\" == *'aplay -l'* ]]; then echo 'no soundcards found...'; fi\n",
         encoding="utf-8",
