@@ -13,9 +13,11 @@ from agent_speak.realtime_queue import (
 @pytest.mark.anyio
 async def test_final_precedes_partial_and_new_partial_replaces_old_generation() -> None:
     queue = ASRScheduler(max_finals=2, max_partials=2)
-    await queue.put_partial(ASRJob("session", "u1", 1, "partial", b"old"))
-    await queue.put_partial(ASRJob("session", "u1", 2, "partial", b"new"))
+    inserted = await queue.put_partial(ASRJob("session", "u1", 1, "partial", b"old"))
+    replaced = await queue.put_partial(ASRJob("session", "u1", 2, "partial", b"new"))
     await queue.put_final(ASRJob("session", "u2", 1, "final", b"final"))
+    assert inserted is True
+    assert replaced is False
     assert queue.depths == {"final": 1, "partial": 1}
     assert (await queue.get()).mode == "final"
     partial = await queue.get()

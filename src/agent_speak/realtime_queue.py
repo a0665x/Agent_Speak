@@ -57,16 +57,20 @@ class ASRScheduler:
             self._finals.append(job)
             self._condition.notify()
 
-    async def put_partial(self, job: ASRJob) -> None:
+    async def put_partial(self, job: ASRJob) -> bool:
+        """Store the latest partial and report whether queue depth increased."""
+
         if job.mode != "partial":
             raise ValueError("put_partial requires a partial ASR job")
         key = (job.session_id, job.utterance_id)
         async with self._condition:
             self._ensure_open()
-            if key not in self._partials and len(self._partials) >= self._max_partials:
+            inserted = key not in self._partials
+            if inserted and len(self._partials) >= self._max_partials:
                 raise QueueFull("partial ASR queue is full")
             self._partials[key] = job
             self._condition.notify()
+            return inserted
 
     async def get(self) -> ASRJob:
         async with self._condition:

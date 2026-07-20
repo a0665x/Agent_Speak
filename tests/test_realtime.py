@@ -37,12 +37,17 @@ async def test_coordinator_streams_partial_final_revision_and_returns_to_listeni
     silence = bytes(640)
     for _ in range(50):
         await stream.accept_pcm(voice)
-    for _ in range(90):
+    for _ in range(45):
+        await stream.accept_pcm(silence)
+    # Browser audio arrives in real time, so the semantic endpoint worker gets
+    # a chance to extend the 900 ms candidate before the 1.8 s hard endpoint.
+    await stream.wait_idle()
+    assert "endpoint.extended" in [event.type for event in stream.history]
+    for _ in range(45):
         await stream.accept_pcm(silence)
     await stream.wait_idle()
     types = [event.type for event in stream.history]
     assert "asr.partial" in types
-    assert "endpoint.extended" in types
     assert "asr.final" in types
     assert "transcript.revised" in types
     assert "utterance.completed" in types

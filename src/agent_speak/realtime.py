@@ -306,7 +306,7 @@ class RealtimeStream:
             bytes(self._current_pcm),
         )
         try:
-            await self.coordinator.asr_queue.put_partial(job)
+            inserted = await self.coordinator.asr_queue.put_partial(job)
         except QueueFull:
             await self._emit(
                 "pipeline.warning",
@@ -314,7 +314,8 @@ class RealtimeStream:
                 data={"code": "partial_queue_full"},
             )
             return
-        self._work_queued()
+        if inserted:
+            self._work_queued()
         await self._emit("asr.queued", utterance_id=self._utterance_id, data={"mode": "partial"})
 
     async def _queue_final(self, utterance_id: str, pcm: bytes) -> None:
@@ -395,7 +396,12 @@ class RealtimeStream:
         if job.mode == "endpoint":
             complete = True
             reason = "fallback_complete"
-            if error is None and isinstance(result, tuple) and len(result) == 2:
+            # The endpoint candidate can outrun partial ASR on a busy worker.
+            # Never treat an empty snapshot as semantic evidence that speech is
+            # complete; extend to the hard endpoint while ASR catches up.
+            if not job.current_text.strip():
+                complete, reason = False, "awaiting_asr"
+            elif error is None and isinstance(result, tuple) and len(result) == 2:
                 complete, reason = bool(result[0]), str(result[1])
             elif job.current_text.rstrip().endswith(("因為", "所以", "但是", "然後", "如果", "以及")):
                 complete, reason = False, "continuation_marker"
