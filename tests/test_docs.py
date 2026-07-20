@@ -88,3 +88,27 @@ def test_codex_voice_recorder_is_documented() -> None:
     assert "clipboard" in ui.lower()
     assert "Codex CLI" in testing
     assert "physical playback" in testing
+
+
+def test_realtime_studio_contract_is_documented_without_agent_claims() -> None:
+    texts = [
+        (ROOT / "README.md").read_text(encoding="utf-8"),
+        (ROOT / "README.zh-TW.md").read_text(encoding="utf-8"),
+        (ROOT / "spec" / "UI.md").read_text(encoding="utf-8"),
+    ]
+    combined = "\n".join(texts)
+    for phrase in (
+        "/realtime",
+        "Zone Vibe 100",
+        "900",
+        "1,800",
+        "WebSocket",
+        "Qwen",
+        "partial",
+        "previous sentence",
+        "不會自動重連",
+        "physical playback",
+    ):
+        assert phrase in combined
+    assert "continuous transcription only" in texts[0]
+    assert "只做持續轉錄" in texts[1]

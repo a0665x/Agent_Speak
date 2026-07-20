@@ -22,6 +22,12 @@ WebUI: http://127.0.0.1:8765
 
 OpenAPI: http://127.0.0.1:8765/docs
 
+Realtime Studio: http://127.0.0.1:8765/realtime
+
+`/realtime` is continuous transcription only: it does not call the Agent stage, TTS, Codex injection, or speaker playback. The browser enables Start only after an explicit check can see both Zone Vibe 100 input and output endpoints; output visibility is not proof of physical playback. Raw PCM16 travels over the realtime WebSocket, while MCP remains a low-frequency control plane.
+
+VAD produces rolling partial text, so the current words may change. Qwen correction may revise the previous sentence together with the current sentence; older sentences lock. A silence candidate starts at 900 ms and may extend to the 1,800 ms hard endpoint. Invalid, late, or excessive Qwen edits fall back to final ASR text. The client does not reconnect automatically. CPU mode is functional, while realtime latency and GPU gains depend on the host.
+
 `./run.sh --build` builds and starts the isolated stack. Compose maps `/dev/snd` by default and persists private state in ignored `data/`, `runtime/`, and `models/` directories.
 
 ## Verify the installation

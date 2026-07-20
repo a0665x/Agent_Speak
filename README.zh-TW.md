@@ -22,6 +22,12 @@ WebUI：http://127.0.0.1:8765
 
 OpenAPI：http://127.0.0.1:8765/docs
 
+Realtime Studio：http://127.0.0.1:8765/realtime
+
+`/realtime` 只做持續轉錄，不呼叫 Agent、TTS、Codex session injection 或喇叭播放。瀏覽器必須先取得明確操作並同時看見 Zone Vibe 100 的輸入與輸出端點，才會開放開始按鈕；看見 output 不代表已完成 physical playback。Raw PCM16 走 realtime WebSocket，MCP 維持低頻控制平面。
+
+VAD 期間會持續產生 partial 文字，因此當前文字可能更新。Qwen 校正只可一起修訂 previous sentence（前一句）與當前句，更早的句子會鎖定。靜音 900 ms 形成候選句尾，必要時延長到 1,800 ms hard endpoint；Qwen timeout、格式錯誤或改寫過度時保留 final ASR。前端不會自動重連。CPU 模式可用，但 realtime latency 與 GPU 效益依主機而異。
+
 `./run.sh --build` 會建置並啟動隔離環境。Compose 預設映射 `/dev/snd`，私有狀態持久化於已排除版控的 `data/`、`runtime/`、`models/`。
 
 ## 驗證安裝
