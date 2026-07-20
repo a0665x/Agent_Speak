@@ -253,6 +253,13 @@ def create_app(
             )
         return Response(content=index.read_text(encoding="utf-8"), media_type="text/html")
 
+    @app.get("/realtime/pcm-capture.worklet.js", include_in_schema=False)
+    async def realtime_audio_worklet() -> Response:
+        return Response(
+            content=(realtime_web_dir / "pcm-capture.worklet.js").read_text(encoding="utf-8"),
+            media_type="text/javascript",
+        )
+
     @app.get("/app.css", include_in_schema=False)
     @app.get("/static/app.css", include_in_schema=False)
     async def web_styles() -> Response:

@@ -21,6 +21,17 @@ async def test_realtime_page_is_additive_and_legacy_pages_remain_unchanged(tmp_p
 
 
 @pytest.mark.anyio
+async def test_realtime_audio_worklet_is_served_as_javascript(tmp_path: Path) -> None:
+    app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        worklet = await client.get("/realtime/pcm-capture.worklet.js")
+
+    assert worklet.status_code == 200
+    assert worklet.headers["content-type"].startswith(("text/javascript", "application/javascript"))
+    assert "registerProcessor" in worklet.text
+
+
+@pytest.mark.anyio
 async def test_real_speech_capabilities_have_localized_non_tone_descriptions(tmp_path: Path) -> None:
     app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
