@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -23,9 +23,11 @@ class Settings(BaseModel):
     max_session_events: int = Field(default=128, ge=1, le=10_000)
     max_event_queue: int = Field(default=64, ge=1, le=10_000)
     max_artifacts: int = Field(default=100, ge=1, le=10_000)
+    accelerator: Literal["auto", "cpu", "nvidia"] = "auto"
     asr_model: str = "small"
     asr_language: str | None = "zh"
     asr_compute_type: str = "int8"
+    asr_cuda_compute_type: str = "float16"
     asr_cpu_threads: int = Field(default=4, ge=1, le=32)
     tts_model_path: Path = Path("models/piper/zh_CN-huayan-medium.onnx")
 
