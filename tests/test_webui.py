@@ -8,6 +8,19 @@ from agent_speak.config import Settings
 
 
 @pytest.mark.anyio
+async def test_realtime_page_is_additive_and_legacy_pages_remain_unchanged(tmp_path: Path) -> None:
+    app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        realtime = await client.get("/realtime")
+        legacy = await client.get("/")
+        codex = await client.get("/codex")
+    assert realtime.status_code == 200
+    assert '<div id="root"></div>' in realtime.text
+    assert "Agent Speak" in legacy.text
+    assert "Codex CLI" in codex.text
+
+
+@pytest.mark.anyio
 async def test_real_speech_capabilities_have_localized_non_tone_descriptions(tmp_path: Path) -> None:
     app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:

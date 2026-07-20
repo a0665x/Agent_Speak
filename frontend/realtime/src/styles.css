@@ -1,0 +1,9 @@
+:root {
+  color: #f8fafc;
+  background: #020617;
+  font-family: Inter, "Noto Sans TC", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100dvh; }
+button { min-height: 48px; }

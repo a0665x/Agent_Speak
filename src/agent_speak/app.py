@@ -9,6 +9,7 @@ from typing import Any
 from fastapi import FastAPI, Query, Request, Response, WebSocket, WebSocketDisconnect, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException
 
 from . import __version__
@@ -200,6 +201,10 @@ def create_app(
         max_audio_seconds=active.max_audio_seconds,
     )
     web_dir = Path(__file__).resolve().parents[2] / "web"
+    realtime_web_dir = web_dir / "realtime"
+    realtime_assets = realtime_web_dir / "assets"
+    if realtime_assets.is_dir():
+        app.mount("/realtime/assets", StaticFiles(directory=realtime_assets), name="realtime-assets")
 
     @app.exception_handler(PlatformError)
     async def platform_error(_: Request, exc: PlatformError) -> JSONResponse:
@@ -236,6 +241,17 @@ def create_app(
     @app.get("/", include_in_schema=False)
     async def web_console() -> Response:
         return Response(content=(web_dir / "index.html").read_text(encoding="utf-8"), media_type="text/html")
+
+    @app.get("/realtime", include_in_schema=False)
+    async def realtime_studio() -> Response:
+        index = realtime_web_dir / "index.html"
+        if not index.is_file():
+            raise PlatformError(
+                "realtime_ui_unavailable",
+                "Realtime Studio has not been built",
+                status_code=503,
+            )
+        return Response(content=index.read_text(encoding="utf-8"), media_type="text/html")
 
     @app.get("/app.css", include_in_schema=False)
     @app.get("/static/app.css", include_in_schema=False)

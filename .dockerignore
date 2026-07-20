@@ -76,3 +76,5 @@ temp
 *.swo
 *~
 .DS_Store
+frontend/realtime/node_modules/
+web/realtime/
