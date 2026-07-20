@@ -24,6 +24,28 @@ from .realtime_queue import (
 from .transcripts import TranscriptLedger
 
 
+class RealtimeTextAdapter:
+    """Joins existing endpoint/correction providers for local fallback mode."""
+
+    def __init__(self, endpoint: Any, correction: Any) -> None:
+        self.endpoint = endpoint
+        self.correction = correction
+
+    def detect(self, text: str) -> tuple[bool, str]:
+        return self.endpoint.detect(text)
+
+    def revise(self, previous: str, current: str) -> CorrectionRevision:
+        if hasattr(self.correction, "revise"):
+            return self.correction.revise(previous, current)
+        revised_previous = self.correction.correct(previous) if previous else ""
+        revised_current = self.correction.correct(current)
+        return CorrectionRevision(
+            revised_previous,
+            revised_current,
+            (revised_previous, revised_current) != (previous, current),
+        )
+
+
 class RealtimeCoordinator:
     def __init__(
         self,

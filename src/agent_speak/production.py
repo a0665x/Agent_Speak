@@ -125,6 +125,11 @@ class FasterWhisperASR:
     def warm(self) -> None:
         self._load_model()
 
+    def transcribe_mode(self, audio: bytes, mode: str) -> str:
+        if mode not in {"partial", "final"}:
+            raise ValueError("mode must be partial or final")
+        return self.transcribe(audio)
+
 
 class PiperTTS:
     def __init__(

@@ -17,6 +17,9 @@ from .concurrency import run_sync
 from .config import Settings
 from .errors import PlatformError
 from .pipeline import Pipeline, ProviderSet
+from .realtime import RealtimeCoordinator, RealtimeTextAdapter
+from .realtime_audio import EnergyFrameVAD
+from .realtime_routes import register_realtime_routes
 from .schemas import (
     CapabilitiesResponse,
     EndDetectOutput,
@@ -140,7 +143,12 @@ async def _read_audio(request: Request, settings: Settings, *, stage: str) -> by
     return audio
 
 
-def create_app(settings: Settings | None = None, *, providers: ProviderSet | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    *,
+    providers: ProviderSet | None = None,
+    realtime: RealtimeCoordinator | None = None,
+) -> FastAPI:
     active = settings or Settings.from_env()
     active.prepare_directories()
     app = FastAPI(
@@ -172,6 +180,19 @@ def create_app(settings: Settings | None = None, *, providers: ProviderSet | Non
         max_audio_seconds=active.max_audio_seconds,
         max_artifacts=active.max_artifacts,
     )
+    app.state.realtime = realtime or RealtimeCoordinator(
+        active,
+        vad=EnergyFrameVAD(threshold=active.vad_rms_threshold),
+        asr=app.state.pipeline.providers.asr,
+        text=RealtimeTextAdapter(
+            app.state.pipeline.providers.endpoint,
+            app.state.pipeline.providers.correction,
+        ),
+        broker=app.state.broker,
+    )
+    if app.state.realtime.broker is None:
+        app.state.realtime.broker = app.state.broker
+    register_realtime_routes(app)
     app.state.speakers = SpeakerStore(
         active.data_dir / "speakers.sqlite3",
         active.data_dir / "speaker_samples",
