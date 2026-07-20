@@ -54,6 +54,8 @@ Expected success markers include `STATUS_HEALTHY`, `HEALTH_SMOKE_OK mode=docker`
 
 Optional settings can be placed in an untracked `.env`; see [.env.example](.env.example). The default host publication is `127.0.0.1`, not a public interface. Persistent host paths can be changed with `AGENT_SPEAK_DATA_PATH`, `AGENT_SPEAK_RUNTIME_PATH`, and `AGENT_SPEAK_MODELS_PATH`.
 
+`AGENT_SPEAK_ACCELERATOR=auto` is the default. It selects the separate NVIDIA image only when `nvidia-smi` and Docker's NVIDIA runtime are both ready; otherwise it prints the reason and starts the CPU image. Use `cpu` to force the portable CPU/INT8 path or `nvidia` to require CUDA and fail instead of falling back. NVIDIA mode requires the NVIDIA Container Toolkit and builds `agent-speak:gpu-local` with CUDA 12 and cuDNN 9. `./run.sh --status` reports both the selected Compose accelerator and the ASR provider's actual device.
+
 ## Connect an external Agent through MCP
 
 Point a stdio MCP host at the repository's absolute script path:
@@ -98,6 +100,7 @@ Traditional Chinese OpenAPI guide: [docs/OPENAPI_QUICKSTART_ZH_TW.md](docs/OPENA
 ## Hardware and security
 
 - `/dev/snd` is mapped into the gateway container by default for ALSA capture and playback.
+- NVIDIA acceleration is optional. Hosts without a supported NVIDIA Docker runtime continue on CPU in `auto` mode.
 - Microphone and physical playback tools require explicit per-call user consent.
 - The service has no public-network authentication. Keep the default loopback binding or place it behind a trusted private HTTPS layer.
 - Speaker matching is convenience identification, not authentication.

@@ -2,6 +2,17 @@
 
 Docker-first regression is `./run.sh --test`. It starts a one-shot container from the production image with model bootstrap disabled, runs the complete pytest suite, syntax-checks `web/app.js`, `web/codex-recorder-core.js`, and `web/codex.js`, executes `tests/codex_recorder_core.test.js`, prints `TESTS_OK`, and removes the test container. `tests/test_docker_runtime.py` guards the Dockerfile, ignored build context, `/dev/snd` mapping, persistent mounts, healthcheck/restart policy, root `run.sh` dispatch table, English-default bilingual README links, and Docker-aware Skill/spec contract. Release verification must also execute every lifecycle option against the real Docker daemon: `--build`, `--up`, `--status`, `--logs`, `--down`, `--down_up`, `--restart`, `--test`, and `--rebuild`.
 
+The regression container is intentionally CPU-only even on an NVIDIA host. GPU acceptance is a separate host integration check:
+
+```bash
+AGENT_SPEAK_ACCELERATOR=cpu ./run.sh --build
+AGENT_SPEAK_ACCELERATOR=auto ./run.sh --rebuild
+./run.sh --status
+docker compose -f compose.yaml -f compose.gpu.yaml exec -T gateway nvidia-smi -L
+```
+
+Forced CPU must report `accelerator=cpu asr_device=cpu`. Automatic NVIDIA selection requires a working driver and NVIDIA Container Toolkit, must report `accelerator=nvidia asr_device=cuda`, and must expose the GPU inside the Gateway. A GPU mapping alone is insufficient: a bounded real ASR request must also complete without CUDA library errors.
+
 OpenAPI docs regression: `/docs` depends on Swagger UI assets from jsDelivr and FastAPI's inline initializer. The security middleware must apply the docs-specific CSP only to `/docs` and `/redoc`, while `/` retains the stricter self-only WebUI CSP. `test_openapi_docs_csp_allows_swagger_assets_without_weakening_webui` guards both sides of this contract. Runtime verification must confirm `/openapi.json` returns JSON and the real `/docs` browser renders `.swagger-ui` without a visible fetch error.
 
 

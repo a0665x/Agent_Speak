@@ -54,6 +54,8 @@ OpenAPI：http://127.0.0.1:8765/docs
 
 選用設定可放在不追蹤的 `.env`；公開範例見 [.env.example](.env.example)。主機預設只發布到 `127.0.0.1`，不會直接暴露於公網。持久化目錄可用 `AGENT_SPEAK_DATA_PATH`、`AGENT_SPEAK_RUNTIME_PATH`、`AGENT_SPEAK_MODELS_PATH` 覆寫。
 
+`AGENT_SPEAK_ACCELERATOR=auto` 是預設值。只有在 `nvidia-smi` 與 Docker NVIDIA runtime 都可用時才選擇獨立 NVIDIA 映像；否則會顯示原因並啟動 CPU 映像。`cpu` 會強制使用可攜式 CPU/INT8 路徑；`nvidia` 則要求 CUDA，無法使用時直接失敗而不降級。NVIDIA 模式需要 NVIDIA Container Toolkit，並建置含 CUDA 12 與 cuDNN 9 的 `agent-speak:gpu-local`。`./run.sh --status` 會同時顯示 Compose 選擇的 accelerator 與 ASR Provider 實際使用的 device。
+
 ## 透過 MCP 連接外部 Agent
 
 讓 stdio MCP 宿主執行 repository 內 `scripts/run_mcp.sh` 的絕對路徑：
@@ -98,6 +100,7 @@ OpenAPI：http://127.0.0.1:8765/docs
 ## 硬體與安全
 
 - Compose 預設把 `/dev/snd` 映射到 Gateway container，供 ALSA 錄音與播放。
+- NVIDIA 加速是選用功能；沒有受支援 NVIDIA Docker runtime 的主機在 `auto` 模式會繼續使用 CPU。
 - 麥克風與實體播放工具每次都需要使用者明確同意。
 - 服務沒有公網驗證；請保留 loopback 預設，或放在可信任的私人 HTTPS 層後方。
 - Speaker matching 只供便利識別，不是 authentication。

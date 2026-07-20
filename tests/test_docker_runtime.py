@@ -49,6 +49,7 @@ def test_gpu_override_is_nvidia_only_and_keeps_test_service_hermetic() -> None:
     assert devices == [{"driver": "nvidia", "count": "all", "capabilities": ["gpu"]}]
     assert gateway["image"] == "agent-speak:gpu-local"
     assert gateway["build"]["args"]["AGENT_SPEAK_IMAGE_VARIANT"] == "nvidia"
+    assert gateway["runtime"] == "nvidia"
     assert "privileged" not in gateway
     assert "devices" not in gateway
     assert "gateway-test" not in gpu["services"]
@@ -95,6 +96,7 @@ def _accelerator_env(
         "if [[ \"$*\" == 'compose config --environment' ]]; then exit 0; fi\n"
         "if [[ \"$*\" == 'info --format {{json .Runtimes}}' ]]; then "
         f"printf '%s\\n' '{runtimes}'; exit 0; fi\n"
+        "if [[ \"$*\" == *'/api/v1/capabilities'* ]]; then echo \"${FAKE_ASR_DEVICE:-unknown}\"; exit 0; fi\n"
         "if [[ \"$*\" == *'ps --all -q gateway'* ]]; then echo fake-container; exit 0; fi\n"
         "if [[ \"$1\" == inspect ]]; then echo healthy; exit 0; fi\n"
         "exit 0\n",
@@ -172,6 +174,17 @@ def test_invalid_accelerator_mode_fails_before_compose_start(tmp_path: Path) -> 
     assert result.returncode == 2
     assert "AGENT_SPEAK_ACCELERATOR must be auto, cpu, or nvidia" in result.stderr
     assert " up -d" not in log.read_text(encoding="utf-8")
+
+
+def test_status_reports_host_selection_and_actual_provider_device(tmp_path: Path) -> None:
+    env, _, _ = _accelerator_env(tmp_path, gpu=True, runtime=True)
+    env["FAKE_ASR_DEVICE"] = "cuda"
+
+    result = subprocess.run([str(ROOT / "run.sh"), "--status"], cwd=ROOT, env=env, capture_output=True, text=True)
+
+    assert result.returncode == 0, result.stderr
+    assert "accelerator=nvidia" in result.stdout
+    assert "asr_device=cuda" in result.stdout
 
 
 def test_run_script_dispatches_expected_compose_commands(tmp_path: Path) -> None:

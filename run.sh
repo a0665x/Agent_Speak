@@ -201,7 +201,16 @@ case "$1" in
     if grep -Eq '^card [0-9]+:' <<<"$playback_listing"; then
       playback=available
     fi
-    echo "STATUS_${health^^} web=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765} docs=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/docs capture=$capture playback=$playback"
+    asr_device=$(compose exec -T gateway python -c '
+import json
+import urllib.request
+payload = json.load(urllib.request.urlopen("http://127.0.0.1:8765/api/v1/capabilities", timeout=3))
+print(next(item["device"] for item in payload["providers"] if item["stage"] == "asr"))
+' 2>/dev/null || printf 'unknown')
+    if [[ -z "$asr_device" ]]; then
+      asr_device=unknown
+    fi
+    echo "STATUS_${health^^} web=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765} docs=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/docs capture=$capture playback=$playback accelerator=$ACCELERATOR_SELECTED asr_device=$asr_device"
     [[ "$health" == "healthy" ]]
     ;;
   --logs)
