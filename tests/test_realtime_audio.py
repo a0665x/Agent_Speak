@@ -1,5 +1,6 @@
 import struct
 
+import numpy as np
 import pytest
 
 from agent_speak.errors import PlatformError
@@ -53,3 +54,29 @@ def test_silero_adapter_buffers_512_samples_and_resets_each_stream() -> None:
     vad.reset()
     assert model.reset_count == 1
     assert vad.score(frame(1)) == 0.0
+
+
+class FakeOnnxSession:
+    def __init__(self) -> None:
+        self.states: list[np.ndarray] = []
+
+    def run(self, _outputs, inputs):
+        self.states.append(inputs["state"].copy())
+        return np.array([[0.6]], dtype=np.float32), np.ones((2, 1, 128), dtype=np.float32)
+
+
+def test_silero_onnx_session_state_is_reset_without_torch() -> None:
+    session = FakeOnnxSession()
+    vad = SileroFrameVAD(session=session)
+
+    vad.score(frame(1))
+    assert vad.score(frame(1)) == pytest.approx(0.6)
+    vad.score(frame(1))
+    assert vad.score(frame(1)) == pytest.approx(0.6)
+    assert np.count_nonzero(session.states[0]) == 0
+    assert np.count_nonzero(session.states[1]) > 0
+
+    vad.reset()
+    vad.score(frame(1))
+    vad.score(frame(1))
+    assert np.count_nonzero(session.states[2]) == 0
