@@ -122,6 +122,9 @@ class FasterWhisperASR:
             )
         return text
 
+    def warm(self) -> None:
+        self._load_model()
+
 
 class PiperTTS:
     def __init__(

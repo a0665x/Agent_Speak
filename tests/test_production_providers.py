@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from agent_speak.config import Settings
 from agent_speak.pipeline import ProviderSet
 from agent_speak.production import FasterWhisperASR, PiperTTS
+from agent_speak.remote_asr import RemoteASRProvider
 from .audio_fixtures import wav_bytes
 
 
@@ -62,6 +63,15 @@ def test_faster_whisper_provider_returns_recognized_text_and_passes_language() -
     assert model.audio_header == b"RIFF"
     assert model.kwargs["language"] == "zh"
     assert model.kwargs["vad_filter"] is True
+
+
+def test_faster_whisper_warm_loads_model_without_transcribing() -> None:
+    model = FakeWhisperModel()
+    factory = CapturingWhisperFactory(model)
+    provider = FasterWhisperASR(accelerator="cpu", model_factory=factory)
+    provider.warm()
+    assert len(factory.calls) == 1
+    assert model.audio_header == b""
 
 
 def test_faster_whisper_uses_selected_cuda_device_and_compute_type() -> None:
@@ -144,6 +154,15 @@ def test_configured_capability_reports_actual_asr_device(tmp_path: Path) -> None
 
     assert capability.device == "cpu"
     assert "CPU inference" in capability.limitations[0]
+
+
+def test_configured_provider_selects_remote_asr_worker(tmp_path: Path) -> None:
+    settings = Settings(
+        asr_worker_url="http://asr-worker:8771",
+        tts_model_path=tmp_path / "voice.onnx",
+    )
+    providers = ProviderSet.configured(settings, vad=object())
+    assert isinstance(providers.asr, RemoteASRProvider)
 
 
 def test_asr_capability_is_not_ready_until_model_is_available(tmp_path: Path) -> None:

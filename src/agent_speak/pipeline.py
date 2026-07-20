@@ -29,6 +29,7 @@ from .providers import (
 from .schemas import ProviderCapability
 from .production import FasterWhisperASR, PiperTTS
 from .text_inference import LlamaCppTextProvider
+from .remote_asr import RemoteASRProvider
 
 
 @dataclass(slots=True)
@@ -44,14 +45,20 @@ class ProviderSet:
 
     @classmethod
     def configured(cls, settings: Any, *, vad: Any | None = None) -> "ProviderSet":
-        asr = FasterWhisperASR(
-            model_name=settings.asr_model,
-            language=settings.asr_language,
-            accelerator=settings.accelerator,
-            cpu_compute_type=settings.asr_compute_type,
-            cuda_compute_type=settings.asr_cuda_compute_type,
-            cpu_threads=settings.asr_cpu_threads,
-        )
+        if settings.asr_worker_url:
+            asr: ASRProvider = RemoteASRProvider(
+                settings.asr_worker_url,
+                max_audio_bytes=settings.max_audio_bytes,
+            )
+        else:
+            asr = FasterWhisperASR(
+                model_name=settings.asr_model,
+                language=settings.asr_language,
+                accelerator=settings.accelerator,
+                cpu_compute_type=settings.asr_compute_type,
+                cuda_compute_type=settings.asr_cuda_compute_type,
+                cpu_threads=settings.asr_cpu_threads,
+            )
         tts = PiperTTS(model_path=settings.tts_model_path)
         text_worker: LlamaCppTextProvider | None = None
         if settings.correction_worker_url:
