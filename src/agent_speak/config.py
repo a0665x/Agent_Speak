@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class Settings(BaseModel):
@@ -30,6 +30,32 @@ class Settings(BaseModel):
     asr_cuda_compute_type: str = "float16"
     asr_cpu_threads: int = Field(default=4, ge=1, le=32)
     tts_model_path: Path = Path("models/piper/zh_CN-huayan-medium.onnx")
+    realtime_frame_ms: Literal[20, 40] = 20
+    realtime_pre_roll_ms: int = Field(default=300, ge=0, le=2_000)
+    realtime_min_speech_ms: int = Field(default=250, ge=20, le=5_000)
+    realtime_partial_interval_ms: int = Field(default=800, ge=200, le=5_000)
+    realtime_endpoint_ms: int = Field(default=900, ge=200, le=5_000)
+    realtime_hard_endpoint_ms: int = Field(default=1_800, ge=400, le=10_000)
+    realtime_endpoint_timeout_ms: int = Field(default=250, ge=50, le=2_000)
+    realtime_max_utterance_seconds: float = Field(default=30.0, gt=0, le=300)
+    realtime_partial_queue: int = Field(default=8, ge=1, le=128)
+    realtime_final_queue: int = Field(default=8, ge=1, le=128)
+    realtime_text_queue: int = Field(default=8, ge=1, le=128)
+    realtime_expected_device: str = Field(default="Zone Vibe 100", min_length=1, max_length=200)
+    asr_worker_url: str = ""
+    correction_worker_url: str = ""
+    correction_model: str = "Qwen2.5-1.5B-Instruct-Q4_K_M"
+    effective_accelerator: Literal["cpu", "nvidia"] = "cpu"
+
+    @model_validator(mode="after")
+    def validate_realtime_contract(self) -> "Settings":
+        if self.realtime_endpoint_ms >= self.realtime_hard_endpoint_ms:
+            raise ValueError("realtime_endpoint_ms must be lower than realtime_hard_endpoint_ms")
+        for name in ("asr_worker_url", "correction_worker_url"):
+            value = getattr(self, name)
+            if value and not value.startswith(("http://", "https://")):
+                raise ValueError(f"{name} must be an HTTP(S) URL")
+        return self
 
     @classmethod
     def from_env(cls) -> "Settings":
