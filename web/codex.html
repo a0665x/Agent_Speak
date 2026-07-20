@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3efe7">
+  <title>Agent Speak — Codex CLI 語音輸入</title>
+  <link rel="stylesheet" href="/static/codex.css">
+  <script src="/static/codex-recorder-core.js" defer></script>
+  <script src="/static/codex.js" defer></script>
+</head>
+<body>
+  <main>
+    <section class="recorder-card" aria-labelledby="page-title">
+      <header class="recorder-header">
+        <div>
+          <p class="eyebrow">Agent Speak</p>
+          <h1 id="page-title">Codex CLI 語音輸入</h1>
+        </div>
+        <p id="gateway-status" class="status-chip" role="status" aria-live="polite">正在檢查 Gateway…</p>
+      </header>
+
+      <p class="intro">錄音完成後會辨識、校正並複製文字。請回到目前 Codex CLI 貼上，再按 Enter 送出；本頁不會直接注入 session。</p>
+
+      <section class="device-panel" aria-labelledby="device-title">
+        <div class="section-heading">
+          <div><p class="step">步驟 1</p><h2 id="device-title">確認 Zone Vibe 100</h2></div>
+          <button id="device-check-button" type="button">檢查耳機麥克風與喇叭</button>
+        </div>
+        <div class="device-grid">
+          <p><span>麥克風</span><strong id="input-device-label">尚未確認</strong></p>
+          <p><span>喇叭</span><strong id="output-device-label">尚未確認</strong></p>
+        </div>
+        <p id="device-status" class="helper" role="status" aria-live="polite">檢查完成前，錄音按鈕保持停用。檢查不會開始錄音或播放聲音。</p>
+      </section>
+
+      <section class="record-panel" aria-labelledby="record-title">
+        <div class="section-heading">
+          <div><p class="step">步驟 2</p><h2 id="record-title">錄製語音</h2></div>
+          <output id="recording-timer" class="timer">00:00 / 00:30</output>
+        </div>
+        <div class="record-actions">
+          <button id="start-recording-button" type="button" disabled>開始錄音</button>
+          <button id="stop-recording-button" type="button" disabled>結束錄音</button>
+        </div>
+        <p id="recording-status" class="helper" role="status" aria-live="polite">等待裝置確認。</p>
+      </section>
+
+      <section class="results-panel" aria-labelledby="results-title">
+        <div><p class="step">步驟 3</p><h2 id="results-title">取得校正文字</h2></div>
+        <article><h3>辨識文字</h3><p id="raw-transcript" class="result-text">尚無結果。</p></article>
+        <article><h3>校正文字</h3><p id="corrected-text" class="result-text">尚無結果。</p></article>
+        <p id="clipboard-status" class="helper" role="status" aria-live="polite">完成後會嘗試自動複製。</p>
+        <button id="copy-text-button" type="button" hidden>複製校正文字</button>
+      </section>
+
+      <p id="action-error" class="error-message" role="alert" hidden></p>
+    </section>
+  </main>
+</body>
+</html>

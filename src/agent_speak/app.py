@@ -226,6 +226,24 @@ def create_app(settings: Settings | None = None, *, providers: ProviderSet | Non
     async def web_script() -> Response:
         return Response(content=(web_dir / "app.js").read_text(encoding="utf-8"), media_type="text/javascript")
 
+    @app.get("/codex", include_in_schema=False)
+    async def codex_recorder() -> Response:
+        return Response(content=(web_dir / "codex.html").read_text(encoding="utf-8"), media_type="text/html")
+
+    @app.get("/static/codex.css", include_in_schema=False)
+    async def codex_styles() -> Response:
+        return Response(content=(web_dir / "codex.css").read_text(encoding="utf-8"), media_type="text/css")
+
+    @app.get("/static/codex-recorder-core.js", include_in_schema=False)
+    async def codex_recorder_core() -> Response:
+        return Response(
+            content=(web_dir / "codex-recorder-core.js").read_text(encoding="utf-8"), media_type="text/javascript"
+        )
+
+    @app.get("/static/codex.js", include_in_schema=False)
+    async def codex_script() -> Response:
+        return Response(content=(web_dir / "codex.js").read_text(encoding="utf-8"), media_type="text/javascript")
+
     @app.post("/api/v1/sessions", response_model=SessionSummary, status_code=status.HTTP_201_CREATED, tags=["對話流程"], summary="建立對話工作階段", description="輸入：無。輸出：新的工作階段識別碼、狀態與事件清單。")
     async def create_session() -> SessionSummary:
         return await app.state.broker.create()

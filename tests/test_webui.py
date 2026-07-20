@@ -154,3 +154,26 @@ async def test_capture_toggle_targets_the_explicit_upload_label(tmp_path: Path) 
     assert 'uploadLabel: document.querySelector("#audio-upload-label")' in javascript
     assert 'elements.uploadLabel.setAttribute("aria-disabled", String(disabled))' in javascript
     assert 'elements.upload.closest("label")' not in javascript
+
+
+@pytest.mark.anyio
+async def test_codex_recorder_and_local_assets_are_served(tmp_path: Path) -> None:
+    app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        page = await client.get("/codex")
+        css = await client.get("/static/codex.css")
+        core = await client.get("/static/codex-recorder-core.js")
+        javascript = await client.get("/static/codex.js")
+
+    assert page.status_code == 200
+    assert '<html lang="zh-Hant-TW">' in page.text
+    assert 'id="device-check-button"' in page.text
+    assert 'id="start-recording-button" type="button" disabled' in page.text
+    assert 'id="stop-recording-button" type="button" disabled' in page.text
+    assert 'id="raw-transcript"' in page.text
+    assert 'id="corrected-text"' in page.text
+    assert 'id="copy-text-button"' in page.text
+    assert "https://" not in page.text and "http://" not in page.text
+    assert css.headers["content-type"].startswith("text/css")
+    assert core.headers["content-type"].startswith("text/javascript")
+    assert javascript.headers["content-type"].startswith("text/javascript")
