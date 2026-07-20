@@ -83,3 +83,4 @@ id_ed25519.pub
 .*/node_modules/
 frontend/realtime/node_modules/
 web/realtime/
+*.tsbuildinfo
