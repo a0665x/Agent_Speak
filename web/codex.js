@@ -19,6 +19,10 @@ const elements = {
   deviceStatus: document.querySelector("#device-status"),
   timer: document.querySelector("#recording-timer"),
   recordingStatus: document.querySelector("#recording-status"),
+  rawTranscript: document.querySelector("#raw-transcript"),
+  correctedText: document.querySelector("#corrected-text"),
+  clipboardStatus: document.querySelector("#clipboard-status"),
+  copy: document.querySelector("#copy-text-button"),
   error: document.querySelector("#action-error"),
 };
 
@@ -130,14 +134,139 @@ function updateTimer() {
   elements.timer.textContent = formatTimer(elapsed);
 }
 
+function validateAudioSize(blob) {
+  if (!blob || blob.size === 0) throw new Error("沒有收到錄音資料，請重新錄製。");
+  if (blob.size > MAX_AUDIO_BYTES) throw new Error("音訊超過 8 MiB 上限，請縮短錄音後重試。");
+}
+
+async function decodeToMono(blob) {
+  const AudioContextType = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextType) throw new Error("此瀏覽器不支援音訊轉換。");
+  const context = new AudioContextType();
+  try {
+    const decoded = await context.decodeAudioData(await blob.arrayBuffer());
+    const samples = new Float32Array(decoded.length);
+    for (let channel = 0; channel < decoded.numberOfChannels; channel += 1) {
+      const source = decoded.getChannelData(channel);
+      for (let index = 0; index < decoded.length; index += 1) {
+        samples[index] += source[index] / decoded.numberOfChannels;
+      }
+    }
+    return { samples, sampleRate: decoded.sampleRate };
+  } finally {
+    await context.close();
+  }
+}
+
+function writeAscii(view, offset, value) {
+  for (let index = 0; index < value.length; index += 1) {
+    view.setUint8(offset + index, value.charCodeAt(index));
+  }
+}
+
+function encodeWav(samples, sampleRate) {
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
+  writeAscii(view, 0, "RIFF");
+  view.setUint32(4, 36 + samples.length * 2, true);
+  writeAscii(view, 8, "WAVE");
+  writeAscii(view, 12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeAscii(view, 36, "data");
+  view.setUint32(40, samples.length * 2, true);
+  for (let index = 0; index < samples.length; index += 1) {
+    const sample = Math.max(-1, Math.min(1, samples[index]));
+    view.setInt16(44 + index * 2, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+  }
+  return new Blob([view.buffer], { type: "audio/wav" });
+}
+
+async function readJson(response) {
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(body.error?.message || `HTTP ${response.status}`);
+    error.code = body.error?.code || "request_failed";
+    throw error;
+  }
+  return body;
+}
+
+function requireText(value, message) {
+  const text = String(value || "").trim();
+  if (!text) throw new Error(message);
+  return text;
+}
+
+async function copyCorrectedText({ automatic = false } = {}) {
+  const text = requireText(elements.correctedText.textContent, "沒有可複製的校正文字。");
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error("Clipboard API unavailable");
+    await navigator.clipboard.writeText(text);
+    elements.clipboardStatus.textContent = "校正文字已複製；請回到 Codex CLI 貼上並按 Enter。";
+    elements.copy.hidden = true;
+  } catch (error) {
+    elements.copy.hidden = false;
+    if (automatic) {
+      elements.clipboardStatus.textContent = "瀏覽器未允許自動複製，請按下方按鈕。";
+      return;
+    }
+    elements.clipboardStatus.textContent = "複製失敗；請允許剪貼簿權限後重試。";
+    showError(`無法複製校正文字：${String(error?.message || error)}`);
+  }
+}
+
 async function processRecording() {
   if (state.discardRecording) {
     state.discardRecording = false;
     state.chunks = [];
+    state.recorder = null;
     return;
   }
-  elements.recordingStatus.textContent = "錄音已結束，準備處理音訊。";
-  setPhase(hasRequiredDevices(state.devices) ? "ready" : "unchecked");
+  clearError();
+  elements.copy.hidden = true;
+  try {
+    const source = new Blob(state.chunks, { type: state.recorder?.mimeType || "audio/webm" });
+    validateAudioSize(source);
+    elements.recordingStatus.textContent = "正在轉換為 16-bit PCM WAV…";
+    const decoded = await decodeToMono(source);
+    const wav = encodeWav(decoded.samples, decoded.sampleRate);
+    validateAudioSize(wav);
+
+    elements.recordingStatus.textContent = "正在辨識語音…";
+    const asrResponse = await fetch("/api/v1/audio/asr", {
+      method: "POST",
+      headers: { "Content-Type": "audio/wav" },
+      body: wav,
+    });
+    const asr = await readJson(asrResponse);
+    const transcript = requireText(asr.text, "ASR 沒有回傳文字，請說得更清楚後重試。");
+    elements.rawTranscript.textContent = transcript;
+
+    elements.recordingStatus.textContent = "正在校正文字…";
+    const correctionResponse = await fetch("/api/v1/text/correct", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: transcript }),
+    });
+    const correction = await readJson(correctionResponse);
+    const corrected = requireText(correction.text, "文字校正沒有回傳內容，請重試。");
+    elements.correctedText.textContent = corrected;
+    elements.recordingStatus.textContent = "辨識與校正完成。";
+    await copyCorrectedText({ automatic: true });
+  } catch (error) {
+    elements.recordingStatus.textContent = "這次錄音未完成處理。";
+    showError(`處理失敗：${String(error?.message || error)}`);
+  } finally {
+    state.chunks = [];
+    state.recorder = null;
+    setPhase(hasRequiredDevices(state.devices) ? "ready" : "unchecked");
+  }
 }
 
 async function startRecording() {
@@ -204,6 +333,7 @@ function invalidateDevices() {
 elements.checkDevices.addEventListener("click", checkDevices);
 elements.start.addEventListener("click", startRecording);
 elements.stop.addEventListener("click", stopRecording);
+elements.copy.addEventListener("click", () => copyCorrectedText());
 if (navigator.mediaDevices?.addEventListener) {
   navigator.mediaDevices.addEventListener("devicechange", invalidateDevices);
 }

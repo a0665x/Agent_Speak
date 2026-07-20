@@ -199,3 +199,28 @@ async def test_codex_recorder_gates_capture_on_zone_vibe_input_and_output(tmp_pa
     )
     assert all(item in javascript for item in required)
     assert "shell" not in javascript
+
+
+@pytest.mark.anyio
+async def test_codex_recorder_transcribes_corrects_and_copies_without_agent_or_tts(tmp_path: Path) -> None:
+    app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        javascript = (await client.get("/static/codex.js")).text
+
+    required = (
+        "decodeAudioData",
+        "encodeWav",
+        "MAX_AUDIO_BYTES = 8 * 1024 * 1024",
+        'fetch("/api/v1/audio/asr"',
+        'fetch("/api/v1/text/correct"',
+        '"Content-Type": "audio/wav"',
+        '"Content-Type": "application/json"',
+        "navigator.clipboard.writeText",
+        "elements.rawTranscript.textContent",
+        "elements.correctedText.textContent",
+        "elements.copy.hidden = false",
+    )
+    assert all(item in javascript for item in required)
+    assert "/api/v1/agent/respond" not in javascript
+    assert "/api/v1/tts/synthesize" not in javascript
+    assert "innerHTML" not in javascript
