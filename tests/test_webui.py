@@ -177,3 +177,25 @@ async def test_codex_recorder_and_local_assets_are_served(tmp_path: Path) -> Non
     assert css.headers["content-type"].startswith("text/css")
     assert core.headers["content-type"].startswith("text/javascript")
     assert javascript.headers["content-type"].startswith("text/javascript")
+
+
+@pytest.mark.anyio
+async def test_codex_recorder_gates_capture_on_zone_vibe_input_and_output(tmp_path: Path) -> None:
+    app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        javascript = (await client.get("/static/codex.js")).text
+
+    required = (
+        "navigator.mediaDevices.getUserMedia",
+        "navigator.mediaDevices.enumerateDevices",
+        "findZoneVibeDevices",
+        "hasRequiredDevices",
+        'addEventListener("devicechange"',
+        'audio: { deviceId: { exact: state.devices.input.deviceId } }',
+        "new MediaRecorder",
+        "MAX_RECORDING_SECONDS = 30",
+        "setTimeout(stopRecording, MAX_RECORDING_SECONDS * 1000)",
+        "clearTimeout(state.autoStopTimer)",
+    )
+    assert all(item in javascript for item in required)
+    assert "shell" not in javascript
