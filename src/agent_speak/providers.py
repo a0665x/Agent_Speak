@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
+from .realtime_models import CorrectionRevision
 from .schemas import ProviderCapability
 
 
@@ -24,6 +25,11 @@ class ASRProvider(Protocol):
 @runtime_checkable
 class CorrectionProvider(Protocol):
     def correct(self, text: str) -> str: ...
+
+
+@runtime_checkable
+class RevisionProvider(Protocol):
+    def revise(self, previous_text: str, current_text: str) -> CorrectionRevision: ...
 
 
 @runtime_checkable

@@ -28,6 +28,7 @@ from .providers import (
 )
 from .schemas import ProviderCapability
 from .production import FasterWhisperASR, PiperTTS
+from .text_inference import LlamaCppTextProvider
 
 
 @dataclass(slots=True)
@@ -52,10 +53,23 @@ class ProviderSet:
             cpu_threads=settings.asr_cpu_threads,
         )
         tts = PiperTTS(model_path=settings.tts_model_path)
+        text_worker: LlamaCppTextProvider | None = None
+        if settings.correction_worker_url:
+            text_worker = LlamaCppTextProvider(
+                settings.correction_worker_url,
+                settings.correction_model,
+                device=settings.effective_accelerator,
+            )
+            correction_provider: CorrectionProvider = text_worker
+            endpoint_provider: EndpointProvider = text_worker
+        else:
+            correction_provider = DevelopmentCorrection()
+            endpoint_provider = DevelopmentEndpoint()
 
         def configured_capabilities() -> list[ProviderCapability]:
             asr_ready = asr.is_ready()
             tts_ready = tts.model_path.is_file() and tts.config_path.is_file()
+            text_ready = text_worker.is_ready() if text_worker is not None else True
             device_label = "CUDA inference." if asr.device == "cuda" else "CPU inference."
             asr_limitations = [f"Faster-Whisper local transcription; {device_label}"]
             if asr.fallback_reason:
@@ -71,14 +85,30 @@ class ProviderSet:
                     ),
                     device=asr.device,
                 ),
-                *list(DEFAULT_CAPABILITIES[2:5]),
+                ProviderCapability(
+                    stage="correction",
+                    name=settings.correction_model if settings.correction_worker_url else DEFAULT_CAPABILITIES[2].name,
+                    ready=text_ready,
+                    development=not bool(settings.correction_worker_url),
+                    limitations=[] if text_ready else ["Correction worker health probe failed."],
+                    device=text_worker.device if text_worker is not None else "cpu",
+                ),
+                ProviderCapability(
+                    stage="endpoint",
+                    name=settings.correction_model if settings.correction_worker_url else DEFAULT_CAPABILITIES[3].name,
+                    ready=text_ready,
+                    development=not bool(settings.correction_worker_url),
+                    limitations=[] if text_ready else ["Endpoint worker health probe failed."],
+                    device=text_worker.device if text_worker is not None else "cpu",
+                ),
+                DEFAULT_CAPABILITIES[4],
                 ProviderCapability(
                     stage="tts", name=f"piper-{tts.model_path.stem}", ready=tts_ready, development=False,
                     limitations=["Piper local speech synthesis."] if tts_ready else [f"Voice model missing: {tts.model_path}"],
                 ),
             ]
         return cls(
-            vad or DevelopmentVAD(), asr, DevelopmentCorrection(), DevelopmentEndpoint(), DevelopmentAgent(), tts,
+            vad or DevelopmentVAD(), asr, correction_provider, endpoint_provider, DevelopmentAgent(), tts,
             capability_factory=configured_capabilities,
         )
 
