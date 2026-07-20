@@ -46,7 +46,9 @@ class ProviderSet:
         asr = FasterWhisperASR(
             model_name=settings.asr_model,
             language=settings.asr_language,
-            compute_type=settings.asr_compute_type,
+            accelerator=settings.accelerator,
+            cpu_compute_type=settings.asr_compute_type,
+            cuda_compute_type=settings.asr_cuda_compute_type,
             cpu_threads=settings.asr_cpu_threads,
         )
         tts = PiperTTS(model_path=settings.tts_model_path)
@@ -54,15 +56,20 @@ class ProviderSet:
         def configured_capabilities() -> list[ProviderCapability]:
             asr_ready = asr.is_ready()
             tts_ready = tts.model_path.is_file() and tts.config_path.is_file()
+            device_label = "CUDA inference." if asr.device == "cuda" else "CPU inference."
+            asr_limitations = [f"Faster-Whisper local transcription; {device_label}"]
+            if asr.fallback_reason:
+                asr_limitations.append(f"Automatic CPU fallback: {asr.fallback_reason}")
             return [
                 ProviderCapability(stage="vad", name="energy-vad", ready=True, development=False, limitations=[]),
                 ProviderCapability(
                     stage="asr", name=f"faster-whisper-{settings.asr_model}", ready=asr_ready, development=False,
                     limitations=(
-                        ["Faster-Whisper local transcription; CPU inference."]
+                        asr_limitations
                         if asr_ready
                         else ["Model is not cached locally; the first transcription requires a successful model download."]
                     ),
+                    device=asr.device,
                 ),
                 *list(DEFAULT_CAPABILITIES[2:5]),
                 ProviderCapability(

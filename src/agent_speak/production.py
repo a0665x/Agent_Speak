@@ -11,6 +11,7 @@ from threading import Lock
 from typing import Any, Callable
 import wave
 
+from .accelerators import AcceleratorMode, ctranslate2_cuda_available, select_asr_device
 from .errors import PlatformError
 
 
@@ -20,14 +21,25 @@ class FasterWhisperASR:
         *,
         model_name: str = "small",
         language: str | None = "zh",
-        compute_type: str = "int8",
+        accelerator: AcceleratorMode = "auto",
+        cpu_compute_type: str = "int8",
+        cuda_compute_type: str = "float16",
         cpu_threads: int = 4,
+        cuda_probe: Callable[[], bool] | None = None,
         model_factory: Callable[..., Any] | None = None,
     ) -> None:
         self.model_name = model_name
         self.language = language
-        self.compute_type = compute_type
         self.cpu_threads = cpu_threads
+        selection = select_asr_device(
+            accelerator,
+            cpu_compute_type,
+            cuda_compute_type,
+            cuda_probe or ctranslate2_cuda_available,
+        )
+        self.device = selection.device
+        self.compute_type = selection.compute_type
+        self.fallback_reason = selection.fallback_reason
         self._model_factory = model_factory
         self._local_model_resolver: Callable[[str], Path] = self._resolve_local_model
         self._model: Any | None = None
@@ -65,7 +77,7 @@ class FasterWhisperASR:
                         factory = WhisperModel
                     self._model = factory(
                         self.model_name,
-                        device="cpu",
+                        device=self.device,
                         compute_type=self.compute_type,
                         cpu_threads=self.cpu_threads,
                         num_workers=1,

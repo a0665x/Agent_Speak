@@ -24,6 +24,16 @@ class FakeWhisperModel:
         return iter([SimpleNamespace(text=" 你好，這是真實辨識。 ")]), SimpleNamespace(language="zh")
 
 
+class CapturingWhisperFactory:
+    def __init__(self, model: FakeWhisperModel) -> None:
+        self.model = model
+        self.calls: list[tuple[str, dict[str, object]]] = []
+
+    def __call__(self, model_name: str, **kwargs: object) -> FakeWhisperModel:
+        self.calls.append((model_name, kwargs))
+        return self.model
+
+
 class FakePiperVoice:
     def __init__(self) -> None:
         self.text = ""
@@ -41,7 +51,8 @@ def test_faster_whisper_provider_returns_recognized_text_and_passes_language() -
     provider = FasterWhisperASR(
         model_name="small",
         language="zh",
-        compute_type="int8",
+        accelerator="cpu",
+        cpu_compute_type="int8",
         model_factory=lambda *args, **kwargs: model,
     )
 
@@ -51,6 +62,40 @@ def test_faster_whisper_provider_returns_recognized_text_and_passes_language() -
     assert model.audio_header == b"RIFF"
     assert model.kwargs["language"] == "zh"
     assert model.kwargs["vad_filter"] is True
+
+
+def test_faster_whisper_uses_selected_cuda_device_and_compute_type() -> None:
+    model = FakeWhisperModel()
+    factory = CapturingWhisperFactory(model)
+    provider = FasterWhisperASR(
+        model_name="small",
+        language="zh",
+        accelerator="auto",
+        cpu_compute_type="int8",
+        cuda_compute_type="float16",
+        cuda_probe=lambda: True,
+        model_factory=factory,
+    )
+
+    provider.transcribe(wav_bytes())
+
+    assert provider.device == "cuda"
+    assert provider.fallback_reason is None
+    assert factory.calls[0][1]["device"] == "cuda"
+    assert factory.calls[0][1]["compute_type"] == "float16"
+
+
+def test_faster_whisper_auto_reports_cpu_fallback() -> None:
+    provider = FasterWhisperASR(
+        accelerator="auto",
+        cpu_compute_type="int8",
+        cuda_compute_type="float16",
+        cuda_probe=lambda: False,
+        model_factory=lambda *args, **kwargs: FakeWhisperModel(),
+    )
+
+    assert provider.device == "cpu"
+    assert provider.fallback_reason == "CUDA is unavailable inside the container"
 
 
 def test_piper_provider_returns_spoken_pcm_wav(tmp_path: Path) -> None:
@@ -85,6 +130,20 @@ def test_default_provider_set_uses_real_asr_and_tts(tmp_path: Path) -> None:
     assert capabilities["asr"].name == "faster-whisper-small"
     assert capabilities["tts"].name == "piper-voice"
     assert capabilities["tts"].limitations == ["Piper local speech synthesis."]
+
+
+def test_configured_capability_reports_actual_asr_device(tmp_path: Path) -> None:
+    model_path = tmp_path / "cached-model"
+    model_path.mkdir()
+    for name in ("model.bin", "config.json", "tokenizer.json"):
+        (model_path / name).write_bytes(b"model")
+    settings = Settings(accelerator="cpu", asr_model=str(model_path), tts_model_path=tmp_path / "voice.onnx")
+
+    providers = ProviderSet.configured(settings, vad=object())
+    capability = {item.stage: item for item in providers.capabilities()}["asr"]
+
+    assert capability.device == "cpu"
+    assert "CPU inference" in capability.limitations[0]
 
 
 def test_asr_capability_is_not_ready_until_model_is_available(tmp_path: Path) -> None:
