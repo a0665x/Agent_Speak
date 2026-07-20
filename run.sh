@@ -157,7 +157,14 @@ case "$1" in
     docker compose logs --tail 100 gateway
     ;;
   --test)
-    docker compose run --rm --no-deps gateway-test bash -lc 'python -m pytest -q -p no:cacheprovider && node --check web/app.js && echo TESTS_OK'
+    docker compose run --rm --no-deps gateway-test bash -lc '
+      python -m pytest -q -p no:cacheprovider &&
+      node --check web/app.js &&
+      node --check web/codex-recorder-core.js &&
+      node --check web/codex.js &&
+      node tests/codex_recorder_core.test.js &&
+      echo TESTS_OK
+    '
     ;;
   --help|-h|help)
     usage

@@ -52,6 +52,9 @@ def test_root_run_script_exposes_single_docker_operator_interface() -> None:
     assert "ps --all -q gateway" in source
     assert "arecord -l" in source and "aplay -l" in source
     assert "gateway-test" in source
+    assert "node --check web/codex-recorder-core.js" in source
+    assert "node --check web/codex.js" in source
+    assert "node tests/codex_recorder_core.test.js" in source
     assert ".venv" not in source
 
 

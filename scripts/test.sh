@@ -11,6 +11,9 @@ cd "$ROOT_DIR"
 PYTHONPATH="$ROOT_DIR/src" "$VENV_DIR/bin/pytest" "$@"
 if command -v node >/dev/null 2>&1; then
   node --check web/app.js
+  node --check web/codex-recorder-core.js
+  node --check web/codex.js
+  node tests/codex_recorder_core.test.js
 else
   echo "STATIC_CHECKS_SKIPPED node_not_found"
 fi
