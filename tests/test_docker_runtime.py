@@ -38,6 +38,27 @@ def test_docker_first_files_and_audio_mapping_exist() -> None:
     assert test_service["profiles"] == ["test"]
 
 
+def test_gpu_override_is_nvidia_only_and_keeps_test_service_hermetic() -> None:
+    base = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))
+    gpu = yaml.safe_load((ROOT / "compose.gpu.yaml").read_text(encoding="utf-8"))
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+
+    gateway = gpu["services"]["gateway"]
+    devices = gateway["deploy"]["resources"]["reservations"]["devices"]
+    assert devices == [{"driver": "nvidia", "count": "all", "capabilities": ["gpu"]}]
+    assert gateway["image"] == "agent-speak:gpu-local"
+    assert gateway["build"]["args"]["AGENT_SPEAK_IMAGE_VARIANT"] == "nvidia"
+    assert "privileged" not in gateway
+    assert "devices" not in gateway
+    assert "gateway-test" not in gpu["services"]
+
+    assert base["services"]["gateway"]["environment"]["AGENT_SPEAK_ACCELERATOR"] == "${AGENT_SPEAK_ACCELERATOR:-auto}"
+    assert "AGENT_SPEAK_IMAGE_VARIANT" in dockerfile
+    assert "nvidia-cublas-cu12" in pyproject
+    assert "nvidia-cudnn-cu12" in pyproject
+
+
 def test_root_run_script_exposes_single_docker_operator_interface() -> None:
     script = ROOT / "run.sh"
     source = script.read_text(encoding="utf-8")

@@ -15,8 +15,15 @@ RUN apt-get update \
 WORKDIR /app
 COPY pyproject.toml LICENSE ./
 COPY src ./src
+ARG AGENT_SPEAK_IMAGE_VARIANT=cpu
 RUN python -m pip install --upgrade pip setuptools wheel \
-    && python -m pip install -e '.[test]'
+    && if [ "$AGENT_SPEAK_IMAGE_VARIANT" = "nvidia" ]; then \
+         python -m pip install -e '.[test,gpu]'; \
+       else \
+         python -m pip install -e '.[test]'; \
+       fi
+
+ENV LD_LIBRARY_PATH=/usr/local/lib/python3.11/site-packages/nvidia/cublas/lib:/usr/local/lib/python3.11/site-packages/nvidia/cudnn/lib
 
 # Include runtime assets and the complete public repository contract after dependencies,
 # so documentation/script edits do not invalidate the expensive inference dependency layer.

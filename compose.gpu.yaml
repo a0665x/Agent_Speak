@@ -1,0 +1,13 @@
+services:
+  gateway:
+    build:
+      args:
+        AGENT_SPEAK_IMAGE_VARIANT: nvidia
+    image: agent-speak:gpu-local
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
