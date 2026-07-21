@@ -16,7 +16,7 @@ Speaker creates and updates use `{name,notes}` JSON. Enrollment/match use raw WA
 
 Artifacts: `GET /artifacts/{name}`. Failures use `{error:{code,message,stage,retryable,details}}`. `/docs` is field-level truth.
 
-OpenAPI is also a beginner-facing contract. `/docs` groups operations under six Traditional Chinese tags (system, conversation flow, audio stages, text stages, speakers, audio artifacts). Every HTTP endpoint provides a Chinese summary and an explicit input/output description. Pydantic fields expose descriptions, defaults where applicable, and representative examples; binary request schemas state the required 16-bit PCM WAV format and the 8 MiB/30-second bounds. `/openapi.json` is the machine-readable source of the same contract.
+OpenAPI is also a beginner-facing multilingual contract. `/docs?lang=` selects complete Swagger presentation metadata for `en`, `zh-TW`, `ja`, or `ko`, and `/openapi.json?lang=` returns the corresponding machine-readable document; English is the default and invalid locale values fall back to English. The selector localizes the API title and description, six tag groups, every endpoint summary and description, parameters, request fields, response fields, examples, and WAV-format guidance. API paths, operation IDs, schema names, property names, and payloads do not change, so language selection is a documentation overlay rather than an API version.
 
 User-facing examples and the recommended beginner call order are maintained in [`../docs/OPENAPI_QUICKSTART_ZH_TW.md`](../docs/OPENAPI_QUICKSTART_ZH_TW.md). Keep its paths, payloads, response fields, Tailscale URL, and error table synchronized whenever the public API contract changes.
 

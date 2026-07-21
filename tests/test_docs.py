@@ -112,3 +112,20 @@ def test_realtime_studio_contract_is_documented_without_agent_claims() -> None:
         assert phrase in combined
     assert "continuous transcription only" in texts[0]
     assert "只做持續轉錄" in texts[1]
+
+
+def test_multilingual_ui_and_openapi_contract_is_documented() -> None:
+    ui = (ROOT / "spec" / "UI.md").read_text(encoding="utf-8")
+    api = (ROOT / "spec" / "API.md").read_text(encoding="utf-8")
+    testing = (ROOT / "spec" / "TESTING.md").read_text(encoding="utf-8")
+    project_map = (ROOT / "spec" / "PROJECT_MAP.md").read_text(encoding="utf-8")
+    combined = "\n".join((ui, api, testing, project_map))
+
+    for locale in ("en", "zh-TW", "ja", "ko"):
+        assert f"`{locale}`" in combined
+    assert "English is the default" in ui
+    assert "query parameter → localStorage → English" in ui
+    assert "`/docs?lang=`" in api
+    assert "`/openapi.json?lang=`" in api
+    assert "API paths, operation IDs, schema names, property names, and payloads do not change" in api
+    assert "must not request microphone permission" in testing

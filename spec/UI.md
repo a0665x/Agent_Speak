@@ -2,13 +2,15 @@
 
 ## Project guide
 
-`/` is a concise Traditional Chinese project guide. It contains three primary destinations: API Explorer (`/docs`), ASR Realtime (`/asr_realtime`), and live System Status populated from `/api/v1/health` plus `/api/v1/capabilities`. The landing page uses only local assets and never asks for microphone permission, opens a WebSocket, invokes an Agent, or runs TTS.
+`/` is a concise multilingual project guide. English is the default, with complete presentation catalogs for `en`, `zh-TW`, `ja`, and `ko`. Locale resolution is `query parameter → localStorage → English`; the top-right selector persists the choice and propagates it into links for API Explorer (`/docs`), ASR Realtime (`/asr_realtime`), and live System Status populated from `/api/v1/health` plus `/api/v1/capabilities`. The landing page uses only local assets and never asks for microphone permission, opens a WebSocket, invokes an Agent, or runs TTS.
 
 The visual system uses graphite surfaces, restrained ice-blue/violet gradients, generated speech-core artwork, system typography, and immediate press feedback. Controls and links have visible keyboard focus, minimum 44 px targets, reduced-motion/transparency and increased-contrast fallbacks, and responsive layouts without horizontal page scrolling.
 
 ## ASR Realtime
 
 `/asr_realtime` is the canonical React/Vite continuous transcription surface; `/realtime` redirects there for compatibility. It requires an explicit browser device check that confirms both Zone Vibe 100 `audioinput` and `audiooutput` before Start Listening is enabled. Enumeration proves browser visibility only, not physical playback. Starting creates a normal API session and sends exact 20 ms, 16 kHz mono PCM16 frames over `WS /api/v1/realtime/sessions/{session_id}`; raw audio never crosses MCP JSON-RPC and is not persisted.
+
+The same top-right selector localizes all presentation copy in English, Traditional Chinese, Japanese, or Korean without resetting completed transcripts, graph nodes, device state, or the realtime pipeline. It keeps the current locale in the URL and storage and passes it back to the project guide and Swagger UI.
 
 The five-stage process cycle is `Listening → Voice detected → ASR partial → Endpoint → Correction`. Actual ordered Gateway events select the semantic stage. The current stage is brightest; the previous stage retains a 1.45-second visual afterglow before fading. The afterglow timer controls presentation only and never advances pipeline state.
 
