@@ -28,3 +28,21 @@ def test_remote_asr_supports_partial_mode_and_rejects_invalid_response() -> None
     )
     with pytest.raises(PlatformError, match="invalid"):
         invalid.transcribe(b"RIFF")
+
+
+def test_remote_asr_forwards_explicit_session_language_without_changing_legacy_calls() -> None:
+    requests: list[dict[str, object]] = []
+    provider = RemoteASRProvider(
+        "http://asr-worker:8771",
+        request=lambda payload: requests.append(payload) or {"text": "hello", "device": "cuda"},
+    )
+
+    assert provider.transcribe_mode(b"RIFF", "partial", "en") == "hello"
+    assert provider.transcribe_mode(b"RIFF", "final", "auto") == "hello"
+    assert provider.transcribe_mode(b"RIFF", "final") == "hello"
+
+    assert requests == [
+        {"audio": b"RIFF", "mode": "partial", "speech_language": "en"},
+        {"audio": b"RIFF", "mode": "final", "speech_language": "auto"},
+        {"audio": b"RIFF", "mode": "final"},
+    ]

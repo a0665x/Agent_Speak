@@ -18,10 +18,12 @@ class FakeWhisperModel:
     def __init__(self) -> None:
         self.audio_header = b""
         self.kwargs: dict[str, object] = {}
+        self.calls: list[dict[str, object]] = []
 
     def transcribe(self, audio: io.BytesIO, **kwargs: object):
         self.audio_header = audio.read(4)
         self.kwargs = kwargs
+        self.calls.append(kwargs)
         return iter([SimpleNamespace(text=" 你好，這是真實辨識。 ")]), SimpleNamespace(language="zh")
 
 
@@ -72,6 +74,22 @@ def test_faster_whisper_warm_loads_model_without_transcribing() -> None:
     provider.warm()
     assert len(factory.calls) == 1
     assert model.audio_header == b""
+
+
+def test_faster_whisper_reuses_one_model_with_request_time_language_hints() -> None:
+    model = FakeWhisperModel()
+    factory = CapturingWhisperFactory(model)
+    provider = FasterWhisperASR(
+        language="zh",
+        accelerator="cpu",
+        model_factory=factory,
+    )
+
+    for language in ("en", "zh", "ja", "ko", None):
+        provider.transcribe(wav_bytes(), language=language)
+
+    assert len(factory.calls) == 1
+    assert [call["language"] for call in model.calls] == ["en", "zh", "ja", "ko", None]
 
 
 def test_faster_whisper_uses_selected_cuda_device_and_compute_type() -> None:

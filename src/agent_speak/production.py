@@ -15,6 +15,9 @@ from .accelerators import AcceleratorMode, ctranslate2_cuda_available, select_as
 from .errors import PlatformError
 
 
+_CONFIGURED_LANGUAGE = object()
+
+
 class FasterWhisperASR:
     def __init__(
         self,
@@ -92,11 +95,16 @@ class FasterWhisperASR:
                     ) from exc
         return self._model
 
-    def transcribe(self, audio: bytes) -> str:
+    def transcribe(
+        self,
+        audio: bytes,
+        language: str | None | object = _CONFIGURED_LANGUAGE,
+    ) -> str:
+        active_language = self.language if language is _CONFIGURED_LANGUAGE else language
         try:
             segments, _ = self._load_model().transcribe(
                 io.BytesIO(audio),
-                language=self.language,
+                language=active_language,
                 beam_size=5,
                 vad_filter=True,
                 condition_on_previous_text=False,

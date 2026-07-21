@@ -13,6 +13,7 @@ from .concurrency import run_sync
 from .config import Settings
 from .errors import PlatformError
 from .production import FasterWhisperASR
+from .speech_languages import SpeechLanguage, whisper_language
 
 
 async def _read_wav(request: Request, settings: Settings) -> bytes:
@@ -109,6 +110,7 @@ def create_asr_worker(
     async def transcribe(
         request: Request,
         mode: Literal["partial", "final"] = "final",
+        speech_language: SpeechLanguage | None = None,
     ) -> dict[str, str]:
         if not app.state.ready:
             raise PlatformError(
@@ -119,7 +121,14 @@ def create_asr_worker(
                 retryable=True,
             )
         audio = await _read_wav(request, active)
-        text = await run_sync(asr.transcribe, audio)
+        if speech_language is None:
+            text = await run_sync(asr.transcribe, audio)
+        else:
+            text = await run_sync(
+                asr.transcribe,
+                audio,
+                whisper_language(speech_language),
+            )
         return {"text": text, "device": asr.device, "mode": mode}
 
     return app

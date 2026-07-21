@@ -8,6 +8,10 @@ from typing import Any, Literal
 import httpx
 
 from .errors import PlatformError
+from .speech_languages import SpeechLanguage
+
+
+_OMIT_SPEECH_LANGUAGE = object()
 
 
 class RemoteASRProvider:
@@ -30,7 +34,12 @@ class RemoteASRProvider:
     def transcribe(self, audio: bytes) -> str:
         return self.transcribe_mode(audio, "final")
 
-    def transcribe_mode(self, audio: bytes, mode: Literal["partial", "final"] | str) -> str:
+    def transcribe_mode(
+        self,
+        audio: bytes,
+        mode: Literal["partial", "final"] | str,
+        speech_language: SpeechLanguage | object = _OMIT_SPEECH_LANGUAGE,
+    ) -> str:
         if mode not in {"partial", "final"}:
             raise ValueError("mode must be partial or final")
         if len(audio) > self.max_audio_bytes:
@@ -41,13 +50,18 @@ class RemoteASRProvider:
                 stage="asr",
             )
         payload: dict[str, object] = {"audio": audio, "mode": mode}
+        if speech_language is not _OMIT_SPEECH_LANGUAGE:
+            payload["speech_language"] = speech_language
         if self._injected_request is not None:
             result = self._injected_request(payload)
         else:
             try:
+                params: dict[str, object] = {"mode": mode}
+                if speech_language is not _OMIT_SPEECH_LANGUAGE:
+                    params["speech_language"] = speech_language
                 response = self._client.post(
                     f"{self.base_url}/internal/v1/asr",
-                    params={"mode": mode},
+                    params=params,
                     content=audio,
                     headers={"content-type": "audio/wav"},
                 )
