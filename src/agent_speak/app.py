@@ -17,7 +17,7 @@ from .audio import EnergyVAD, decode_wav
 from .concurrency import run_sync
 from .config import Settings
 from .errors import PlatformError
-from .locales import localize_openapi, normalize_locale
+from .locales import DOCS_UI_TEXT, localize_openapi, normalize_locale
 from .pipeline import Pipeline, ProviderSet
 from .realtime import RealtimeCoordinator, RealtimeTextAdapter
 from .realtime_audio import EnergyFrameVAD
@@ -156,6 +156,7 @@ def create_app(
     app = FastAPI(
         title="Agent Speak",
         version=__version__,
+        docs_url=None,
         description=(
             "Agent Speak 是本機語音處理 API。新手可先建立工作階段，再把 PCM WAV 上傳至完整對話端點；"
             "也可依序呼叫各階段端點。所有錯誤都使用一致的 error envelope。"
@@ -255,6 +256,51 @@ def create_app(
     async def capabilities() -> CapabilitiesResponse:
         return CapabilitiesResponse(providers=app.state.pipeline.providers.capabilities())
 
+    @app.get("/docs", include_in_schema=False)
+    async def localized_docs(lang: str | None = None) -> Response:
+        locale = normalize_locale(lang)
+        copy = DOCS_UI_TEXT[locale]
+        options = "".join(
+            f'<option value="{value}"{" selected" if value == locale else ""}>{label}</option>'
+            for value, label in (
+                ("en", "English"),
+                ("zh-TW", "繁體中文"),
+                ("ja", "日本語"),
+                ("ko", "한국어"),
+            )
+        )
+        page = f"""<!doctype html>
+<html lang="{locale}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{copy['title']}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
+  <link rel="stylesheet" href="/static/docs-locale.css">
+  <script src="/static/docs-locale.js" defer></script>
+</head>
+<body data-current-locale="{locale}">
+  <header class="docs-nav">
+    <a href="/?lang={locale}" aria-label="{copy['home']}"><span aria-hidden="true"></span>Agent Speak</a>
+    <label for="language-select">{copy['language']}</label>
+    <select id="language-select" aria-label="{copy['language']}" data-current-locale="{locale}">{options}</select>
+  </header>
+  <div id="swagger-ui"></div>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    window.ui = SwaggerUIBundle({{
+      url: "/openapi.json?lang={locale}",
+      dom_id: "#swagger-ui",
+      deepLinking: true,
+      showExtensions: true,
+      showCommonExtensions: true,
+      presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset]
+    }});
+  </script>
+</body>
+</html>"""
+        return Response(content=page, media_type="text/html")
+
     @app.get("/", include_in_schema=False)
     async def web_console() -> Response:
         return Response(content=(web_dir / "index.html").read_text(encoding="utf-8"), media_type="text/html")
@@ -295,10 +341,18 @@ def create_app(
     async def web_styles() -> Response:
         return Response(content=(web_dir / "app.css").read_text(encoding="utf-8"), media_type="text/css")
 
+    @app.get("/static/docs-locale.css", include_in_schema=False)
+    async def docs_locale_styles() -> Response:
+        return Response(content=(web_dir / "docs-locale.css").read_text(encoding="utf-8"), media_type="text/css")
+
     @app.get("/app.js", include_in_schema=False)
     @app.get("/static/app.js", include_in_schema=False)
     async def web_script() -> Response:
         return Response(content=(web_dir / "app.js").read_text(encoding="utf-8"), media_type="text/javascript")
+
+    @app.get("/static/docs-locale.js", include_in_schema=False)
+    async def docs_locale_script() -> Response:
+        return Response(content=(web_dir / "docs-locale.js").read_text(encoding="utf-8"), media_type="text/javascript")
 
     @app.get("/static/speech-core-hero.png", include_in_schema=False)
     async def speech_core_artwork() -> Response:

@@ -90,6 +90,51 @@ async def test_webui_css_has_accessible_responsive_and_motion_contract(tmp_path:
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("query", "locale", "label"),
+    [
+        ("", "en", "API language"),
+        ("?lang=zh-TW", "zh-TW", "API 語言"),
+        ("?lang=ja", "ja", "API の言語"),
+        ("?lang=ko", "ko", "API 언어"),
+        ("?lang=unsupported", "en", "API language"),
+    ],
+)
+async def test_docs_language_selector_loads_the_localized_openapi_document(
+    tmp_path: Path, query: str, locale: str, label: str
+) -> None:
+    app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        page = await client.get(f"/docs{query}")
+
+    assert page.status_code == 200
+    assert f'<html lang="{locale}">' in page.text
+    assert 'id="language-select"' in page.text
+    assert f'aria-label="{label}"' in page.text
+    assert f'data-current-locale="{locale}"' in page.text
+    assert f'url: "/openapi.json?lang={locale}"' in page.text
+    assert 'href="/static/docs-locale.css"' in page.text
+    assert 'src="/static/docs-locale.js"' in page.text
+    for option in ('value="en"', 'value="zh-TW"', 'value="ja"', 'value="ko"'):
+        assert option in page.text
+
+
+@pytest.mark.anyio
+async def test_docs_language_assets_are_local_and_interactive(tmp_path: Path) -> None:
+    app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        script = await client.get("/static/docs-locale.js")
+        style = await client.get("/static/docs-locale.css")
+
+    assert script.headers["content-type"].startswith("text/javascript")
+    assert style.headers["content-type"].startswith("text/css")
+    assert "agent-speak-locale" in script.text
+    assert "window.location.assign" in script.text
+    assert "min-height: 44px" in style.text
+    assert ":focus-visible" in style.text
+
+
+@pytest.mark.anyio
 async def test_codex_recorder_and_local_assets_are_served(tmp_path: Path) -> None:
     app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:

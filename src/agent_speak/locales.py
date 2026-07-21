@@ -28,6 +28,14 @@ API_INFO = {
 }
 
 
+DOCS_UI_TEXT = {
+    "en": {"title": "Agent Speak API Explorer", "language": "API language", "home": "Project Home"},
+    "zh-TW": {"title": "Agent Speak API Explorer", "language": "API 語言", "home": "專案首頁"},
+    "ja": {"title": "Agent Speak API Explorer", "language": "API の言語", "home": "プロジェクトホーム"},
+    "ko": {"title": "Agent Speak API Explorer", "language": "API 언어", "home": "프로젝트 홈"},
+}
+
+
 TAG_KEYS = ("system", "conversation", "audio", "text", "speakers", "artifacts")
 TAG_TEXT = {
     "system": {
