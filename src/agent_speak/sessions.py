@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from .errors import PlatformError
 from .schemas import PipelineEvent, SessionSummary
+from .speech_languages import DEFAULT_SPEECH_LANGUAGE, SpeechLanguage
 
 
 class SessionBroker:
@@ -23,8 +24,15 @@ class SessionBroker:
         self._active_turns: set[str] = set()
         self._lock = asyncio.Lock()
 
-    async def create(self) -> SessionSummary:
-        session = SessionSummary(id=uuid4().hex, state="ready", created_at=datetime.now(timezone.utc))
+    async def create(
+        self, *, speech_language: SpeechLanguage = DEFAULT_SPEECH_LANGUAGE
+    ) -> SessionSummary:
+        session = SessionSummary(
+            id=uuid4().hex,
+            state="ready",
+            speech_language=speech_language,
+            created_at=datetime.now(timezone.utc),
+        )
         async with self._lock:
             if len(self._sessions) >= self.max_sessions:
                 removable = next(
@@ -48,7 +56,11 @@ class SessionBroker:
             self._sessions[session.id] = session
             self._subscribers[session.id] = set()
             self._sequences[session.id] = 0
-        await self.emit(session.id, "session.created", data={"state": "ready"})
+        await self.emit(
+            session.id,
+            "session.created",
+            data={"state": "ready", "speech_language": speech_language},
+        )
         return session
 
     def get(self, session_id: str) -> SessionSummary:

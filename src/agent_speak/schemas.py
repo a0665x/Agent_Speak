@@ -7,6 +7,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .speech_languages import DEFAULT_SPEECH_LANGUAGE, SpeechLanguage
+
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -57,6 +59,11 @@ class PipelineEvent(StrictModel):
 class SessionSummary(StrictModel):
     id: str = Field(description="工作階段識別碼", examples=["7f0e1a2b3c4d"])
     state: str = Field(description="工作階段狀態", examples=["ready"])
+    speech_language: SpeechLanguage = Field(
+        default=DEFAULT_SPEECH_LANGUAGE,
+        description="工作階段建立時固定的語音語言",
+        examples=["zh-TW"],
+    )
     created_at: datetime = Field(description="UTC 建立時間", examples=["2026-01-01T00:00:00Z"])
     events: list[PipelineEvent] = Field(default_factory=list, description="目前保留的流程事件")
 

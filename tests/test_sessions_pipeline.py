@@ -106,6 +106,50 @@ async def test_session_creation_and_get_include_ordered_history(tmp_path: Path) 
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("speech_language", ["auto", "en", "zh-TW", "ja", "ko"])
+async def test_session_freezes_requested_speech_language(
+    tmp_path: Path, speech_language: str
+) -> None:
+    client, _ = make_client(tmp_path)
+    async with client:
+        created = await client.post(
+            "/api/v1/sessions", params={"speech_language": speech_language}
+        )
+        fetched = await client.get(f"/api/v1/sessions/{created.json()['id']}")
+
+    assert created.status_code == 201
+    assert created.json()["speech_language"] == speech_language
+    assert fetched.json()["speech_language"] == speech_language
+    assert fetched.json()["events"][0]["data"]["speech_language"] == speech_language
+
+
+@pytest.mark.anyio
+async def test_session_speech_language_defaults_to_traditional_chinese(tmp_path: Path) -> None:
+    client, _ = make_client(tmp_path)
+    async with client:
+        created = await client.post("/api/v1/sessions")
+
+    assert created.status_code == 201
+    assert created.json()["speech_language"] == "zh-TW"
+    assert created.json()["events"][0]["data"]["speech_language"] == "zh-TW"
+
+
+@pytest.mark.anyio
+async def test_session_rejects_unknown_speech_language_with_stable_validation_error(
+    tmp_path: Path,
+) -> None:
+    client, _ = make_client(tmp_path)
+    async with client:
+        response = await client.post(
+            "/api/v1/sessions", params={"speech_language": "fr"}
+        )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
+    assert response.json()["error"]["retryable"] is False
+
+
+@pytest.mark.anyio
 async def test_full_turn_runs_stages_in_order_and_records_timings(tmp_path: Path) -> None:
     client, _ = make_client(tmp_path)
     async with client:
