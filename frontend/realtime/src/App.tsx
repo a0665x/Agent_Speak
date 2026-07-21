@@ -4,12 +4,19 @@ import { RealtimeClient } from './audio/realtimeClient';
 import { AudioStage } from './components/AudioStage';
 import { DeviceGate } from './components/DeviceGate';
 import { ProcessCycle } from './components/ProcessCycle';
+import { SpeechLanguageControl } from './components/SpeechLanguageControl';
 import { TranscriptPanel } from './components/TranscriptPanel';
 import { UtteranceGraph } from './components/UtteranceGraph';
 import { initialState, realtimeReducer } from './state/reducer';
 import type { DeviceGateResult, RealtimeEvent } from './types';
 import { SUPPORTED_LOCALES, useI18n, type Locale } from './i18n';
 import { Waves } from './vendor/reactbits/Waves';
+import {
+  defaultSpeechLanguage,
+  readSpeechLanguage,
+  writeSpeechLanguage,
+  type SpeechLanguage,
+} from './speechLanguage';
 
 export type AppProps = { forceReducedMotion?: boolean };
 
@@ -30,6 +37,10 @@ export function App({ forceReducedMotion = false }: AppProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [sessionId, setSessionId] = useState('');
+  const initialSpeechLanguage = useMemo(() => readSpeechLanguage(locale), []);
+  const [pendingSpeechLanguage, setPendingSpeechLanguage] = useState<SpeechLanguage>(initialSpeechLanguage.value);
+  const [speechLanguageOverridden, setSpeechLanguageOverridden] = useState(initialSpeechLanguage.overridden);
+  const [lockedSpeechLanguage, setLockedSpeechLanguage] = useState<SpeechLanguage | null>(null);
   const [inference, setInference] = useState<InferenceDetails>({
     vad: 'unknown', asr: 'unknown', asrDevice: 'unknown', correction: 'unknown', correctionDevice: 'unknown'
   });
@@ -64,6 +75,16 @@ export function App({ forceReducedMotion = false }: AppProps) {
     return () => client.dispose();
   }, []);
 
+  useEffect(() => {
+    if (!speechLanguageOverridden) setPendingSpeechLanguage(defaultSpeechLanguage(locale));
+  }, [locale, speechLanguageOverridden]);
+
+  const changeSpeechLanguage = (value: SpeechLanguage) => {
+    setPendingSpeechLanguage(value);
+    setSpeechLanguageOverridden(true);
+    writeSpeechLanguage(value);
+  };
+
   const checkDevices = async () => {
     setBusy(true);
     setError('');
@@ -83,10 +104,12 @@ export function App({ forceReducedMotion = false }: AppProps) {
     setError('');
     dispatch({ type: 'client.session_reset' });
     try {
-      const response = await fetch('/api/v1/sessions', { method: 'POST' });
+      const query = new URLSearchParams({ speech_language: pendingSpeechLanguage });
+      const response = await fetch(`/api/v1/sessions?${query.toString()}`, { method: 'POST' });
       if (!response.ok) throw new Error(t('error.createSession'));
-      const session = await response.json() as { id: string };
+      const session = await response.json() as { id: string; speech_language: SpeechLanguage };
       setSessionId(session.id);
+      setLockedSpeechLanguage(session.speech_language);
       await clientRef.current!.start(session.id);
       setActive(true);
     } catch (cause) {
@@ -145,6 +168,12 @@ export function App({ forceReducedMotion = false }: AppProps) {
 
         <section className={`control-deck${gate.ready ? ' ready' : ''}`} aria-label={t('controls.aria')}>
           <DeviceGate gate={gate} />
+          <SpeechLanguageControl
+            value={pendingSpeechLanguage}
+            locked={lockedSpeechLanguage}
+            active={active}
+            onChange={changeSpeechLanguage}
+          />
           <div className="actions">
             <button className="secondary-button" type="button" onClick={checkDevices} disabled={busy || active}>
               <ShieldCheck aria-hidden="true" /> {busy && !active ? t('controls.checking') : t('controls.checkDevices')}

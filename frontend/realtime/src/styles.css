@@ -73,6 +73,19 @@ h2 { margin: 0; font-size: 20px; letter-spacing: -.025em; }
 .device-list p { display: flex; align-items: center; gap: 8px; min-width: 0; margin: 0; color: #818d9c; font-size: 11px; }
 .device-list svg { width: 14px; }
 .device-list span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.speech-language-control { min-width: 190px; display: grid; gap: 6px; padding: 4px 14px; border-inline: 1px solid rgba(255,255,255,.07); }
+.speech-language-control > label { display: flex; align-items: center; gap: 7px; color: #9ba7b7; font: 700 10px/1.2 ui-monospace, "SFMono-Regular", monospace; letter-spacing: .1em; text-transform: uppercase; }
+.speech-language-control > label svg { width: 14px; }
+#speech-language-select { width: 100%; min-height: 44px; padding: 0 34px 0 12px; border: 1px solid rgba(255,255,255,.13); border-radius: 13px; color: #eaf1fc; background: rgba(12,16,23,.72); cursor: pointer; font: 650 13px/1.2 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; transition: border-color 180ms ease, background-color 180ms ease, box-shadow 220ms ease, transform 120ms ease; }
+#speech-language-select:hover { border-color: rgba(189,212,255,.4); background: rgba(25,30,41,.9); }
+#speech-language-select:active { transform: scale(.985); }
+#speech-language-select:focus-visible { outline: 3px solid rgba(166,203,255,.4); outline-offset: 3px; }
+.speech-language-meta { min-height: 30px; display: grid; align-content: start; gap: 3px; color: #8290a3; font-size: 9px; line-height: 1.35; }
+.speech-language-meta span { display: flex; align-items: center; gap: 5px; animation: speech-status-in 220ms ease-out; }
+.speech-language-meta svg { width: 11px; }
+.speech-language-locked { color: #a9bad3; }
+.speech-language-next { color: var(--violet); }
+@keyframes speech-status-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
 .actions { display: flex; gap: 8px; }
 .actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 160px; padding: 0 17px; border-radius: 999px; font-weight: 700; transition: transform 100ms ease-out, background 200ms ease, filter 200ms ease; }
 .actions button:not(:disabled):hover { filter: brightness(1.07); transform: translateY(-1px); }
@@ -171,6 +184,7 @@ h2 { margin: 0; font-size: 20px; letter-spacing: -.025em; }
   .session-chip { width: 100%; margin-top: 25px; }
   .control-deck, .device-gate { align-items: flex-start; flex-direction: column; }
   .device-list { width: 100%; }
+  .speech-language-control { width: 100%; padding: 12px 0; border-inline: 0; border-block: 1px solid rgba(255,255,255,.07); }
   .actions { width: 100%; }
   .actions button { flex: 1; }
   .live-grid { grid-template-columns: 1fr; }
