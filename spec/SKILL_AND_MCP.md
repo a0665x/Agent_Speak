@@ -43,6 +43,8 @@ Host configuration concept:
 
 The built-in `/api/v1/agent/respond` provider is a transparent development echo, not external-Agent reasoning. For a full session, clients may instead use `POST /sessions`, a bounded WAV turn, and WebSocket events.
 
+Realtime clients may create `POST /api/v1/sessions?speech_language=auto|en|zh-TW|ja|ko`. The selected value is frozen in the session and routes realtime ASR, endpoint, and correction policy; `zh-TW` maps to Whisper `zh`, while `auto` enables model detection. One multilingual Faster-Whisper model and one multilingual Qwen model are reused, so no per-language weights are required. MCP `listen_once` and standalone `/audio/asr` deliberately keep the configured server default because they do not own browser session state. TTS voice selection is a separate concern.
+
 ## MCP tools
 
 - `status()`: Gateway health and capabilities; unreachable state is explicit.

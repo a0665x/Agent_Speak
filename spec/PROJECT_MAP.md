@@ -4,7 +4,7 @@
 Agent Speak — Local Voice Agent Gateway
 
 ## Description
-Docker-first, Jetson-oriented local voice pipeline with an English-default project guide, a device-gated `/asr_realtime` demo, localized portal/Swagger presentation in `en`, `zh-TW`, `ja`, and `ko`, and stable VAD, ASR, correction, endpoint, external Agent, TTS, speaker-profile, MCP, REST, and WebSocket boundaries.
+Docker-first, Jetson-oriented local voice pipeline with an English-default project guide, a device-gated `/asr_realtime` demo, localized portal/Swagger presentation in `en`, `zh-TW`, `ja`, and `ko`, session-frozen realtime speech policies for `auto`, `en`, `zh-TW`, `ja`, and `ko`, and stable VAD, ASR, correction, endpoint, external Agent, TTS, speaker-profile, MCP, REST, and WebSocket boundaries.
 
 ## Read first
 - [Agent quick start](agent.md)

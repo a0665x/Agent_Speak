@@ -132,10 +132,10 @@ OPERATION_TEXT = {
         "처리 기능 보기|입력: 없음. 출력: 6개 처리 단계의 활성 provider, 버전, device 및 제한 사항.",
     ),
     "POST /api/v1/sessions": _text(
-        "Create a conversation session|Input: none. Output: a new session identifier, state, and event list.",
-        "建立對話工作階段|輸入：無。輸出：新的工作階段識別碼、狀態與事件清單。",
-        "会話セッションを作成|入力：なし。出力：新しい session ID、状態、イベント一覧。",
-        "대화 세션 만들기|입력: 없음. 출력: 새 session ID, 상태 및 이벤트 목록.",
+        "Create a conversation session|Input: optional speech_language (auto, en, zh-TW, ja, or ko). Output: a new session identifier, state, frozen speech language, and event list. The selected language is frozen for the session and cannot change while realtime listening is active.",
+        "建立對話工作階段|輸入：選填 speech_language（auto、en、zh-TW、ja 或 ko）。輸出：新的工作階段識別碼、狀態、固定語音語言與事件清單。選定語言會在工作階段固定，即時聆聽期間不可變更。",
+        "会話セッションを作成|入力：任意の speech_language（auto、en、zh-TW、ja、ko）。出力：新しい session ID、状態、固定された音声言語、イベント一覧。選択した言語は session に固定され、realtime listening 中は変更できません。",
+        "대화 세션 만들기|입력: 선택적 speech_language(auto, en, zh-TW, ja, ko). 출력: 새 session ID, 상태, 고정된 음성 언어 및 이벤트 목록. 선택한 언어는 session에 고정되며 realtime listening 중에는 변경할 수 없습니다.",
     ),
     "GET /api/v1/sessions/{session_id}": _text(
         "Get a conversation session|Input: session identifier. Output: current state and retained pipeline events.",
@@ -156,10 +156,10 @@ OPERATION_TEXT = {
         "오디오에서 음성 감지|입력: PCM WAV 오디오. 출력: 음성 감지 여부, RMS energy 및 오디오 길이.",
     ),
     "POST /api/v1/audio/asr": _text(
-        "Transcribe speech to text|Input: PCM WAV audio. Output: ASR transcript.",
-        "將語音辨識為文字|輸入：PCM WAV 音訊。輸出：ASR 辨識文字。",
-        "音声をテキスト化|入力：PCM WAV 音声。出力：ASR 文字起こし。",
-        "음성을 텍스트로 전사|입력: PCM WAV 오디오. 출력: ASR 전사문.",
+        "Transcribe speech to text|Input: PCM WAV audio. Output: ASR transcript. This standalone endpoint uses the configured server default and does not inherit the Web UI language.",
+        "將語音辨識為文字|輸入：PCM WAV 音訊。輸出：ASR 辨識文字。此獨立端點使用伺服器設定的預設語言，不會繼承 Web UI 語言。",
+        "音声をテキスト化|入力：PCM WAV 音声。出力：ASR 文字起こし。この単独 endpoint は server 設定の既定言語を使用し、Web UI の言語を継承しません。",
+        "음성을 텍스트로 전사|입력: PCM WAV 오디오. 출력: ASR 전사문. 이 독립 endpoint는 server 설정 기본 언어를 사용하며 Web UI 언어를 상속하지 않습니다.",
     ),
     "POST /api/v1/text/correct": _text(
         "Correct recognized text|Input: recognized text to clean up. Output: corrected, more readable text.",
@@ -265,6 +265,12 @@ FIELD_TEXT = {
     "ProviderCapability.device": _text("Inference device.", "推論執行裝置。", "推論 device。", "추론 device."),
     "SessionSummary.id": _text("Session identifier.", "工作階段識別碼。", "session ID。", "session ID."),
     "SessionSummary.state": _text("Current session state.", "工作階段目前狀態。", "現在の session state。", "현재 session state."),
+    "SessionSummary.speech_language": _text(
+        "Speech language frozen for the session at creation time.",
+        "建立時為工作階段固定的語音語言。",
+        "作成時に session に固定された音声言語。",
+        "생성 시 session에 고정된 음성 언어.",
+    ),
     "SessionSummary.created_at": _text("Session creation time in UTC.", "UTC 工作階段建立時間。", "UTC の session 作成時刻。", "UTC session 생성 시간."),
     "SessionSummary.events": _text("Pipeline events currently retained for the session.", "目前保留的流程事件。", "session に現在保持されている pipeline event。", "session에 현재 보관된 pipeline event."),
     "SpeakerCreate.name": _text("Speaker display name, 1 to 100 characters.", "說話者顯示名稱，1 至 100 字元。", "話者の表示名。1～100 文字。", "화자 표시 이름, 1~100자."),
@@ -304,6 +310,12 @@ FIELD_TEXT = {
 PARAMETER_TEXT = {
     "verbose": _text("Include extended health detail when supported.", "在支援時包含延伸健康資訊。", "対応している場合に詳細な health 情報を含めます。", "지원되는 경우 확장 health 정보를 포함합니다."),
     "session_id": _text("Conversation session identifier.", "對話工作階段識別碼。", "会話 session ID。", "대화 session ID."),
+    "speech_language": _text(
+        "Speech language frozen for the session: auto, en, zh-TW, ja, or ko. Defaults to zh-TW.",
+        "工作階段固定的語音語言：auto、en、zh-TW、ja 或 ko；預設為 zh-TW。",
+        "session に固定する音声言語：auto、en、zh-TW、ja、ko。既定値は zh-TW。",
+        "session에 고정할 음성 언어: auto, en, zh-TW, ja, ko. 기본값은 zh-TW입니다.",
+    ),
     "speaker_id": _text("Speaker record identifier.", "說話者資料識別碼。", "話者データ ID。", "화자 데이터 ID."),
     "name": _text("WAV artifact filename returned by TTS.", "TTS 回傳的 WAV 成品檔名。", "TTS が返した WAV 成果物 filename。", "TTS가 반환한 WAV 결과물 filename."),
 }

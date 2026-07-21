@@ -223,3 +223,35 @@ async def test_localized_openapi_documents_keep_the_same_machine_contract(tmp_pa
                 if method in {"get", "post", "patch", "delete", "put"}:
                     assert operation["summary"]
                     assert operation["description"]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("locale", "frozen_phrase", "default_phrase"),
+    [
+        ("en", "frozen for the session", "configured server default"),
+        ("zh-TW", "工作階段固定", "伺服器設定的預設語言"),
+        ("ja", "session に固定", "server 設定の既定言語"),
+        ("ko", "session에 고정", "server 설정 기본 언어"),
+    ],
+)
+async def test_openapi_localizes_session_speech_language_contract(
+    tmp_path: Path,
+    locale: str,
+    frozen_phrase: str,
+    default_phrase: str,
+) -> None:
+    async with make_client(tmp_path) as client:
+        schema = (await client.get(f"/openapi.json?lang={locale}")).json()
+
+    create = schema["paths"]["/api/v1/sessions"]["post"]
+    parameter = next(item for item in create["parameters"] if item["name"] == "speech_language")
+    field = schema["components"]["schemas"]["SessionSummary"]["properties"]["speech_language"]
+    asr = schema["paths"]["/api/v1/audio/asr"]["post"]
+
+    assert frozen_phrase in create["description"]
+    assert frozen_phrase in parameter["description"]
+    assert frozen_phrase in field["description"]
+    assert parameter["schema"]["enum"] == ["auto", "en", "zh-TW", "ja", "ko"]
+    assert field["examples"] == ["zh-TW"]
+    assert default_phrase in asr["description"]

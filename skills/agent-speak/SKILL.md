@@ -43,6 +43,8 @@ MCP 工具：
 
 需要完整 pipeline 事件時，外部程式可建立 session，透過 HTTP 上傳 bounded PCM WAV，並以 WebSocket 訂閱事件。MCP 只做低頻控制，不取代資料/事件平面。
 
+Realtime session 可用 `POST /api/v1/sessions?speech_language=auto|en|zh-TW|ja|ko` 指定語音語言。此值建立後固定，並傳入 realtime ASR、endpoint 與 correction；`zh-TW` 對應 Whisper `zh`，`auto` 使用模型語言偵測。所有值共用現有 multilingual Faster-Whisper 與 Qwen 模型，不需額外下載每種語言的權重。MCP `listen_once` 與獨立 `/audio/asr` 仍使用 gateway 設定的預設語言，不繼承瀏覽器 UI；TTS voice 也不會隨此設定切換。
+
 ## 安全限制
 
 - 未經明確同意不得啟動麥克風或喇叭；避免錄到旁人與敏感資訊。
