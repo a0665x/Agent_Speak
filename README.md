@@ -6,7 +6,32 @@ Agent Speak is a Docker-first voice gateway that gives an external AI agent ears
 
 `microphone → VAD → Faster-Whisper ASR → external agent → Piper TTS → speaker`
 
-The gateway exposes REST, WebSocket events, a bilingual WebUI, OpenAPI documentation, and a stdio MCP control plane. The built-in Agent stage remains a transparent development echo; real reasoning belongs to the connected external agent.
+The gateway exposes REST, WebSocket events, a four-language WebUI, fully localized OpenAPI documentation, and a stdio MCP control plane. English is the default; the top-right selector switches English, Traditional Chinese, Japanese, and Korean across the project portal, Realtime Studio, and Swagger. The built-in Agent stage remains a transparent development echo; real reasoning belongs to the connected external agent.
+
+## Product tour
+
+The animated carousel walks through the English UI without requesting microphone permission or starting audio capture.
+
+[![Agent Speak product tour](docs/screenshots/agent-speak-tour.gif)](docs/screenshots/agent-speak-tour.gif)
+
+<table>
+  <tr>
+    <td width="50%"><a href="docs/screenshots/01-project-home-hero.png"><img src="docs/screenshots/01-project-home-hero.png" alt="Project portal hero"></a><br><sub>Project portal · product story and language selector</sub></td>
+    <td width="50%"><a href="docs/screenshots/02-project-home-destinations.png"><img src="docs/screenshots/02-project-home-destinations.png" alt="Project destinations"></a><br><sub>Destinations · API, realtime demo, and live system state</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="docs/screenshots/03-project-home-pipeline.png"><img src="docs/screenshots/03-project-home-pipeline.png" alt="Speech pipeline overview"></a><br><sub>Pipeline overview · VAD → Endpoint → ASR → Correction</sub></td>
+    <td width="50%"><a href="docs/screenshots/04-asr-realtime-device-gate.png"><img src="docs/screenshots/04-asr-realtime-device-gate.png" alt="ASR realtime device gate"></a><br><sub>Device gate · input and output must be visible before listening</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="docs/screenshots/05-asr-realtime-process-cycle.png"><img src="docs/screenshots/05-asr-realtime-process-cycle.png" alt="Realtime process cycle"></a><br><sub>Process cycle · semantic stages with visual afterglow</sub></td>
+    <td width="50%"><a href="docs/screenshots/06-asr-realtime-transcript.png"><img src="docs/screenshots/06-asr-realtime-transcript.png" alt="Realtime transcript panel"></a><br><sub>Live transcript · partial, endpoint, and corrected utterances</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="docs/screenshots/07-asr-realtime-utterance-graph.png"><img src="docs/screenshots/07-asr-realtime-utterance-graph.png" alt="Utterance relationship graph"></a><br><sub>Utterance graph · time order and local text similarity</sub></td>
+    <td width="50%"><a href="docs/screenshots/08-api-explorer.png"><img src="docs/screenshots/08-api-explorer.png" alt="Localized Swagger API Explorer"></a><br><sub>API Explorer · localized operations, parameters, and schemas</sub></td>
+  </tr>
+</table>
 
 ## Quick start
 
@@ -18,13 +43,15 @@ cd Agent_Speak
 ./run.sh --build
 ```
 
-WebUI: http://127.0.0.1:8765
+Project portal: http://127.0.0.1:8765/?lang=en
 
-OpenAPI: http://127.0.0.1:8765/docs
+OpenAPI: http://127.0.0.1:8765/docs?lang=en
 
-Realtime Studio: http://127.0.0.1:8765/realtime
+Realtime Studio: http://127.0.0.1:8765/asr_realtime?lang=en
 
-`/realtime` is continuous transcription only: it does not call the Agent stage, TTS, Codex injection, or speaker playback. The browser enables Start only after an explicit check can see both Zone Vibe 100 input and output endpoints; output visibility is not proof of physical playback. Raw PCM16 travels over the realtime WebSocket, while MCP remains a low-frequency control plane.
+`/asr_realtime` is continuous transcription only: it does not call the Agent stage, TTS, Codex injection, or speaker playback. The legacy `/realtime` path redirects there for compatibility. The browser enables Start only after an explicit check can see both Zone Vibe 100 input and output endpoints; output visibility is not proof of physical playback. Raw PCM16 travels over the realtime WebSocket, while MCP remains a low-frequency control plane.
+
+Choose English, Traditional Chinese, Japanese, or Korean from any top-right language selector. The selection persists and follows navigation links. Swagger localizes endpoint titles, descriptions, parameters, request fields, and response fields while keeping paths and payload identifiers unchanged.
 
 VAD produces rolling partial text, so the current words may change. Qwen correction may revise the previous sentence together with the current sentence; older sentences lock. A silence candidate starts at 900 ms and may extend to the 1,800 ms hard endpoint. Invalid, late, or excessive Qwen edits fall back to final ASR text. The client does not reconnect automatically. CPU mode is functional, while realtime latency and GPU gains depend on the host.
 
@@ -96,8 +123,8 @@ Install the portable Skill in a compatible host or ask the agent to read [AGENTS
 
 ## Interfaces
 
-- WebUI: bilingual recording, upload, pipeline timeline, results, and speaker profiles
-- REST/OpenAPI: bounded PCM WAV stages and complete turns
+- WebUI: English, Traditional Chinese, Japanese, and Korean recording, upload, pipeline timeline, results, and speaker profiles
+- REST/OpenAPI: bounded PCM WAV stages, complete turns, and fully localized operation/parameter/response documentation
 - WebSocket: ordered session events
 - stdio MCP: low-frequency control; raw realtime audio does not travel through JSON-RPC
 

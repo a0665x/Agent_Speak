@@ -150,3 +150,16 @@ def test_readme_capture_script_is_safe_and_covers_every_product_layer() -> None:
     assert "use-fake-ui-for-media-stream" not in script
     assert "getUserMedia" not in script
     assert "click()" not in script
+
+
+def test_readme_presents_the_multilingual_visual_product_tour() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "docs/screenshots/agent-speak-tour.gif" in readme
+    for index in range(1, 9):
+        assert f"docs/screenshots/0{index}-" in readme
+    assert "http://127.0.0.1:8765/?lang=en" in readme
+    assert "http://127.0.0.1:8765/asr_realtime?lang=en" in readme
+    assert "http://127.0.0.1:8765/docs?lang=en" in readme
+    for language in ("English", "Traditional Chinese", "Japanese", "Korean"):
+        assert language in readme
