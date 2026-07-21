@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import suppress
+from inspect import signature
 from typing import Any
 
 from .concurrency import run_sync
@@ -22,6 +23,7 @@ from .realtime_queue import (
     TextScheduler,
 )
 from .transcripts import TranscriptLedger
+from .speech_languages import SpeechLanguage
 
 
 class RealtimeTextAdapter:
@@ -30,12 +32,28 @@ class RealtimeTextAdapter:
     def __init__(self, endpoint: Any, correction: Any) -> None:
         self.endpoint = endpoint
         self.correction = correction
+        self._endpoint_accepts_language = len(signature(endpoint.detect).parameters) >= 2
+        self._revision_accepts_language = (
+            hasattr(correction, "revise")
+            and len(signature(correction.revise).parameters) >= 3
+        )
 
-    def detect(self, text: str) -> tuple[bool, str]:
+    def detect(
+        self, text: str, speech_language: SpeechLanguage
+    ) -> tuple[bool, str]:
+        if self._endpoint_accepts_language:
+            return self.endpoint.detect(text, speech_language)
         return self.endpoint.detect(text)
 
-    def revise(self, previous: str, current: str) -> CorrectionRevision:
+    def revise(
+        self,
+        previous: str,
+        current: str,
+        speech_language: SpeechLanguage,
+    ) -> CorrectionRevision:
         if hasattr(self.correction, "revise"):
+            if self._revision_accepts_language:
+                return self.correction.revise(previous, current, speech_language)
             return self.correction.revise(previous, current)
         revised_previous = self.correction.correct(previous) if previous else ""
         revised_current = self.correction.correct(current)
@@ -87,10 +105,15 @@ class RealtimeCoordinator:
         self._retain(self._asr_loop())
         self._retain(self._text_loop())
 
-    async def open(self, session_id: str) -> "RealtimeStream":
+    async def open(
+        self, session_id: str, speech_language: SpeechLanguage
+    ) -> "RealtimeStream":
         await self.start()
         if session_id in self._streams:
-            return self._streams[session_id]
+            stream = self._streams[session_id]
+            if stream.speech_language != speech_language:
+                raise RuntimeError("realtime session language mismatch")
+            return stream
         if len(self._streams) >= self.settings.max_sessions:
             raise PlatformError(
                 "realtime_capacity",
@@ -99,7 +122,7 @@ class RealtimeCoordinator:
                 stage="asr",
                 retryable=True,
             )
-        stream = RealtimeStream(self, session_id)
+        stream = RealtimeStream(self, session_id, speech_language)
         self._streams[session_id] = stream
         return stream
 
@@ -140,7 +163,12 @@ class RealtimeCoordinator:
             for _ in range(attempts):
                 try:
                     wav = pcm16_to_wav(job.pcm, sample_rate=16_000)
-                    text = await run_sync(self.asr.transcribe_mode, wav, job.mode)
+                    text = await run_sync(
+                        self.asr.transcribe_mode,
+                        wav,
+                        job.mode,
+                        job.speech_language,
+                    )
                     error = None
                     break
                 except Exception as exc:
@@ -164,7 +192,11 @@ class RealtimeCoordinator:
             try:
                 if job.mode == "endpoint":
                     result = await asyncio.wait_for(
-                        run_sync(self.text.detect, job.current_text),
+                        run_sync(
+                            self.text.detect,
+                            job.current_text,
+                            job.speech_language,
+                        ),
                         timeout=self.settings.realtime_endpoint_timeout_ms / 1_000,
                     )
                 else:
@@ -172,6 +204,7 @@ class RealtimeCoordinator:
                         self.text.revise,
                         job.previous_text,
                         job.current_text,
+                        job.speech_language,
                     )
             except Exception as exc:
                 error = exc
@@ -182,10 +215,16 @@ class RealtimeCoordinator:
 
 
 class RealtimeStream:
-    def __init__(self, coordinator: RealtimeCoordinator, session_id: str) -> None:
+    def __init__(
+        self,
+        coordinator: RealtimeCoordinator,
+        session_id: str,
+        speech_language: SpeechLanguage,
+    ) -> None:
         self.coordinator = coordinator
         self.settings = coordinator.settings
         self.session_id = session_id
+        self.speech_language = speech_language
         self.state = "ready"
         self.contract = PCMContract(16_000, 1, self.settings.realtime_frame_ms)
         self.detector = UtteranceDetector(
@@ -285,7 +324,14 @@ class RealtimeStream:
             rows = self.ledger.rows()
             current_text = rows[-1].text if rows and rows[-1].utterance_id == action.utterance_id else ""
             await self._queue_text(
-                TextJob(self.session_id, action.utterance_id, "endpoint", "", current_text)
+                TextJob(
+                    self.session_id,
+                    action.utterance_id,
+                    "endpoint",
+                    "",
+                    current_text,
+                    self.speech_language,
+                )
             )
         elif action.kind == "endpoint_cancelled":
             await self._emit("endpoint.cancelled", utterance_id=action.utterance_id)
@@ -304,6 +350,7 @@ class RealtimeStream:
             generation,
             "partial",
             bytes(self._current_pcm),
+            self.speech_language,
         )
         try:
             inserted = await self.coordinator.asr_queue.put_partial(job)
@@ -319,7 +366,14 @@ class RealtimeStream:
         await self._emit("asr.queued", utterance_id=self._utterance_id, data={"mode": "partial"})
 
     async def _queue_final(self, utterance_id: str, pcm: bytes) -> None:
-        job = ASRJob(self.session_id, utterance_id, 1, "final", pcm)
+        job = ASRJob(
+            self.session_id,
+            utterance_id,
+            1,
+            "final",
+            pcm,
+            self.speech_language,
+        )
         try:
             await self.coordinator.asr_queue.put_final(job)
         except QueueFull:
@@ -384,7 +438,14 @@ class RealtimeStream:
         rows = self.ledger.rows()
         previous = rows[-2].text if len(rows) > 1 else ""
         await self._queue_text(
-            TextJob(self.session_id, job.utterance_id, "correction", previous, text)
+            TextJob(
+                self.session_id,
+                job.utterance_id,
+                "correction",
+                previous,
+                text,
+                self.speech_language,
+            )
         )
 
     async def _accept_text_result(

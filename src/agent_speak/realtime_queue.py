@@ -7,6 +7,8 @@ from collections import OrderedDict, deque
 from dataclasses import dataclass
 from typing import Literal
 
+from .speech_languages import SpeechLanguage
+
 
 class QueueFull(RuntimeError):
     pass
@@ -23,6 +25,7 @@ class ASRJob:
     generation: int
     mode: Literal["partial", "final"]
     pcm: bytes
+    speech_language: SpeechLanguage
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,6 +35,7 @@ class TextJob:
     mode: Literal["endpoint", "correction"]
     previous_text: str
     current_text: str
+    speech_language: SpeechLanguage
 
 
 class ASRScheduler:

@@ -32,7 +32,15 @@ async def test_realtime_socket_accepts_start_binary_and_stops_cleanly(tmp_path) 
         Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"),
         realtime=coordinator,
     )
-    session = await app.state.broker.create()
+    session = await app.state.broker.create(speech_language="en")
+    observed_languages: list[str] = []
+    original_open = coordinator.open
+
+    async def recording_open(session_id: str, speech_language: str):
+        observed_languages.append(speech_language)
+        return await original_open(session_id, speech_language)
+
+    coordinator.open = recording_open  # type: ignore[method-assign]
     incoming: asyncio.Queue[dict[str, object]] = asyncio.Queue()
     outgoing: list[dict[str, object]] = []
     await incoming.put({"type": "websocket.connect"})
@@ -72,6 +80,7 @@ async def test_realtime_socket_accepts_start_binary_and_stops_cleanly(tmp_path) 
     assert "stream.accepted" in sent
     assert "stream.started" in sent
     assert "stream.stopped" in sent
+    assert observed_languages == ["en"]
     await coordinator.close()
 
 

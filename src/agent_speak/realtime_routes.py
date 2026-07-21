@@ -17,12 +17,15 @@ def register_realtime_routes(app: FastAPI) -> None:
     @app.websocket("/api/v1/realtime/sessions/{session_id}")
     async def realtime_socket(websocket: WebSocket, session_id: str) -> None:
         try:
-            app.state.broker.get(session_id)
+            session = app.state.broker.get(session_id)
         except PlatformError:
             await websocket.close(code=4404, reason="Session not found")
             return
         try:
-            stream = await app.state.realtime.open(session_id)
+            stream = await app.state.realtime.open(
+                session_id,
+                session.speech_language,
+            )
         except PlatformError:
             await websocket.close(code=4429, reason="Realtime capacity is full")
             return

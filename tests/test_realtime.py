@@ -14,24 +14,36 @@ class FakeVAD:
 
 
 class FakeASR:
-    def transcribe_mode(self, audio: bytes, mode: str) -> str:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str]] = []
+
+    def transcribe_mode(self, audio: bytes, mode: str, speech_language: str) -> str:
+        self.calls.append((mode, speech_language))
         return "因為" if mode == "partial" else "因為需要測試"
 
 
 class FakeText:
-    def detect(self, text: str) -> tuple[bool, str]:
+    def __init__(self) -> None:
+        self.detect_languages: list[str] = []
+        self.revise_languages: list[str] = []
+
+    def detect(self, text: str, speech_language: str) -> tuple[bool, str]:
+        self.detect_languages.append(speech_language)
         return (not text.endswith("因為"), "semantic")
 
-    def revise(self, previous: str, current: str):
+    def revise(self, previous: str, current: str, speech_language: str):
         from agent_speak.realtime_models import CorrectionRevision
 
+        self.revise_languages.append(speech_language)
         return CorrectionRevision(previous, current + "。", True)
 
 
 @pytest.mark.anyio
 async def test_coordinator_streams_partial_final_revision_and_returns_to_listening() -> None:
-    coordinator = RealtimeCoordinator.for_test(vad=FakeVAD(), asr=FakeASR(), text=FakeText())
-    stream = await coordinator.open("session")
+    asr = FakeASR()
+    text = FakeText()
+    coordinator = RealtimeCoordinator.for_test(vad=FakeVAD(), asr=asr, text=text)
+    stream = await coordinator.open("session", "ja")
     await stream.start()
     voice = struct.pack("<320h", *([10_000] * 320))
     silence = bytes(640)
@@ -52,13 +64,16 @@ async def test_coordinator_streams_partial_final_revision_and_returns_to_listeni
     assert "transcript.revised" in types
     assert "utterance.completed" in types
     assert stream.state == "listening"
+    assert {language for _, language in asr.calls} == {"ja"}
+    assert text.detect_languages == ["ja"]
+    assert text.revise_languages == ["ja"]
     await coordinator.close()
 
 
 @pytest.mark.anyio
 async def test_stop_finalizes_active_audio_without_agent_or_tts() -> None:
     coordinator = RealtimeCoordinator.for_test(vad=FakeVAD(), asr=FakeASR(), text=FakeText())
-    stream = await coordinator.open("session")
+    stream = await coordinator.open("session", "zh-TW")
     await stream.start()
     voice = struct.pack("<320h", *([10_000] * 320))
     for _ in range(20):
@@ -73,8 +88,21 @@ async def test_stop_finalizes_active_audio_without_agent_or_tts() -> None:
 @pytest.mark.anyio
 async def test_invalid_pcm_frame_is_rejected_before_vad() -> None:
     coordinator = RealtimeCoordinator.for_test(vad=FakeVAD(), asr=FakeASR(), text=FakeText())
-    stream = await coordinator.open("session")
+    stream = await coordinator.open("session", "ko")
     await stream.start()
     with pytest.raises(Exception, match="PCM frame"):
         await stream.accept_pcm(b"short")
+    await coordinator.close()
+
+
+@pytest.mark.anyio
+async def test_existing_realtime_stream_keeps_its_frozen_language() -> None:
+    coordinator = RealtimeCoordinator.for_test(vad=FakeVAD(), asr=FakeASR(), text=FakeText())
+    stream = await coordinator.open("session", "en")
+
+    assert await coordinator.open("session", "en") is stream
+    with pytest.raises(RuntimeError, match="language mismatch"):
+        await coordinator.open("session", "ko")
+
+    assert stream.speech_language == "en"
     await coordinator.close()
