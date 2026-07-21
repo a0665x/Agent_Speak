@@ -154,16 +154,16 @@ async def test_openapi_is_grouped_and_explains_beginner_inputs_outputs(tmp_path:
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
-    ("locale", "expected_summary"),
+    ("locale", "expected_summary", "expected_validation_message"),
     [
-        ("en", "Check service health"),
-        ("zh-TW", "檢查服務健康狀態"),
-        ("ja", "サービスの稼働状態を確認"),
-        ("ko", "서비스 상태 확인"),
+        ("en", "Check service health", "Human-readable validation error message."),
+        ("zh-TW", "檢查服務健康狀態", "便於閱讀的驗證錯誤訊息。"),
+        ("ja", "サービスの稼働状態を確認", "読みやすい validation error message。"),
+        ("ko", "서비스 상태 확인", "사람이 읽을 수 있는 validation 오류 메시지."),
     ],
 )
 async def test_openapi_localizes_every_supported_language(
-    tmp_path: Path, locale: str, expected_summary: str
+    tmp_path: Path, locale: str, expected_summary: str, expected_validation_message: str
 ) -> None:
     async with make_client(tmp_path) as client:
         schema = (await client.get(f"/openapi.json?lang={locale}")).json()
@@ -171,6 +171,8 @@ async def test_openapi_localizes_every_supported_language(
     assert schema["paths"]["/api/v1/health"]["get"]["summary"] == expected_summary
     storage = schema["components"]["schemas"]["HealthResponse"]["properties"]["storage_ready"]
     assert storage["description"]
+    validation_message = schema["components"]["schemas"]["ValidationError"]["properties"]["msg"]
+    assert validation_message["description"] == expected_validation_message
 
 
 @pytest.mark.anyio

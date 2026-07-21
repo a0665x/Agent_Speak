@@ -237,6 +237,12 @@ OPERATION_TEXT = {
 
 
 FIELD_TEXT = {
+    "HTTPValidationError.detail": _text("Request validation errors.", "請求驗證錯誤清單。", "request validation error の一覧。", "요청 validation 오류 목록."),
+    "ValidationError.loc": _text("Location of the invalid value in the request.", "請求中無效值的位置。", "request 内の無効な値の位置。", "요청에서 잘못된 값의 위치."),
+    "ValidationError.msg": _text("Human-readable validation error message.", "便於閱讀的驗證錯誤訊息。", "読みやすい validation error message。", "사람이 읽을 수 있는 validation 오류 메시지."),
+    "ValidationError.type": _text("Stable validation error type.", "穩定的驗證錯誤類型。", "安定した validation error type。", "안정적인 validation 오류 유형."),
+    "ValidationError.input": _text("Invalid input value when it is safe to include.", "可安全顯示時提供的無效輸入值。", "安全に表示できる場合の無効な入力値。", "안전하게 표시할 수 있는 경우의 잘못된 입력값."),
+    "ValidationError.ctx": _text("Additional validation context when available.", "可用時提供的額外驗證資訊。", "利用可能な追加 validation context。", "사용 가능한 추가 validation 정보."),
     "CapabilitiesResponse.providers": _text("Active providers for the six processing stages.", "六個處理階段的實際提供者。", "6 つの処理段階で有効な provider。", "6개 처리 단계의 활성 provider."),
     "CapabilitiesResponse.speaker_matching_notice": _text("Safety notice for speaker matching.", "說話者比對安全提醒。", "話者照合に関する安全上の注意。", "화자 일치 확인 안전 안내."),
     "EndDetectOutput.complete": _text("Whether the user is considered to have finished speaking.", "是否判定使用者已說完。", "ユーザーが話し終えたと判定されたか。", "사용자가 발화를 마쳤다고 판단했는지 여부."),
