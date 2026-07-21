@@ -7,12 +7,14 @@
 手機透過同一個 Tailnet 測試：
 
 - WebUI：<https://ubuntu.tail9e662c.ts.net:8765/>
+- ASR Realtime：<https://ubuntu.tail9e662c.ts.net:8765/asr_realtime>
 - Swagger UI：<https://ubuntu.tail9e662c.ts.net:8765/docs>
 - OpenAPI JSON：<https://ubuntu.tail9e662c.ts.net:8765/openapi.json>
 
 在專案主機本機測試：
 
 - WebUI：<http://127.0.0.1:8765/>
+- ASR Realtime：<http://127.0.0.1:8765/asr_realtime>
 - Swagger UI：<http://127.0.0.1:8765/docs>
 
 以下指令預設使用 Tailscale HTTPS。若在主機本機執行，可把第一行改成 `http://127.0.0.1:8765`。

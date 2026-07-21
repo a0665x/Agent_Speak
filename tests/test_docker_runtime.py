@@ -10,6 +10,12 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_docker_image_copies_the_canonical_asr_realtime_build() -> None:
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert "COPY --from=realtime-frontend-build /workspace/web/asr_realtime /app/web/asr_realtime" in dockerfile
+    assert "/workspace/web/realtime /app/web/realtime" not in dockerfile
+
+
 def test_docker_first_files_and_audio_mapping_exist() -> None:
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     compose = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))
@@ -85,7 +91,7 @@ def test_root_run_script_exposes_single_docker_operator_interface() -> None:
     assert "frontend-test" in source
     assert "AGENT_SPEAK_EFFECTIVE_ACCELERATOR" in source
     assert "correction_device=" in source
-    assert "/realtime" in source
+    assert "/asr_realtime" in source
     assert "node --check web/codex-recorder-core.js" in source
     assert "node --check web/codex.js" in source
     assert "node tests/codex_recorder_core.test.js" in source

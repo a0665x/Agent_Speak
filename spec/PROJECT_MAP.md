@@ -4,7 +4,7 @@
 Agent Speak — Local Voice Agent Gateway
 
 ## Description
-Docker-first, Jetson-oriented local voice pipeline and bilingual WebUI exposing VAD, ASR, correction, endpoint detection, arbitrary external Agent, TTS, speaker-profile, MCP, REST, and WebSocket boundaries through stable APIs.
+Docker-first, Jetson-oriented local voice pipeline with a project-guide homepage, a device-gated `/asr_realtime` demo, and stable VAD, ASR, correction, endpoint, external Agent, TTS, speaker-profile, MCP, REST, and WebSocket boundaries.
 
 ## Read first
 - [Agent quick start](agent.md)
@@ -19,7 +19,7 @@ Docker-first, Jetson-oriented local voice pipeline and bilingual WebUI exposing 
 - [Portable Skill and stdio MCP](SKILL_AND_MCP.md)
 
 ## Change guide
-Docker lifecycle and image: `../run.sh`, `../Dockerfile`, `../compose.yaml`, and RUNTIME.md. Pipeline/provider: ARCHITECTURE.md and API.md. External Agent integration: SKILL_AND_MCP.md and `../skills/agent-speak/SKILL.md`. MCP implementation: `../src/agent_speak/mcp_server.py`; entry point: `../scripts/run_mcp.sh`; hardware-free regression: `../tests/test_mcp_server.py`. UI: UI.md. Verification: TESTING.md. Model replacement: references/MODEL_STRATEGY.md.
+Docker lifecycle and image: `../run.sh`, `../Dockerfile`, `../compose.yaml`, and RUNTIME.md. Pipeline/provider: ARCHITECTURE.md and API.md. External Agent integration: SKILL_AND_MCP.md and `../skills/agent-speak/SKILL.md`. MCP implementation: `../src/agent_speak/mcp_server.py`; entry point: `../scripts/run_mcp.sh`; hardware-free regression: `../tests/test_mcp_server.py`. Project homepage and realtime UI: UI.md, `../web`, and `../frontend/realtime`. Verification: TESTING.md. Model replacement: references/MODEL_STRATEGY.md.
 
 ## Safety
 Voice data, embeddings, secrets, databases, weights, generated audio, and traces are private runtime artifacts and must not be committed.

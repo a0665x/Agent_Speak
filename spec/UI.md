@@ -1,27 +1,31 @@
 # UI
 
-The operator console is served at `/`. It uses warm neutral surfaces, one restrained green accent, system sans typography, and no external media. Main areas: status, recording hero, pipeline timeline, transcript/response, latency, provider capabilities, and speaker profiles.
+## Project guide
 
-Required states: connecting, ready, recording, processing, completed, empty, actionable error. Controls support keyboard focus, ARIA live updates, reduced motion, and 390px/360px layouts.
+`/` is a concise Traditional Chinese project guide. It contains three primary destinations: API Explorer (`/docs`), ASR Realtime (`/asr_realtime`), and live System Status populated from `/api/v1/health` plus `/api/v1/capabilities`. The landing page uses only local assets and never asks for microphone permission, opens a WebSocket, invokes an Agent, or runs TTS.
 
-The build-free console uses only local HTML/CSS/JavaScript and system fonts. MediaRecorder capture is converted in-browser to mono 16-bit WAV before the full-turn request. Recording auto-stops at the configured MVP bound of 30 seconds. Source and converted audio above 8 MiB are rejected before upload, and both recording and file upload are disabled throughout conversion and turn processing. The WebSocket timeline replays ordered events, deduplicates sequences after bounded reconnect, and updates each stage. Upload is a visible fallback. Speaker controls create/select/rename/delete profiles and enroll/match the last WAV while repeating the non-authentication notice.
+The visual system uses graphite surfaces, restrained ice-blue/violet gradients, generated speech-core artwork, system typography, and immediate press feedback. Controls and links have visible keyboard focus, minimum 44 px targets, reduced-motion/transparency and increased-contrast fallbacks, and responsive layouts without horizontal page scrolling.
 
-The default locale is Traditional Chinese (`zh-TW`, document language `zh-Hant-TW`). The header language control switches the full static and runtime UI to English and persists the choice under `localStorage["agent-speak-locale"]`; an unknown or absent value falls back to Traditional Chinese. Completed transcript and Agent response content are user/runtime data and must never be replaced by translated empty-state copy during a language switch.
+## ASR Realtime
 
-The information architecture is beginner-first: a three-step quick start explains capture, pipeline observation, and results; the recording entry follows immediately; the six-stage timeline explains what is happening; transcript/response is the primary output; capabilities and speaker profiles are explicitly marked advanced; a VAD/ASR/TTS glossary closes the page. Every major section includes a one-sentence purpose statement.
+`/asr_realtime` is the canonical React/Vite continuous transcription surface; `/realtime` redirects there for compatibility. It requires an explicit browser device check that confirms both Zone Vibe 100 `audioinput` and `audiooutput` before Start Listening is enabled. Enumeration proves browser visibility only, not physical playback. Starting creates a normal API session and sends exact 20 ms, 16 kHz mono PCM16 frames over `WS /api/v1/realtime/sessions/{session_id}`; raw audio never crosses MCP JSON-RPC and is not persisted.
+
+The five-stage process cycle is `Listening → Voice detected → ASR partial → Endpoint → Correction`. Actual ordered Gateway events select the semantic stage. The current stage is brightest; the previous stage retains a 1.45-second visual afterglow before fading. The afterglow timer controls presentation only and never advances pipeline state.
+
+Rolling partial hypotheses may change. Qwen may revise only the current and previous sentence; the previous row then locks and older rows never change. Endpoint candidate timing is 900 ms with a 1,800 ms hard boundary. Timeout, invalid JSON, protected-token loss, or excessive edit distance preserves raw final ASR. The current deployed VAD provider is reported from capabilities and must not be represented as Silero when `energy-vad` is active.
+
+Each completed endpoint becomes one bounded utterance graph node. Partial ASR never creates nodes. Solid edges show chronological order; dashed edges show deterministic local text-feature cosine similarity. The graph retains at most 24 nodes for the active browser session and does not persist text vectors. SVG node translation, fixed 36 px pointer target, and inner visual scaling are separate layers, so hovering shows escaped corrected text without changing coordinates or producing pointer jitter.
+
+Ambient Waves are a locally vendored, visually subordinate React Bits adaptation. The microphone envelope is drawn separately from real local samples. Text and icons carry every status, 44–48 px controls remain keyboard reachable, mobile layouts avoid horizontal scrolling, and reduced motion disables ambient/pulse/scale effects while preserving semantic contrast. CPU mode remains functional; model and device labels report actual capabilities.
+
+This page stops at corrected transcription. It never invokes an Agent, TTS, Codex injection, or speaker output, and it does not reconnect or restart capture automatically.
 
 ## Codex CLI voice recorder
 
-The dedicated `/codex` page is a compact Traditional Chinese clipboard recorder for the currently open Codex CLI conversation. It is separate from the complete `/` pipeline console and never calls the development Agent or TTS stages. The operator remains responsible for pasting the corrected text into Codex CLI and pressing Enter; the page must not claim direct session injection.
+The dedicated `/codex` page remains a compact Traditional Chinese clipboard recorder. It is separate from `/asr_realtime` and never calls the development Agent or TTS stages. The operator remains responsible for pasting the corrected text into Codex CLI and pressing Enter; the page must not claim direct session injection.
 
-Recording stays disabled until an explicit device check gives the browser microphone permission and confirms both a Zone Vibe 100 `audioinput` and `audiooutput`. Device checking stops its temporary permission stream immediately and does not record or play sound. A `devicechange` event invalidates the check and disables recording until the operator checks again. Output enumeration means only that the browser can see the endpoint; it is not proof of physical playback.
+Recording stays disabled until an explicit device check gives the browser microphone permission and confirms both a Zone Vibe 100 `audioinput` and `audiooutput`. Device checking stops its temporary permission stream immediately and does not record or play sound. A `devicechange` event invalidates the check and disables recording until the operator checks again.
 
-The page uses separate Start and Stop buttons. Start is available only after the dual-device gate passes, Stop is available only while recording, and both are disabled during processing. Recording stops automatically at 30 seconds. The browser converts bounded audio to mono 16-bit PCM WAV, calls `/api/v1/audio/asr` followed by `/api/v1/text/correct`, displays raw and corrected text, and attempts `navigator.clipboard.writeText`. Clipboard denial keeps the text visible and exposes a manual copy control.
+The page uses separate Start and Stop buttons. Recording stops automatically at 30 seconds. The browser converts bounded audio to mono 16-bit PCM WAV, calls `/api/v1/audio/asr` followed by `/api/v1/text/correct`, displays raw and corrected text, and attempts `navigator.clipboard.writeText`. Clipboard denial keeps the text visible and exposes a manual copy control.
 
-## Realtime Speech Studio
-
-`/realtime` is the React/Vite continuous transcription surface. It requires an explicit browser device check that confirms both Zone Vibe 100 `audioinput` and `audiooutput` before Start is enabled. Enumeration proves browser visibility only, not physical playback. Starting creates a normal API session and sends exact 20 ms, 16 kHz mono PCM16 frames over `WS /api/v1/realtime/sessions/{session_id}`; raw audio never crosses MCP JSON-RPC and is not persisted.
-
-The visible state rail follows VAD → endpoint → ASR queue → correction. Rolling partial hypotheses may change. Qwen may revise only the current and previous sentence; the previous row then locks and older rows never change. Endpoint candidate timing is 900 ms with a 1,800 ms hard boundary. Timeout, invalid JSON, protected-token loss, or excessive edit distance preserves raw final ASR. This page never invokes Agent, TTS, Codex injection, or speaker output, and it does not reconnect automatically.
-
-Ambient Waves are a locally vendored, visually subordinate React Bits adaptation. The microphone envelope is drawn separately from real local samples. Text and icons carry every status, 44–48 px controls remain keyboard reachable, 375/768 px layouts avoid horizontal scrolling, and `prefers-reduced-motion` disables ambient animation. CPU mode remains functional; device labels and latency indicate when the host is degraded.
+External Agents continue to use the host-owned interaction `listen_once → external reasoning/tools → speak`; no webpage replaces that contract.

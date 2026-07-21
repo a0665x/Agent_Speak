@@ -42,7 +42,7 @@ ENV LD_LIBRARY_PATH=/usr/local/lib/python3.11/site-packages/nvidia/cublas/lib:/u
 # so documentation/script edits do not invalidate the expensive inference dependency layer.
 # .dockerignore excludes private state, models, credentials, caches, and local Agent data.
 COPY . .
-COPY --from=realtime-frontend-build /workspace/web/realtime /app/web/realtime
+COPY --from=realtime-frontend-build /workspace/web/asr_realtime /app/web/asr_realtime
 COPY docker/entrypoint.sh /usr/local/bin/agent-speak-entrypoint
 RUN chmod 0755 /usr/local/bin/agent-speak-entrypoint
 
