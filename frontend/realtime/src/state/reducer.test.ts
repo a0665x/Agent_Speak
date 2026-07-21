@@ -1,5 +1,28 @@
 import { expect, test } from 'vitest';
 import { initialState, realtimeReducer } from './reducer';
+import type { RealtimeEvent } from '../types';
+
+function event(type: string, data: Record<string, unknown> = {}, utteranceId: string | null = 'u1', sequence = 1): RealtimeEvent {
+  return { sequence, session_id: 's', utterance_id: utteranceId, type, at: '', data };
+}
+
+test.each([
+  ['stream.started', {}, 'listening'],
+  ['vad.speech_started', {}, 'voice'],
+  ['asr.partial', { text: '測試' }, 'asr'],
+  ['endpoint.candidate', { silence_ms: 900 }, 'endpoint'],
+  ['correction.processing', {}, 'correction'],
+])('maps %s to the %s semantic stage', (type, data, stage) => {
+  const next = realtimeReducer(initialState, event(type, data));
+  expect(next.stage).toBe(stage);
+});
+
+test('records one completed utterance and resets for a new client session', () => {
+  const completed = realtimeReducer(initialState, event('utterance.completed', {}, 'u-1'));
+  const duplicate = realtimeReducer(completed, event('utterance.completed', {}, 'u-1', 2));
+  expect(duplicate.completedUtteranceIds).toEqual(['u-1']);
+  expect(realtimeReducer(duplicate, { type: 'client.session_reset' })).toEqual(initialState);
+});
 
 test('ignores duplicate sequence and never mixes utterance partials', () => {
   const one = realtimeReducer(initialState, {

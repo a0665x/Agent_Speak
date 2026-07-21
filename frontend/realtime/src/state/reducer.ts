@@ -1,4 +1,4 @@
-import type { RealtimeEvent } from '../types';
+import type { PipelineStage, RealtimeAction, RealtimeEvent } from '../types';
 
 export type TranscriptRow = {
   utteranceId: string;
@@ -8,8 +8,10 @@ export type TranscriptRow = {
 
 export type RealtimeState = {
   lastSequence: number;
+  stage: PipelineStage;
   stream: 'ready' | 'listening' | 'speech' | 'endpoint' | 'finalizing' | 'correcting' | 'stopped';
   rows: TranscriptRow[];
+  completedUtteranceIds: string[];
   asrQueue: number;
   endpointMs: number;
   warning?: string;
@@ -17,32 +19,50 @@ export type RealtimeState = {
 
 export const initialState: RealtimeState = {
   lastSequence: 0,
+  stage: 'idle',
   stream: 'ready',
   rows: [],
+  completedUtteranceIds: [],
   asrQueue: 0,
   endpointMs: 0
 };
 
-export function realtimeReducer(state: RealtimeState, event: RealtimeEvent): RealtimeState {
+export function realtimeReducer(state: RealtimeState, event: RealtimeAction): RealtimeState {
+  if (event.type === 'client.session_reset') return initialState;
   if (event.sequence <= state.lastSequence) return state;
   let next: RealtimeState = { ...state, lastSequence: event.sequence };
   switch (event.type) {
     case 'stream.started':
-      return { ...next, stream: 'listening' };
+      return { ...next, stage: 'listening', stream: 'listening' };
     case 'stream.stopped':
-      return { ...next, stream: 'stopped', asrQueue: 0 };
+      return { ...next, stage: 'idle', stream: 'stopped', asrQueue: 0 };
     case 'vad.speech_started':
-      return { ...next, stream: 'speech', endpointMs: 0 };
+      return { ...next, stage: 'voice', stream: 'speech', endpointMs: 0 };
     case 'endpoint.candidate':
-      return { ...next, stream: 'endpoint', endpointMs: Number(event.data.silence_ms ?? 900) };
+      return { ...next, stage: 'endpoint', stream: 'endpoint', endpointMs: Number(event.data.silence_ms ?? 900) };
     case 'endpoint.extended':
-      return { ...next, stream: 'endpoint', endpointMs: 1800 };
+      return { ...next, stage: 'endpoint', stream: 'endpoint', endpointMs: 1800 };
+    case 'endpoint.cancelled':
+      return { ...next, stage: 'voice', stream: 'speech', endpointMs: 0 };
     case 'asr.queued':
-      return { ...next, stream: event.data.mode === 'final' ? 'finalizing' : next.stream, asrQueue: next.asrQueue + 1 };
+      return {
+        ...next,
+        stage: event.data.mode === 'final' ? 'correction' : 'asr',
+        stream: event.data.mode === 'final' ? 'finalizing' : next.stream,
+        asrQueue: next.asrQueue + 1
+      };
+    case 'asr.processing':
+      return {
+        ...next,
+        stage: event.data.mode === 'final' ? 'correction' : 'asr',
+        stream: event.data.mode === 'final' ? 'finalizing' : next.stream
+      };
     case 'asr.partial':
-      return { ...next, asrQueue: Math.max(0, next.asrQueue - 1), rows: upsert(next.rows, event, 'partial') };
+      return { ...next, stage: 'asr', asrQueue: Math.max(0, next.asrQueue - 1), rows: upsert(next.rows, event, 'partial') };
     case 'asr.final':
-      return { ...next, stream: 'correcting', asrQueue: Math.max(0, next.asrQueue - 1), rows: upsert(next.rows, event, 'revisable') };
+      return { ...next, stage: 'correction', stream: 'correcting', asrQueue: Math.max(0, next.asrQueue - 1), rows: upsert(next.rows, event, 'revisable') };
+    case 'correction.processing':
+      return { ...next, stage: 'correction', stream: 'correcting' };
     case 'transcript.revised': {
       if (!event.utterance_id) return next;
       const index = next.rows.findIndex(row => row.utteranceId === event.utterance_id);
@@ -52,12 +72,18 @@ export function realtimeReducer(state: RealtimeState, event: RealtimeEvent): Rea
       if (index > 0) {
         rows[index - 1] = { ...rows[index - 1], text: String(event.data.previous_text ?? rows[index - 1].text), status: 'locked' };
       }
-      return { ...next, rows };
+      return { ...next, stage: 'correction', rows };
     }
-    case 'utterance.completed':
-      return { ...next, stream: 'listening' };
+    case 'utterance.completed': {
+      const completedUtteranceIds = event.utterance_id && !next.completedUtteranceIds.includes(event.utterance_id)
+        ? [...next.completedUtteranceIds, event.utterance_id]
+        : next.completedUtteranceIds;
+      return { ...next, stage: 'listening', stream: 'listening', completedUtteranceIds };
+    }
     case 'pipeline.warning':
       return { ...next, warning: String(event.data.code ?? 'Pipeline warning') };
+    case 'pipeline.error':
+      return { ...next, stage: 'error' };
     default:
       return next;
   }

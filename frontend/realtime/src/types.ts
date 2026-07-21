@@ -7,6 +7,10 @@ export type RealtimeEvent = {
   data: Record<string, unknown>;
 };
 
+export type PipelineStage = 'idle' | 'listening' | 'voice' | 'asr' | 'endpoint' | 'correction' | 'error';
+
+export type RealtimeAction = RealtimeEvent | { type: 'client.session_reset' };
+
 export type DeviceGateResult = {
   ready: boolean;
   input?: MediaDeviceInfo;
