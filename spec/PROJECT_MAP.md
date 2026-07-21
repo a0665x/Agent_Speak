@@ -17,9 +17,10 @@ Docker-first, Jetson-oriented local voice pipeline with an English-default proje
 - [Testing](TESTING.md)
 - [UI](UI.md)
 - [Portable Skill and stdio MCP](SKILL_AND_MCP.md)
+- [Session-frozen speech language routing](references/lesson-20260721-session-language-routing.md)
 
 ## Change guide
-Docker lifecycle and image: `../run.sh`, `../Dockerfile`, `../compose.yaml`, and RUNTIME.md. Pipeline/provider: ARCHITECTURE.md and API.md. External Agent integration: SKILL_AND_MCP.md and `../skills/agent-speak/SKILL.md`. MCP implementation: `../src/agent_speak/mcp_server.py`; entry point: `../scripts/run_mcp.sh`; hardware-free regression: `../tests/test_mcp_server.py`. Project homepage and realtime UI: UI.md, `../web`, and `../frontend/realtime`. Verification: TESTING.md. Model replacement: references/MODEL_STRATEGY.md.
+Docker lifecycle and image: `../run.sh`, `../Dockerfile`, `../compose.yaml`, and RUNTIME.md. Pipeline/provider: ARCHITECTURE.md and API.md. Realtime speech-language routing: references/lesson-20260721-session-language-routing.md. External Agent integration: SKILL_AND_MCP.md and `../skills/agent-speak/SKILL.md`. MCP implementation: `../src/agent_speak/mcp_server.py`; entry point: `../scripts/run_mcp.sh`; hardware-free regression: `../tests/test_mcp_server.py`. Project homepage and realtime UI: UI.md, `../web`, and `../frontend/realtime`. Verification: TESTING.md. Model replacement: references/MODEL_STRATEGY.md.
 
 ## Safety
 Voice data, embeddings, secrets, databases, weights, generated audio, and traces are private runtime artifacts and must not be committed.
