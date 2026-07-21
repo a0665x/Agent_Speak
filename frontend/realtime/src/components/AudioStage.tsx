@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
+import { useI18n, type MessageKey } from '../i18n';
 
 export function AudioStage({ samples, state }: { samples: number[]; state: string }) {
+  const { t } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -34,12 +36,16 @@ export function AudioStage({ samples, state }: { samples: number[]; state: strin
 
   return (
     <figure className="audio-stage">
-      <canvas ref={canvasRef} aria-label={`即時麥克風波形，目前狀態 ${state}`} />
-      <figcaption><span className={`state-dot state-${state}`} /> {stateLabel(state)}</figcaption>
+      <canvas ref={canvasRef} aria-label={t('audio.waveform', { value: stateLabel(state, t) })} />
+      <figcaption><span className={`state-dot state-${state}`} /> {stateLabel(state, t)}</figcaption>
     </figure>
   );
 }
 
-function stateLabel(state: string): string {
-  return ({ ready: '等待裝置', listening: '正在聆聽', speech: '偵測到語音', endpoint: '判斷句尾', finalizing: '最終辨識', correcting: '校正文字', stopped: '已停止' } as Record<string, string>)[state] ?? state;
+function stateLabel(state: string, t: (key: MessageKey) => string): string {
+  const keys: Record<string, MessageKey> = {
+    ready: 'audio.ready', listening: 'audio.listening', speech: 'audio.speech', endpoint: 'audio.endpoint',
+    finalizing: 'audio.finalizing', correcting: 'audio.correcting', stopped: 'audio.stopped'
+  };
+  return keys[state] ? t(keys[state]) : state;
 }

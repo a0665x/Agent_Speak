@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
 import type { TranscriptRow } from '../state/reducer';
 import { buildTextGraph } from '../graph/textGraph';
+import { useI18n } from '../i18n';
 
 export function UtteranceGraph({ rows, completedUtteranceIds }: {
   rows: TranscriptRow[];
   completedUtteranceIds: string[];
 }) {
+  const { t } = useI18n();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const graph = useMemo(() => {
     const rowById = new Map(rows.map(row => [row.utteranceId, row]));
@@ -21,19 +23,19 @@ export function UtteranceGraph({ rows, completedUtteranceIds }: {
     <section className="utterance-graph" aria-labelledby="utterance-graph-title">
       <header className="graph-heading">
         <div>
-          <p className="eyebrow">UTTERANCE GRAPH</p>
-          <h2 id="utterance-graph-title">ASR text relationships</h2>
-          <p>每個 endpoint 是一段文字；實線是時間，虛線是 local text similarity。</p>
+          <p className="eyebrow">{t('graph.eyebrow')}</p>
+          <h2 id="utterance-graph-title">{t('graph.title')}</h2>
+          <p>{t('graph.description')}</p>
         </div>
-        <div className="graph-legend" aria-label="Graph legend">
-          <span><i className="timeline-key" />時間順序</span>
-          <span><i className="similarity-key" />文字相似</span>
+        <div className="graph-legend" aria-label={t('graph.legend')}>
+          <span><i className="timeline-key" />{t('graph.timeline')}</span>
+          <span><i className="similarity-key" />{t('graph.similarity')}</span>
         </div>
       </header>
       {graph.nodes.length === 0 ? (
-        <div className="graph-empty"><span aria-hidden="true">⌁</span><p>完成第一段校正後，節點會出現在這裡。</p></div>
+        <div className="graph-empty"><span aria-hidden="true">⌁</span><p>{t('graph.empty')}</p></div>
       ) : (
-        <svg className="graph-canvas" viewBox="0 0 1000 430" role="img" aria-label="已完成語音片段的文字關係圖">
+        <svg className="graph-canvas" viewBox="0 0 1000 430" role="img" aria-label={t('graph.canvas')}>
           <g className="graph-edges" aria-hidden="true">
             {graph.edges.map((edge, index) => {
               const source = nodeById.get(edge.source);
@@ -58,7 +60,7 @@ export function UtteranceGraph({ rows, completedUtteranceIds }: {
                     r="36"
                     onPointerEnter={() => setHoveredId(node.utteranceId)}
                     onPointerLeave={() => setHoveredId(null)}
-                    aria-label={`語音片段 ${index + 1}`}
+                    aria-label={t('graph.node', { value: index + 1 })}
                   />
                   <g className="node-visual" data-testid={`node-visual-${node.utteranceId}`} aria-hidden="true">
                     <circle className="node-halo" r="34" />
