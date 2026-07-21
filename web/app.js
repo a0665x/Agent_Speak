@@ -1,5 +1,16 @@
 "use strict";
 
+const localeApi = window.AgentSpeakLocale;
+let storedLocale = null;
+try {
+  storedLocale = localStorage.getItem(localeApi.STORAGE_KEY);
+} catch (_) {
+  storedLocale = null;
+}
+let activeLocale = localeApi.resolveLocale(window.location.search, storedLocale);
+let statusState = "loading";
+localeApi.applyLocale(document, activeLocale);
+
 const elements = {
   summary: document.querySelector("#status-summary"),
   gateway: document.querySelector("#status-gateway"),
@@ -9,9 +20,14 @@ const elements = {
 };
 
 function providerLabel(provider) {
-  if (!provider) return "UNAVAILABLE";
+  if (!provider) return localeApi.translate(activeLocale, "status.providerUnavailable").toUpperCase();
   const device = String(provider.device || "unknown").toUpperCase();
-  return `${provider.ready ? "READY" : "DOWN"} · ${device}`;
+  const key = provider.ready ? "status.providerReady" : "status.providerDown";
+  return `${localeApi.translate(activeLocale, key).toUpperCase()} · ${device}`;
+}
+
+function renderStatusSummary() {
+  elements.summary.textContent = localeApi.translate(activeLocale, `status.${statusState}`);
 }
 
 async function loadSystemStatus() {
@@ -26,18 +42,33 @@ async function loadSystemStatus() {
     const providers = Array.isArray(capabilities.providers) ? capabilities.providers : [];
     const asr = providers.find((provider) => provider.stage === "asr");
     const correction = providers.find((provider) => provider.stage === "correction");
-    elements.gateway.textContent = `READY · v${health.version}`;
+    elements.gateway.textContent = `${localeApi.translate(activeLocale, "status.providerReady").toUpperCase()} · v${health.version}`;
     elements.asr.textContent = providerLabel(asr);
     elements.correction.textContent = providerLabel(correction);
-    elements.summary.textContent = "Gateway 與模型能力已連線";
+    statusState = "ready";
+    renderStatusSummary();
     elements.card.dataset.state = "ready";
   } catch (_) {
-    elements.gateway.textContent = "UNAVAILABLE";
+    elements.gateway.textContent = localeApi.translate(activeLocale, "status.providerUnavailable").toUpperCase();
     elements.asr.textContent = "—";
     elements.correction.textContent = "—";
-    elements.summary.textContent = "目前無法讀取本機服務狀態";
+    statusState = "unavailable";
+    renderStatusSummary();
     elements.card.dataset.state = "error";
   }
 }
+
+document.querySelector("#language-select")?.addEventListener("change", (event) => {
+  activeLocale = event.currentTarget.value;
+  try {
+    localStorage.setItem(localeApi.STORAGE_KEY, activeLocale);
+  } catch (_) {
+    // The URL still carries the selected language when storage is unavailable.
+  }
+  localeApi.applyLocale(document, activeLocale);
+  renderStatusSummary();
+  const nextUrl = localeApi.withLocale(window.location.pathname + window.location.search, activeLocale);
+  window.history.replaceState(null, "", nextUrl);
+});
 
 void loadSystemStatus();

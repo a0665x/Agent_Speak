@@ -1,56 +1,66 @@
 <!doctype html>
-<html lang="zh-Hant-TW">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Agent Speak 本機語音閘道：API、即時 ASR 與系統狀態。">
+  <meta name="description" content="Agent Speak local speech gateway: APIs, realtime ASR, and live system status.">
   <title>Agent Speak · Local Speech Gateway</title>
   <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/locale.js" defer></script>
   <script src="/static/app.js" defer></script>
 </head>
 <body>
-  <a class="skip-link" href="#main">跳至主要內容</a>
+  <a class="skip-link" href="#main" data-i18n="skip">Skip to main content</a>
   <div class="ambient-word ambient-word-top" aria-hidden="true">VOICE · SIGNAL · TEXT</div>
   <div class="ambient-word ambient-word-bottom" aria-hidden="true">SPEAK</div>
-  <header class="site-nav" aria-label="網站導覽">
-    <a class="brand" href="/" aria-label="Agent Speak 首頁"><span class="brand-mark" aria-hidden="true"></span>Agent Speak</a>
-    <span>LOCAL SPEECH GATEWAY</span>
+  <header class="site-nav" aria-label="Site navigation" data-i18n-aria-label="nav.aria">
+    <a class="brand" href="/" data-route="/" aria-label="Agent Speak home" data-i18n-aria-label="brand.aria"><span class="brand-mark" aria-hidden="true"></span>Agent Speak</a>
+    <div class="nav-tools">
+      <span>LOCAL SPEECH GATEWAY</span>
+      <label class="sr-only" for="language-select" data-i18n="language.label">Language</label>
+      <select id="language-select" aria-label="Language">
+        <option value="en">English</option>
+        <option value="zh-TW">繁體中文</option>
+        <option value="ja">日本語</option>
+        <option value="ko">한국어</option>
+      </select>
+    </div>
   </header>
 
   <main id="main">
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <p class="eyebrow">LOCAL · PRIVATE · REALTIME</p>
-        <h1 id="hero-title">讓聲音，<br><span>成為可用的訊號。</span></h1>
-        <p class="hero-lede">一個不綁定 Agent 的本機語音閘道。從 API 開始，或直接看即時語音如何成為文字。</p>
-        <a class="hero-action" href="/asr_realtime">開啟 ASR Realtime <span aria-hidden="true">↗</span></a>
+        <p class="eyebrow" data-i18n="hero.eyebrow">LOCAL · PRIVATE · REALTIME</p>
+        <h1 id="hero-title"><span class="hero-title-line" data-i18n="hero.title">Turn voice into</span><br><span data-i18n="hero.titleAccent">a usable signal.</span></h1>
+        <p class="hero-lede" data-i18n="hero.lede">A local speech gateway that stays independent of any one Agent. Start with the API, or watch speech become text in realtime.</p>
+        <a class="hero-action" href="/asr_realtime?lang=en" data-route="/asr_realtime"><span data-i18n="hero.action">Open ASR Realtime</span> <span aria-hidden="true">↗</span></a>
       </div>
       <figure class="hero-visual">
-        <img src="/static/speech-core-hero.png" width="1536" height="1024" alt="聲波通過本機處理核心轉換成文字的抽象示意圖">
-        <figcaption><span class="live-glyph" aria-hidden="true">⌁</span><span><strong>Speech Core</strong><small>Audio → Intelligence-ready text</small></span></figcaption>
+        <img src="/static/speech-core-hero.png" width="1536" height="1024" alt="Abstract illustration of sound waves passing through a local processing core and becoming text" data-i18n-alt="hero.imageAlt">
+        <figcaption><span class="live-glyph" aria-hidden="true">⌁</span><span><strong>Speech Core</strong><small data-i18n="hero.caption">Audio → intelligence-ready text</small></span></figcaption>
       </figure>
     </section>
 
     <section class="product-grid" aria-label="Project destinations">
-      <a class="product-card api-card" href="/docs">
+      <a class="product-card api-card" href="/docs?lang=en" data-route="/docs">
         <span class="card-icon" aria-hidden="true">{ }</span>
         <span class="card-index">01</span>
         <strong>API Explorer</strong>
-        <span>查看 `/api/v1` Swagger 契約</span>
+        <span data-i18n="card.api.description">Explore the `/api/v1` Swagger contract</span>
         <i aria-hidden="true">↗</i>
       </a>
-      <a class="product-card realtime-card" href="/asr_realtime">
+      <a class="product-card realtime-card" href="/asr_realtime?lang=en" data-route="/asr_realtime">
         <svg class="mini-wave" viewBox="0 0 120 40" aria-hidden="true"><path d="M2 20h12l8-15 13 31 13-26 14 20 10-14 10 8h36"/></svg>
         <span class="card-index">02</span>
         <strong>ASR Realtime</strong>
-        <span>Continuous VAD 與即時校正</span>
+        <span data-i18n="card.realtime.description">Continuous VAD and realtime correction</span>
         <i aria-hidden="true">↗</i>
       </a>
       <section class="product-card status-card" id="system-status" aria-labelledby="status-title" aria-live="polite">
         <span class="status-orbit" aria-hidden="true"><i></i></span>
         <span class="card-index">03</span>
-        <strong id="status-title">System Status</strong>
-        <span id="status-summary">正在確認本機服務…</span>
+        <strong id="status-title" data-i18n="status.title">System Status</strong>
+        <span id="status-summary" data-i18n="status.loading">Checking the local service…</span>
         <dl class="status-details">
           <div><dt>Gateway</dt><dd id="status-gateway">CHECKING</dd></div>
           <div><dt>ASR</dt><dd id="status-asr">—</dd></div>
@@ -61,18 +71,18 @@
 
     <section class="pipeline-preview" aria-labelledby="pipeline-title">
       <div>
-        <p class="eyebrow">THE LOCAL PATH</p>
-        <h2 id="pipeline-title">聲音走過的每一步，<br>都看得見。</h2>
+        <p class="eyebrow" data-i18n="pipeline.eyebrow">THE LOCAL PATH</p>
+        <h2 id="pipeline-title" data-i18n="pipeline.title">Make every step of speech visible.</h2>
       </div>
       <ol>
-        <li><span>01</span><strong>VAD</strong><small>Voice detected</small></li>
-        <li><span>02</span><strong>Endpoint</strong><small>Pause understood</small></li>
-        <li><span>03</span><strong>ASR</strong><small>Speech to text</small></li>
-        <li><span>04</span><strong>Correction</strong><small>Context refined</small></li>
+        <li><span>01</span><strong>VAD</strong><small data-i18n="pipeline.vad">Voice detected</small></li>
+        <li><span>02</span><strong>Endpoint</strong><small data-i18n="pipeline.endpoint">Pause understood</small></li>
+        <li><span>03</span><strong>ASR</strong><small data-i18n="pipeline.asr">Speech to text</small></li>
+        <li><span>04</span><strong>Correction</strong><small data-i18n="pipeline.correction">Context refined</small></li>
       </ol>
     </section>
   </main>
 
-  <footer><span>Agent Speak</span><span>Local-first · No automatic microphone access</span></footer>
+  <footer><span>Agent Speak</span><span data-i18n="footer.safety">Local-first · No automatic microphone access</span></footer>
 </body>
 </html>

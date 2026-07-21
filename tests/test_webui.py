@@ -45,9 +45,11 @@ async def test_root_is_project_guide_without_capture_controls(tmp_path: Path) ->
         page = (await client.get("/")).text
         javascript = (await client.get("/static/app.js")).text
 
-    assert '<html lang="zh-Hant-TW">' in page
+    assert '<html lang="en">' in page
+    assert 'id="language-select"' in page
+    assert "Make every step of speech visible." in page
     assert 'href="#main"' in page
-    assert all(target in page for target in ('href="/docs"', 'href="/asr_realtime"', 'id="system-status"'))
+    assert all(target in page for target in ('data-route="/docs"', 'data-route="/asr_realtime"', 'id="system-status"'))
     assert all(label in page for label in ("API Explorer", "ASR Realtime", "System Status"))
     assert all(stage in page for stage in ("VAD", "Endpoint", "ASR", "Correction"))
     assert "getUserMedia" not in javascript
@@ -56,6 +58,7 @@ async def test_root_is_project_guide_without_capture_controls(tmp_path: Path) ->
     assert 'fetch("/api/v1/health")' in javascript
     assert 'fetch("/api/v1/capabilities")' in javascript
     assert "innerHTML" not in javascript
+    assert 'src="/static/locale.js"' in page
 
 
 @pytest.mark.anyio
@@ -64,10 +67,12 @@ async def test_project_guide_local_assets_are_served(tmp_path: Path) -> None:
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         css = await client.get("/static/app.css")
         javascript = await client.get("/static/app.js")
+        locale = await client.get("/static/locale.js")
         artwork = await client.get("/static/speech-core-hero.png")
 
     assert css.headers["content-type"].startswith("text/css")
     assert javascript.headers["content-type"].startswith("text/javascript")
+    assert locale.headers["content-type"].startswith("text/javascript")
     assert artwork.status_code == 200
     assert artwork.headers["content-type"] == "image/png"
 
