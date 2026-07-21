@@ -28,7 +28,7 @@ export const initialState: RealtimeState = {
 };
 
 export function realtimeReducer(state: RealtimeState, event: RealtimeAction): RealtimeState {
-  if (event.type === 'client.session_reset') return initialState;
+  if (!('sequence' in event)) return initialState;
   if (event.sequence <= state.lastSequence) return state;
   let next: RealtimeState = { ...state, lastSequence: event.sequence };
   switch (event.type) {

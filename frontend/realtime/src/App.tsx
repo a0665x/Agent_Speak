@@ -1,15 +1,24 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { Activity, CircleStop, Headphones, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, CircleStop, Headphones, ShieldCheck } from 'lucide-react';
 import { RealtimeClient } from './audio/realtimeClient';
 import { AudioStage } from './components/AudioStage';
 import { DeviceGate } from './components/DeviceGate';
-import { PipelineRail } from './components/PipelineRail';
+import { ProcessCycle } from './components/ProcessCycle';
 import { TranscriptPanel } from './components/TranscriptPanel';
+import { UtteranceGraph } from './components/UtteranceGraph';
 import { initialState, realtimeReducer } from './state/reducer';
 import type { DeviceGateResult, RealtimeEvent } from './types';
 import { Waves } from './vendor/reactbits/Waves';
 
 export type AppProps = { forceReducedMotion?: boolean };
+
+type InferenceDetails = {
+  vad: string;
+  asr: string;
+  asrDevice: string;
+  correction: string;
+  correctionDevice: string;
+};
 
 export function App({ forceReducedMotion = false }: AppProps) {
   const [state, dispatch] = useReducer(realtimeReducer, initialState);
@@ -19,7 +28,9 @@ export function App({ forceReducedMotion = false }: AppProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [sessionId, setSessionId] = useState('');
-  const [devices, setDevices] = useState({ asr: 'unknown', correction: 'unknown' });
+  const [inference, setInference] = useState<InferenceDetails>({
+    vad: 'unknown', asr: 'unknown', asrDevice: 'unknown', correction: 'unknown', correctionDevice: 'unknown'
+  });
   const clientRef = useRef<RealtimeClient | null>(null);
   const reducedMotion = useMemo(
     () => forceReducedMotion || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true,
@@ -38,10 +49,14 @@ export function App({ forceReducedMotion = false }: AppProps) {
     } });
     clientRef.current = client;
     void fetch('/api/v1/capabilities').then(response => response.json()).then(payload => {
-      const providers = payload.providers as Array<{ stage: string; device: string }>;
-      setDevices({
-        asr: providers.find(item => item.stage === 'asr')?.device ?? 'unknown',
-        correction: providers.find(item => item.stage === 'correction')?.device ?? 'unknown'
+      const providers = payload.providers as Array<{ stage: string; name: string; device: string }>;
+      const provider = (stage: string) => providers.find(item => item.stage === stage);
+      setInference({
+        vad: provider('vad')?.name ?? 'unknown',
+        asr: provider('asr')?.name ?? 'unknown',
+        asrDevice: provider('asr')?.device ?? 'unknown',
+        correction: provider('correction')?.name ?? 'unknown',
+        correctionDevice: provider('correction')?.device ?? 'unknown'
       });
     }).catch(() => undefined);
     return () => client.dispose();
@@ -50,14 +65,21 @@ export function App({ forceReducedMotion = false }: AppProps) {
   const checkDevices = async () => {
     setBusy(true);
     setError('');
-    const result = await clientRef.current!.checkDevices();
-    setGate(result);
-    setBusy(false);
+    try {
+      const result = await clientRef.current!.checkDevices();
+      setGate(result);
+    } catch (cause) {
+      setGate({ ready: false, reason: 'unchecked' });
+      setError(cause instanceof Error ? cause.message : '無法檢查耳機裝置');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const start = async () => {
     setBusy(true);
     setError('');
+    dispatch({ type: 'client.session_reset' });
     try {
       const response = await fetch('/api/v1/sessions', { method: 'POST' });
       if (!response.ok) throw new Error('無法建立 realtime session');
@@ -74,62 +96,77 @@ export function App({ forceReducedMotion = false }: AppProps) {
 
   const stop = async () => {
     setBusy(true);
-    await clientRef.current?.stop('user');
-    setActive(false);
-    setBusy(false);
+    try {
+      await clientRef.current?.stop('user');
+      setActive(false);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <>
       <a className="skip-link" href="#studio-main">跳至主要內容</a>
       <Waves animated={!reducedMotion && active} />
+      <div className="background-word background-word-top" aria-hidden="true">VOICE · SIGNAL · TEXT</div>
+      <div className="background-word background-word-bottom" aria-hidden="true">LISTEN</div>
       <main id="studio-main" className="studio-shell">
+        <nav className="studio-nav" aria-label="Realtime navigation">
+          <a href="/"><ArrowLeft aria-hidden="true" /> Project Home</a>
+          <span>ASR REALTIME · LOCAL</span>
+        </nav>
+
         <header className="studio-header">
           <div>
-            <p className="eyebrow"><Activity size={16} /> AGENT SPEAK / REALTIME</p>
-            <h1>Speech<br />Studio</h1>
-            <p className="lede">持續 VAD、adaptive endpoint、rolling ASR 與逐句中文校正。只做轉錄，不呼叫 Agent 或 TTS。</p>
+            <p className="eyebrow">CONTINUOUS SPEECH EXPERIENCE</p>
+            <h1 aria-label="Speak. See it flow.">Speak.<br /><span>See it flow.</span></h1>
+            <p className="lede">聲音進來，文字成形。每次說話、停頓與校正，都由真實 pipeline event 即時呈現。</p>
           </div>
           <div className="session-chip" aria-label={`目前 session ${sessionId || '尚未建立'}`}>
             <span>SESSION</span><code>{sessionId || 'not started'}</code>
           </div>
         </header>
 
-        {error && <div className="error-banner" role="alert">{error}<span>請確認 worker 狀態與耳機連線後重試。</span></div>}
+        {error && <div className="error-banner" role="alert"><strong>{error}</strong><span>請確認 worker 狀態與耳機連線後重試。</span></div>}
         {state.warning && <div className="warning-banner" role="status">Pipeline warning: {state.warning}</div>}
 
-        <section className="control-deck" aria-label="即時語音控制">
+        <section className={`control-deck${gate.ready ? ' ready' : ''}`} aria-label="即時語音控制">
           <DeviceGate gate={gate} />
           <div className="actions">
             <button className="secondary-button" type="button" onClick={checkDevices} disabled={busy || active}>
-              <ShieldCheck /> {busy && !active ? '正在檢查…' : '檢查耳機裝置'}
+              <ShieldCheck aria-hidden="true" /> {busy && !active ? '正在檢查…' : 'Check devices'}
             </button>
             {!active ? (
               <button className="primary-button" type="button" onClick={start} disabled={!gate.ready || busy} aria-label="開始即時聆聽">
-                <Headphones /> 開始即時聆聽
+                <Headphones aria-hidden="true" /> Start Listening
               </button>
             ) : (
               <button className="stop-button" type="button" onClick={stop} disabled={busy} aria-label="停止即時聆聽">
-                <CircleStop /> 停止即時聆聽
+                <CircleStop aria-hidden="true" /> Stop Listening
               </button>
             )}
           </div>
         </section>
 
-        <div className="studio-grid">
-          <div className="main-column">
-            <AudioStage samples={envelope} state={state.stream} />
-            <TranscriptPanel rows={state.rows} />
-          </div>
-          <div className="side-column">
-            <PipelineRail state={state.stream} queue={state.asrQueue} endpointMs={state.endpointMs} />
-            <section className="worker-card" aria-label="Inference worker devices">
-              <p className="eyebrow">INFERENCE</p>
-              <dl><div><dt>ASR</dt><dd>{devices.asr}</dd></div><div><dt>Correction</dt><dd>{devices.correction}</dd></div></dl>
-            </section>
-          </div>
+        <ProcessCycle stage={state.stage} reducedMotion={reducedMotion} />
+
+        <div className="live-grid">
+          <AudioStage samples={envelope} state={state.stream} />
+          <section className="worker-card" aria-label="Inference worker devices">
+            <div><p className="eyebrow">ACTIVE MODELS</p><span className={`worker-state${active ? ' live' : ''}`}>{active ? 'STREAMING' : 'STANDBY'}</span></div>
+            <dl>
+              <div><dt>VAD</dt><dd>{inference.vad}</dd></div>
+              <div><dt>ASR</dt><dd>{inference.asr}<small>{inference.asrDevice}</small></dd></div>
+              <div><dt>Correction</dt><dd>{inference.correction}<small>{inference.correctionDevice}</small></dd></div>
+              <div><dt>Endpoint</dt><dd>{state.endpointMs || 900} ms<small>hard 1800 ms</small></dd></div>
+              <div><dt>ASR Queue</dt><dd>{state.asrQueue} pending</dd></div>
+            </dl>
+          </section>
         </div>
-        <p className="sr-status" aria-live="polite">{gate.ready ? 'Zone Vibe 100 輸入與輸出已確認' : '尚未檢查 Zone Vibe 100 輸入與輸出'}；{state.stream}</p>
+
+        <TranscriptPanel rows={state.rows} />
+        <UtteranceGraph rows={state.rows} completedUtteranceIds={state.completedUtteranceIds} />
+        <p className="sr-status" aria-live="polite">{gate.ready ? 'Zone Vibe 100 輸入與輸出已確認' : '尚未檢查 Zone Vibe 100 輸入與輸出'}；{state.stage}</p>
       </main>
     </>
   );

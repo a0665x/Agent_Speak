@@ -14,7 +14,7 @@ export function AudioStage({ samples, state }: { samples: number[]; state: strin
     canvas.height = height * ratio;
     context.scale(ratio, ratio);
     context.clearRect(0, 0, width, height);
-    context.strokeStyle = '#5eead4';
+    context.strokeStyle = '#bdd4ff';
     context.lineWidth = 2;
     context.beginPath();
     const values = samples.length ? samples : Array.from({ length: 32 }, () => 0.03);
