@@ -3,6 +3,7 @@ import struct
 import pytest
 
 from agent_speak.realtime import RealtimeCoordinator
+from agent_speak.realtime_queue import TextJob
 
 
 class FakeVAD:
@@ -105,4 +106,35 @@ async def test_existing_realtime_stream_keeps_its_frozen_language() -> None:
         await coordinator.open("session", "ko")
 
     assert stream.speech_language == "en"
+    await coordinator.close()
+
+
+@pytest.mark.anyio
+async def test_failed_endpoint_provider_extends_language_specific_continuation() -> None:
+    coordinator = RealtimeCoordinator.for_test(vad=FakeVAD(), asr=FakeASR(), text=FakeText())
+    stream = await coordinator.open("session", "en")
+
+    class CandidateDetector:
+        extended = False
+        finalized = False
+
+        def finalize_candidate(self):
+            self.finalized = True
+            return None
+
+        def extend_endpoint(self) -> bool:
+            self.extended = True
+            return True
+
+        def reset(self) -> None:
+            pass
+
+    detector = CandidateDetector()
+    stream.detector = detector  # type: ignore[assignment]
+    job = TextJob("session", "utterance", "endpoint", "", "I stopped because", "en")
+
+    await stream._accept_text_result(job, None, RuntimeError("worker failed"))
+
+    assert detector.extended is True
+    assert detector.finalized is False
     await coordinator.close()

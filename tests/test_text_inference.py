@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from agent_speak.config import Settings
 from agent_speak.pipeline import ProviderSet
 from agent_speak.text_inference import LlamaCppTextProvider
@@ -84,3 +86,69 @@ def test_configured_provider_uses_one_text_worker_for_both_stages() -> None:
     providers = ProviderSet.configured(settings, vad=object())
     assert isinstance(providers.correction, LlamaCppTextProvider)
     assert providers.endpoint is providers.correction
+
+
+@pytest.mark.parametrize(
+    ("speech_language", "expected_policy"),
+    [
+        ("auto", "multilingual"),
+        ("en", "English"),
+        ("zh-TW", "繁體中文"),
+        ("ja", "日本語"),
+        ("ko", "한국어"),
+    ],
+)
+def test_endpoint_and_revision_prompts_follow_session_language(
+    speech_language: str, expected_policy: str
+) -> None:
+    payloads: list[dict[str, object]] = []
+    responses = iter(
+        [
+            response({"complete": True, "reason": "complete"}),
+            response(
+                {
+                    "previous_text": "",
+                    "current_text": "text",
+                    "changed": False,
+                }
+            ),
+        ]
+    )
+    provider = LlamaCppTextProvider(
+        "http://worker:8080",
+        "qwen",
+        request=lambda payload: payloads.append(payload) or next(responses),
+    )
+
+    provider.detect("text", speech_language)  # type: ignore[arg-type]
+    provider.revise("", "text", speech_language)  # type: ignore[arg-type]
+
+    endpoint_prompt = payloads[0]["messages"][0]["content"]  # type: ignore[index]
+    revision_prompt = payloads[1]["messages"][0]["content"]  # type: ignore[index]
+    assert expected_policy in endpoint_prompt
+    assert expected_policy in revision_prompt
+    assert payloads[0]["temperature"] == 0
+    assert payloads[1]["response_format"]["type"] == "json_schema"  # type: ignore[index]
+
+
+@pytest.mark.parametrize(
+    ("speech_language", "text"),
+    [
+        ("en", "I stopped because"),
+        ("zh-TW", "我停下來因為"),
+        ("ja", "停止したので"),
+        ("ko", "중지했기 때문에"),
+        ("auto", "I stopped because"),
+        ("auto", "我停下來因為"),
+    ],
+)
+def test_language_specific_continuations_survive_invalid_worker_output(
+    speech_language: str, text: str
+) -> None:
+    provider = LlamaCppTextProvider(
+        "http://worker:8080",
+        "qwen",
+        request=lambda _: {"choices": []},
+    )
+
+    assert provider.detect(text, speech_language) == (False, "provider_invalid")  # type: ignore[arg-type]

@@ -24,6 +24,7 @@ from .realtime_queue import (
 )
 from .transcripts import TranscriptLedger
 from .speech_languages import SpeechLanguage
+from .text_inference import ends_with_continuation
 
 
 class RealtimeTextAdapter:
@@ -464,7 +465,7 @@ class RealtimeStream:
                 complete, reason = False, "awaiting_asr"
             elif error is None and isinstance(result, tuple) and len(result) == 2:
                 complete, reason = bool(result[0]), str(result[1])
-            elif job.current_text.rstrip().endswith(("因為", "所以", "但是", "然後", "如果", "以及")):
+            elif ends_with_continuation(job.current_text, job.speech_language):
                 complete, reason = False, "continuation_marker"
             if complete:
                 action = self.detector.finalize_candidate()
