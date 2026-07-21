@@ -8,27 +8,35 @@ from agent_speak.config import Settings
 
 
 @pytest.mark.anyio
-async def test_realtime_page_is_additive_and_legacy_pages_remain_unchanged(tmp_path: Path) -> None:
+async def test_asr_realtime_is_canonical_and_old_route_redirects(tmp_path: Path) -> None:
     app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-        realtime = await client.get("/realtime")
-        legacy = await client.get("/")
-        codex = await client.get("/codex")
-    assert realtime.status_code == 200
-    assert '<div id="root"></div>' in realtime.text
-    assert "Agent Speak" in legacy.text
-    assert "Codex CLI" in codex.text
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        follow_redirects=False,
+    ) as client:
+        canonical = await client.get("/asr_realtime")
+        legacy = await client.get("/realtime")
+        worklet = await client.get("/asr_realtime/pcm-capture.worklet.js")
+    assert canonical.status_code == 200
+    assert '<div id="root"></div>' in canonical.text
+    assert legacy.status_code in {307, 308}
+    assert legacy.headers["location"] == "/asr_realtime"
+    assert worklet.headers["content-type"].startswith(("text/javascript", "application/javascript"))
 
 
 @pytest.mark.anyio
-async def test_realtime_audio_worklet_is_served_as_javascript(tmp_path: Path) -> None:
+async def test_legacy_realtime_worklet_redirects_to_canonical_path(tmp_path: Path) -> None:
     app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        follow_redirects=False,
+    ) as client:
         worklet = await client.get("/realtime/pcm-capture.worklet.js")
 
-    assert worklet.status_code == 200
-    assert worklet.headers["content-type"].startswith(("text/javascript", "application/javascript"))
-    assert "registerProcessor" in worklet.text
+    assert worklet.status_code in {307, 308}
+    assert worklet.headers["location"] == "/asr_realtime/pcm-capture.worklet.js"
 
 
 @pytest.mark.anyio

@@ -69,7 +69,7 @@ export class RealtimeClient {
         video: false
       });
       this.context = this.contextFactory();
-      await this.context.audioWorklet.addModule('/realtime/pcm-capture.worklet.js');
+      await this.context.audioWorklet.addModule('/asr_realtime/pcm-capture.worklet.js');
       this.source = this.context.createMediaStreamSource(this.stream);
       this.worklet = this.workletFactory(this.context);
       this.socket = this.socketFactory(this.socketUrl(sessionId));
