@@ -130,13 +130,13 @@ async def test_openapi_is_grouped_and_explains_beginner_inputs_outputs(tmp_path:
     async with make_client(tmp_path) as client:
         schema = (await client.get("/openapi.json")).json()
 
-    assert "本機語音處理 API" in schema["info"]["description"]
+    assert "local speech processing API" in schema["info"]["description"]
     tags = {tag["name"]: tag["description"] for tag in schema["tags"]}
-    assert {"系統", "對話流程", "語音階段", "文字階段", "說話者", "音訊成品"} <= set(tags)
+    assert {"System", "Conversation Flow", "Audio Stages", "Text Stages", "Speakers", "Audio Artifacts"} <= set(tags)
 
     correct = schema["paths"]["/api/v1/text/correct"]["post"]
-    assert correct["summary"] == "校正辨識文字"
-    assert "輸入" in correct["description"] and "輸出" in correct["description"]
+    assert correct["summary"] == "Correct recognized text"
+    assert "Input" in correct["description"] and "Output" in correct["description"]
     text_schema = schema["components"]["schemas"]["TextInput"]["properties"]["text"]
     assert text_schema["description"]
     assert text_schema["examples"] == ["請幫我整理今天的工作重點"]
@@ -150,3 +150,74 @@ async def test_openapi_is_grouped_and_explains_beginner_inputs_outputs(tmp_path:
     assert artifact["content"] == {
         "audio/wav": {"schema": {"type": "string", "format": "binary"}}
     }
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("locale", "expected_summary"),
+    [
+        ("en", "Check service health"),
+        ("zh-TW", "檢查服務健康狀態"),
+        ("ja", "サービスの稼働状態を確認"),
+        ("ko", "서비스 상태 확인"),
+    ],
+)
+async def test_openapi_localizes_every_supported_language(
+    tmp_path: Path, locale: str, expected_summary: str
+) -> None:
+    async with make_client(tmp_path) as client:
+        schema = (await client.get(f"/openapi.json?lang={locale}")).json()
+
+    assert schema["paths"]["/api/v1/health"]["get"]["summary"] == expected_summary
+    storage = schema["components"]["schemas"]["HealthResponse"]["properties"]["storage_ready"]
+    assert storage["description"]
+
+
+@pytest.mark.anyio
+async def test_openapi_defaults_and_unknown_locales_fall_back_to_english(tmp_path: Path) -> None:
+    async with make_client(tmp_path) as client:
+        default = (await client.get("/openapi.json")).json()
+        unknown = (await client.get("/openapi.json?lang=not-supported")).json()
+
+    assert default["info"]["description"].startswith("Agent Speak is a local speech processing API")
+    assert unknown["info"] == default["info"]
+    assert unknown["paths"]["/api/v1/text/correct"]["post"]["summary"] == "Correct recognized text"
+
+
+@pytest.mark.anyio
+async def test_localized_openapi_documents_keep_the_same_machine_contract(tmp_path: Path) -> None:
+    async with make_client(tmp_path) as client:
+        schemas = {
+            locale: (await client.get(f"/openapi.json?lang={locale}")).json()
+            for locale in ("en", "zh-TW", "ja", "ko")
+        }
+
+    english = schemas["en"]
+    expected_paths = {
+        path: set(methods).intersection({"get", "post", "patch", "delete", "put"})
+        for path, methods in english["paths"].items()
+    }
+    expected_components = {
+        name: {
+            "required": tuple(schema.get("required", [])),
+            "properties": tuple(schema.get("properties", {})),
+        }
+        for name, schema in english["components"]["schemas"].items()
+    }
+    for schema in schemas.values():
+        assert {
+            path: set(methods).intersection({"get", "post", "patch", "delete", "put"})
+            for path, methods in schema["paths"].items()
+        } == expected_paths
+        assert {
+            name: {
+                "required": tuple(component.get("required", [])),
+                "properties": tuple(component.get("properties", {})),
+            }
+            for name, component in schema["components"]["schemas"].items()
+        } == expected_components
+        for methods in schema["paths"].values():
+            for method, operation in methods.items():
+                if method in {"get", "post", "patch", "delete", "put"}:
+                    assert operation["summary"]
+                    assert operation["description"]

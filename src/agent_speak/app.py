@@ -17,6 +17,7 @@ from .audio import EnergyVAD, decode_wav
 from .concurrency import run_sync
 from .config import Settings
 from .errors import PlatformError
+from .locales import localize_openapi, normalize_locale
 from .pipeline import Pipeline, ProviderSet
 from .realtime import RealtimeCoordinator, RealtimeTextAdapter
 from .realtime_audio import EnergyFrameVAD
@@ -163,6 +164,7 @@ def create_app(
     )
     app.add_middleware(SecurityHeadersMiddleware)
     app.state.settings = active
+    app.state.localized_openapi = {}
     app.state.broker = SessionBroker(
         max_sessions=active.max_sessions,
         max_events=active.max_session_events,
@@ -209,6 +211,17 @@ def create_app(
             StaticFiles(directory=asr_realtime_assets),
             name="asr-realtime-assets",
         )
+
+    @app.middleware("http")
+    async def localized_openapi_document(request: Request, call_next: Callable[[Request], Any]) -> Response:
+        if request.url.path != "/openapi.json":
+            return await call_next(request)
+        locale = normalize_locale(request.query_params.get("lang"))
+        cached = app.state.localized_openapi.get(locale)
+        if cached is None:
+            cached = localize_openapi(app.openapi(), locale)
+            app.state.localized_openapi[locale] = cached
+        return JSONResponse(cached)
 
     @app.exception_handler(PlatformError)
     async def platform_error(_: Request, exc: PlatformError) -> JSONResponse:
