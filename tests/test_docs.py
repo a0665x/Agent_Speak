@@ -129,3 +129,24 @@ def test_multilingual_ui_and_openapi_contract_is_documented() -> None:
     assert "`/openapi.json?lang=`" in api
     assert "API paths, operation IDs, schema names, property names, and payloads do not change" in api
     assert "must not request microphone permission" in testing
+
+
+def test_readme_capture_script_is_safe_and_covers_every_product_layer() -> None:
+    script = (ROOT / "scripts" / "capture_readme_screenshots.sh").read_text(encoding="utf-8")
+
+    for artifact in (
+        "01-project-home-hero.png",
+        "02-project-home-destinations.png",
+        "03-project-home-pipeline.png",
+        "04-asr-realtime-device-gate.png",
+        "05-asr-realtime-process-cycle.png",
+        "06-asr-realtime-transcript.png",
+        "07-asr-realtime-utterance-graph.png",
+        "08-api-explorer.png",
+        "agent-speak-tour.gif",
+    ):
+        assert artifact in script
+    assert "?lang=en" in script
+    assert "use-fake-ui-for-media-stream" not in script
+    assert "getUserMedia" not in script
+    assert "click()" not in script
