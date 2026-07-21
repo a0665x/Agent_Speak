@@ -3,82 +3,76 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f3efe7">
-  <title>Agent Speak — 本機語音工作台</title>
-  <link rel="stylesheet" href="app.css">
-  <script src="app.js" defer></script>
+  <meta name="description" content="Agent Speak 本機語音閘道：API、即時 ASR 與系統狀態。">
+  <title>Agent Speak · Local Speech Gateway</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
 </head>
 <body>
-  <a class="skip-link" href="#main" data-i18n="skip">跳到語音工作台</a>
-  <header class="site-header">
-    <a class="brand" href="/" aria-label="Agent Speak 首頁" data-i18n-aria-label="brandAria">
-      <svg aria-hidden="true" viewBox="0 0 32 32"><path d="M6 17h4l3-8 5 15 3-7h5"/></svg><span>Agent Speak</span>
-    </a>
-    <div class="header-actions">
-      <button id="language-toggle" class="language-toggle" type="button" aria-label="切換語言" aria-pressed="false">English</button>
-      <div class="status-pill" id="connection-status" role="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span id="status-label" data-i18n="connecting">連線中</span></div>
-    </div>
+  <a class="skip-link" href="#main">跳至主要內容</a>
+  <div class="ambient-word ambient-word-top" aria-hidden="true">VOICE · SIGNAL · TEXT</div>
+  <div class="ambient-word ambient-word-bottom" aria-hidden="true">SPEAK</div>
+  <header class="site-nav" aria-label="網站導覽">
+    <a class="brand" href="/" aria-label="Agent Speak 首頁"><span class="brand-mark" aria-hidden="true"></span>Agent Speak</a>
+    <span>LOCAL SPEECH GATEWAY</span>
   </header>
 
-  <main id="main" tabindex="-1">
+  <main id="main">
     <section class="hero" aria-labelledby="hero-title">
-      <p class="eyebrow" data-i18n="localWorkspace">本機語音工作空間</p>
-      <h1 id="hero-title"><span data-i18n="hero1">說一次就好。</span><br><em data-i18n="hero2">看懂每個步驟。</em></h1>
-      <p class="hero-copy" data-i18n="heroCopy">錄下一段話、查看完整處理流程；語音資料留在這台機器上。</p>
-
-      <section class="quick-start" aria-labelledby="quick-start-title">
-        <div class="section-heading compact"><div><p class="eyebrow" data-i18n="beginHere">先從這裡開始</p><h2 id="quick-start-title" data-i18n="quickStart">3 步快速開始</h2></div></div>
-        <ol class="quick-steps">
-          <li><span>1</span><div><strong data-i18n="quick1">錄音或上傳</strong><small data-i18n="quick1Help">按下錄音，或選擇現有音訊。</small></div></li>
-          <li><span>2</span><div><strong data-i18n="quick2">觀察處理流程</strong><small data-i18n="quick2Help">依序確認六個語音處理階段。</small></div></li>
-          <li><span>3</span><div><strong data-i18n="quick3">查看文字與回覆</strong><small data-i18n="quick3Help">閱讀辨識結果並播放語音回覆。</small></div></li>
-        </ol>
-      </section>
-
-      <h2 class="capture-title" data-i18n="captureTitle">錄音或選擇音訊</h2>
-      <div class="capture-controls">
-        <button class="record-button" id="record-button" type="button" disabled aria-describedby="capture-help"><span class="record-icon" aria-hidden="true"><span></span></span><span id="record-label" data-i18n="startRecording">開始錄音</span></button>
-        <label class="upload-button" id="audio-upload-label" for="audio-upload"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M5 15v4h14v-4"/></svg><span data-i18n="upload">上傳音訊</span></label>
-        <input class="visually-hidden" id="audio-upload" type="file" accept="audio/*,.wav">
+      <div class="hero-copy">
+        <p class="eyebrow">LOCAL · PRIVATE · REALTIME</p>
+        <h1 id="hero-title">讓聲音，<br><span>成為可用的訊號。</span></h1>
+        <p class="hero-lede">一個不綁定 Agent 的本機語音閘道。從 API 開始，或直接看即時語音如何成為文字。</p>
+        <a class="hero-action" href="/asr_realtime">開啟 ASR Realtime <span aria-hidden="true">↗</span></a>
       </div>
-      <p id="capture-help" class="helper" data-i18n="captureHelp">錄音會在 30 秒後自動停止。原始及轉換後音訊皆不得超過 8 MiB；瀏覽器會先在本機轉成 16-bit PCM WAV。</p>
-      <p id="action-error" class="error-message" role="alert" hidden></p>
+      <figure class="hero-visual">
+        <img src="/static/speech-core-hero.png" width="1536" height="1024" alt="聲波通過本機處理核心轉換成文字的抽象示意圖">
+        <figcaption><span class="live-glyph" aria-hidden="true">⌁</span><span><strong>Speech Core</strong><small>Audio → Intelligence-ready text</small></span></figcaption>
+      </figure>
     </section>
 
-    <section class="pipeline-card" aria-labelledby="pipeline-title">
-      <div class="section-heading"><div><p class="eyebrow" data-i18n="liveExecution">即時執行</p><h2 id="pipeline-title" data-i18n="pipelineTitle">處理流程時間軸</h2><p class="section-copy" data-i18n="pipelineHelp">這裡會依序顯示語音如何被處理，以及每一步花費的時間。</p></div><span class="turn-state" id="turn-state" role="status" aria-live="polite" data-i18n="waitingTurn">等待語音</span></div>
-      <ol class="pipeline" id="pipeline-list">
-        <li data-stage="vad"><span class="step-index">01</span><span><strong>VAD</strong><small data-i18n="vadShort">偵測人聲</small></span><output data-i18n="waiting">等待中</output></li>
-        <li data-stage="asr"><span class="step-index">02</span><span><strong>ASR</strong><small data-i18n="asrShort">語音轉文字</small></span><output data-i18n="waiting">等待中</output></li>
-        <li data-stage="correction"><span class="step-index">03</span><span><strong>Correction</strong><small data-i18n="correctionShort">文字校正</small></span><output data-i18n="waiting">等待中</output></li>
-        <li data-stage="endpoint"><span class="step-index">04</span><span><strong>Endpoint</strong><small data-i18n="endpointShort">判斷語句結束</small></span><output data-i18n="waiting">等待中</output></li>
-        <li data-stage="agent"><span class="step-index">05</span><span><strong>Agent</strong><small data-i18n="agentShort">產生本機回覆</small></span><output data-i18n="waiting">等待中</output></li>
-        <li data-stage="tts"><span class="step-index">06</span><span><strong>TTS</strong><small data-i18n="ttsShort">文字轉語音</small></span><output data-i18n="waiting">等待中</output></li>
+    <section class="product-grid" aria-label="Project destinations">
+      <a class="product-card api-card" href="/docs">
+        <span class="card-icon" aria-hidden="true">{ }</span>
+        <span class="card-index">01</span>
+        <strong>API Explorer</strong>
+        <span>查看 `/api/v1` Swagger 契約</span>
+        <i aria-hidden="true">↗</i>
+      </a>
+      <a class="product-card realtime-card" href="/asr_realtime">
+        <svg class="mini-wave" viewBox="0 0 120 40" aria-hidden="true"><path d="M2 20h12l8-15 13 31 13-26 14 20 10-14 10 8h36"/></svg>
+        <span class="card-index">02</span>
+        <strong>ASR Realtime</strong>
+        <span>Continuous VAD 與即時校正</span>
+        <i aria-hidden="true">↗</i>
+      </a>
+      <section class="product-card status-card" id="system-status" aria-labelledby="status-title" aria-live="polite">
+        <span class="status-orbit" aria-hidden="true"><i></i></span>
+        <span class="card-index">03</span>
+        <strong id="status-title">System Status</strong>
+        <span id="status-summary">正在確認本機服務…</span>
+        <dl class="status-details">
+          <div><dt>Gateway</dt><dd id="status-gateway">CHECKING</dd></div>
+          <div><dt>ASR</dt><dd id="status-asr">—</dd></div>
+          <div><dt>Correction</dt><dd id="status-correction">—</dd></div>
+        </dl>
+      </section>
+    </section>
+
+    <section class="pipeline-preview" aria-labelledby="pipeline-title">
+      <div>
+        <p class="eyebrow">THE LOCAL PATH</p>
+        <h2 id="pipeline-title">聲音走過的每一步，<br>都看得見。</h2>
+      </div>
+      <ol>
+        <li><span>01</span><strong>VAD</strong><small>Voice detected</small></li>
+        <li><span>02</span><strong>Endpoint</strong><small>Pause understood</small></li>
+        <li><span>03</span><strong>ASR</strong><small>Speech to text</small></li>
+        <li><span>04</span><strong>Correction</strong><small>Context refined</small></li>
       </ol>
     </section>
-
-    <div class="content-grid">
-      <section class="results-card" aria-labelledby="results-title">
-        <div class="section-heading"><div><p class="eyebrow" data-i18n="turnRecord">本次結果</p><h2 id="results-title" data-i18n="conversation">辨識文字與 Agent 回覆</h2><p class="section-copy" data-i18n="resultsHelp">完成處理後，可在這裡核對文字、回覆與語音成品。</p></div></div>
-        <article class="result-block"><h3 data-i18n="transcriptTitle">辨識文字</h3><p id="transcript" class="empty-copy" data-i18n="transcriptEmpty">錄音完成後，辨識文字會顯示在這裡。</p></article>
-        <article class="result-block response-block"><h3 data-i18n="responseTitle">Agent 回覆</h3><p id="agent-response" class="empty-copy" data-i18n="responseEmpty">開發版 Agent 的回覆會顯示在這裡。</p><audio id="tts-player" controls hidden aria-label="合成的回覆音訊" data-i18n-aria-label="playerAria"></audio></article>
-        <div class="latency-summary"><span data-i18n="totalLatency">各階段總耗時</span><strong id="total-latency">—</strong></div>
-      </section>
-
-      <aside class="side-stack">
-        <section class="detail-card" aria-labelledby="capabilities-title"><div class="section-heading compact"><div><p class="eyebrow" data-i18n="advanced">進階功能</p><h2 id="capabilities-title" data-i18n="capabilities">目前能力</h2><p class="section-copy" data-i18n="capabilitiesHelp">查看每個階段實際使用的提供者與限制。</p></div></div><ul id="capability-list" class="capability-list" aria-busy="true"><li class="empty-copy" data-i18n="loadingProviders">正在載入提供者…</li></ul></section>
-        <section class="detail-card" aria-labelledby="speakers-title"><div class="section-heading compact"><div><p class="eyebrow" data-i18n="advanced">進階功能</p><h2 id="speakers-title" data-i18n="speakers">說話者資料</h2><p class="section-copy" data-i18n="speakersHelp">建立本機資料，以最近一段語音進行便利辨識。</p></div></div>
-          <p class="notice" data-i18n="speakerNotice">比對只供本機便利識別，不是生物辨識身分驗證。</p>
-          <form id="speaker-form" class="speaker-form"><label for="speaker-name" data-i18n="newProfile">新資料名稱</label><div class="inline-form"><input id="speaker-name" name="name" required maxlength="100" autocomplete="off"><button type="submit" data-i18n="add">新增</button></div></form>
-          <ul id="speaker-list" class="speaker-list"><li class="empty-copy" data-i18n="noProfiles">目前沒有說話者資料。</li></ul>
-          <div class="speaker-actions" aria-label="已選說話者操作" data-i18n-aria-label="speakerActionsAria"><button id="enroll-button" type="button" disabled data-i18n="enroll">登錄上一段語音</button><button id="match-button" type="button" disabled data-i18n="match">比對上一段語音</button><button id="rename-button" type="button" disabled data-i18n="rename">重新命名</button><button id="delete-button" class="danger-button" type="button" disabled data-i18n="delete">刪除資料</button></div>
-          <p id="speaker-result" class="helper" aria-live="polite" data-i18n="speakerHint">先選擇資料並錄音，才能登錄。</p>
-        </section>
-      </aside>
-    </div>
-
-    <section class="glossary-card" aria-labelledby="glossary-title"><div><p class="eyebrow" data-i18n="reference">快速參考</p><h2 id="glossary-title" data-i18n="glossary">名詞小抄</h2></div><dl><div><dt>VAD</dt><dd data-i18n="vadDefinition">Voice Activity Detection，判斷音訊中是否有人聲。</dd></div><div><dt>ASR</dt><dd data-i18n="asrDefinition">Automatic Speech Recognition，將語音轉為文字。</dd></div><div><dt>TTS</dt><dd data-i18n="ttsDefinition">Text-to-Speech，將 Agent 回覆轉為可播放音訊。</dd></div></dl></section>
   </main>
-  <footer><span>Agent Speak MVP</span><span data-i18n="footer">能力區會標示開發版提供者。</span></footer>
+
+  <footer><span>Agent Speak</span><span>Local-first · No automatic microphone access</span></footer>
 </body>
 </html>

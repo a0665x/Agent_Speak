@@ -34,158 +34,59 @@ async def test_legacy_realtime_worklet_redirects_to_canonical_path(tmp_path: Pat
         follow_redirects=False,
     ) as client:
         worklet = await client.get("/realtime/pcm-capture.worklet.js")
-
     assert worklet.status_code in {307, 308}
     assert worklet.headers["location"] == "/asr_realtime/pcm-capture.worklet.js"
 
 
 @pytest.mark.anyio
-async def test_real_speech_capabilities_have_localized_non_tone_descriptions(tmp_path: Path) -> None:
-    app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-        javascript = (await client.get("/static/app.js")).text
-
-    assert '"Faster-Whisper local transcription; CPU inference.": "limitationWhisper"' in javascript
-    assert '"Piper local Mandarin speech synthesis.": "limitationPiper"' in javascript
-    assert 'limitationWhisper: "本機 Faster-Whisper 語音辨識（CPU 推論）。"' in javascript
-    assert 'limitationPiper: "本機 Piper 中文語音合成。"' in javascript
-
-
-@pytest.mark.anyio
-async def test_operator_console_and_local_assets_are_served(tmp_path: Path) -> None:
-    app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-        page = await client.get("/")
-        css = await client.get("/static/app.css")
-        javascript = await client.get("/static/app.js")
-
-    assert page.status_code == 200
-    assert '<html lang="zh-Hant-TW">' in page.text
-    assert 'name="viewport" content="width=device-width, initial-scale=1"' in page.text
-    assert 'href="#main"' in page.text
-    assert 'id="record-button"' in page.text
-    assert 'aria-live="polite"' in page.text
-    assert 'id="turn-state" role="status" aria-live="polite"' in page.text
-    assert all(stage in page.text for stage in ("VAD", "ASR", "Correction", "Endpoint", "Agent", "TTS"))
-    assert all(section in page.text for section in ("辨識文字", "Agent 回覆", "目前能力", "說話者資料"))
-    assert "https://" not in page.text and "http://" not in page.text
-    assert css.headers["content-type"].startswith("text/css")
-    assert javascript.headers["content-type"].startswith("text/javascript")
-
-
-@pytest.mark.anyio
-async def test_webui_defaults_to_traditional_chinese_with_persistent_english_switch(tmp_path: Path) -> None:
+async def test_root_is_project_guide_without_capture_controls(tmp_path: Path) -> None:
     app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         page = (await client.get("/")).text
         javascript = (await client.get("/static/app.js")).text
 
-    assert 'id="language-toggle"' in page
-    assert 'aria-label="切換語言"' in page
-    assert "開始錄音" in page
-    assert "English" in page
-    assert 'const DEFAULT_LOCALE = "zh-TW"' in javascript
-    assert 'localStorage.getItem("agent-speak-locale")' in javascript
-    assert 'localStorage.setItem("agent-speak-locale", locale)' in javascript
-    assert 'document.documentElement.lang = currentLocale === "zh-TW" ? "zh-Hant-TW" : "en"' in javascript
-    assert 'elements.transcript.removeAttribute("data-i18n")' in javascript
-    assert 'elements.response.removeAttribute("data-i18n")' in javascript
-    assert "function readStoredLocale()" in javascript
-    assert "function writeStoredLocale(locale)" in javascript
-    assert "state.speakerResultFactory" in javascript
-    assert "state.actionErrorFactory" in javascript
-
-
-@pytest.mark.anyio
-async def test_webui_explains_the_beginner_workflow_and_each_major_area(tmp_path: Path) -> None:
-    app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-        page = (await client.get("/")).text
-
-    assert 'aria-labelledby="quick-start-title"' in page
-    assert all(step in page for step in ("錄音或上傳", "觀察處理流程", "查看文字與回覆"))
-    assert "先從這裡開始" in page
-    assert "這裡會依序顯示語音如何被處理" in page
-    assert "進階功能" in page
-    assert "名詞小抄" in page
-    assert all(term in page for term in ("VAD", "ASR", "TTS"))
-
-
-@pytest.mark.anyio
-async def test_webui_css_has_accessible_responsive_and_reduced_motion_contract(tmp_path: Path) -> None:
-    app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-        css = (await client.get("/static/app.css")).text
-
-    assert "--accent:" in css
-    assert "--paper:" in css
-    assert "min-height: 48px" in css
-    assert ":focus-visible" in css
-    assert "@media (max-width: 600px)" in css
-    assert "@media (prefers-reduced-motion: reduce)" in css
-    assert "overflow-x: hidden" in css
-    assert ".content-grid { display: grid; grid-template-columns: 1fr;" in css
-    assert ".side-stack { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));" in css
-    assert "url(" not in css
-
-
-@pytest.mark.anyio
-async def test_webui_javascript_wires_recording_pipeline_and_speakers(tmp_path: Path) -> None:
-    app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-        javascript = (await client.get("/static/app.js")).text
-
-    required_hooks = (
-        "navigator.mediaDevices.getUserMedia",
-        "MediaRecorder",
-        "decodeAudioData",
-        "encodeWav",
-        "WebSocket",
-        "/api/v1/sessions",
-        "/turns",
-        "/api/v1/capabilities",
-        "/api/v1/speakers",
-        "/samples",
-        "/match",
-        "setTimeout(connectEvents",
-        "lastSequence",
-        "/api/v1/speakers/${state.selectedSpeaker}",
-    )
-    assert all(hook in javascript for hook in required_hooks)
-    assert "Content-Type\": \"audio/wav" in javascript
+    assert '<html lang="zh-Hant-TW">' in page
+    assert 'href="#main"' in page
+    assert all(target in page for target in ('href="/docs"', 'href="/asr_realtime"', 'id="system-status"'))
+    assert all(label in page for label in ("API Explorer", "ASR Realtime", "System Status"))
+    assert all(stage in page for stage in ("VAD", "Endpoint", "ASR", "Correction"))
+    assert "getUserMedia" not in javascript
+    assert "MediaRecorder" not in javascript
+    assert "WebSocket" not in javascript
+    assert 'fetch("/api/v1/health")' in javascript
+    assert 'fetch("/api/v1/capabilities")' in javascript
     assert "innerHTML" not in javascript
 
 
 @pytest.mark.anyio
-async def test_webui_enforces_capture_bounds_and_disables_both_ingress_controls(tmp_path: Path) -> None:
+async def test_project_guide_local_assets_are_served(tmp_path: Path) -> None:
     app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-        page = (await client.get("/")).text
-        javascript = (await client.get("/static/app.js")).text
+        css = await client.get("/static/app.css")
+        javascript = await client.get("/static/app.js")
+        artwork = await client.get("/static/speech-core-hero.png")
 
-    assert "MAX_RECORDING_SECONDS = 30" in javascript
-    assert "MAX_AUDIO_BYTES = 8 * 1024 * 1024" in javascript
-    assert "setTimeout(stopRecording, MAX_RECORDING_SECONDS * 1000)" in javascript
-    assert "clearTimeout(state.recordingTimer)" in javascript
-    assert "validateAudioSize(file)" in javascript
-    assert "validateAudioSize(wav)" in javascript
-    assert "elements.record.disabled = disabled" in javascript
-    assert "elements.upload.disabled = disabled" in javascript
-    assert "30 秒" in page
-    assert "8 MiB" in page
+    assert css.headers["content-type"].startswith("text/css")
+    assert javascript.headers["content-type"].startswith("text/javascript")
+    assert artwork.status_code == 200
+    assert artwork.headers["content-type"] == "image/png"
 
 
 @pytest.mark.anyio
-async def test_capture_toggle_targets_the_explicit_upload_label(tmp_path: Path) -> None:
+async def test_webui_css_has_accessible_responsive_and_motion_contract(tmp_path: Path) -> None:
     app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-        page = (await client.get("/")).text
-        javascript = (await client.get("/static/app.js")).text
+        css = (await client.get("/static/app.css")).text
 
-    assert 'id="audio-upload-label"' in page
-    assert 'uploadLabel: document.querySelector("#audio-upload-label")' in javascript
-    assert 'elements.uploadLabel.setAttribute("aria-disabled", String(disabled))' in javascript
-    assert 'elements.upload.closest("label")' not in javascript
+    assert "--ice:" in css
+    assert "--violet:" in css
+    assert "min-height: 44px" in css
+    assert ":focus-visible" in css
+    assert "@media (max-width: 700px)" in css
+    assert "@media (prefers-reduced-motion: reduce)" in css
+    assert "@media (prefers-reduced-transparency: reduce)" in css
+    assert "@media (prefers-contrast: more)" in css
+    assert "overflow-x: hidden" in css
 
 
 @pytest.mark.anyio

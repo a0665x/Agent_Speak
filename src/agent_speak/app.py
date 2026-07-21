@@ -287,6 +287,10 @@ def create_app(
     async def web_script() -> Response:
         return Response(content=(web_dir / "app.js").read_text(encoding="utf-8"), media_type="text/javascript")
 
+    @app.get("/static/speech-core-hero.png", include_in_schema=False)
+    async def speech_core_artwork() -> Response:
+        return Response(content=(web_dir / "speech-core-hero.png").read_bytes(), media_type="image/png")
+
     @app.get("/codex", include_in_schema=False)
     async def codex_recorder() -> Response:
         return Response(content=(web_dir / "codex.html").read_text(encoding="utf-8"), media_type="text/html")
