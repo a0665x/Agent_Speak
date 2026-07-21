@@ -1,6 +1,6 @@
 # Multilingual UI, OpenAPI, and README Visual Tour Design
 
-**Date:** 2026-07-21  
+**Date:** 2026-07-21
 **Status:** Approved for implementation planning
 
 ## Goal
@@ -160,4 +160,3 @@ Final verification also includes the full project test command, live route check
 ## Delivery and Git Scope
 
 The implementation is committed to the existing `main` branch as explicitly requested. The final push to `origin/main` will include the branch's existing unpublished commits together with the new localization, documentation, and screenshot commits. `.superpowers/`, `.env`, credentials, recordings, voice features, databases, runtime data, model weights, logs, and Agent-private state remain untracked and excluded.
-

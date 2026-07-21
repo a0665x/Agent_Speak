@@ -1,7 +1,7 @@
 # Realtime Speech Studio Design
 
-Date: 2026-07-20  
-Status: Approved design  
+Date: 2026-07-20
+Status: Approved design
 Route: `http://127.0.0.1:8765/realtime`
 
 ## Objective

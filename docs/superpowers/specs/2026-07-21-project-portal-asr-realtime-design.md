@@ -1,7 +1,7 @@
 # Agent Speak Project Portal and ASR Realtime Experience
 
-Date: 2026-07-21  
-Status: Approved design  
+Date: 2026-07-21
+Status: Approved design
 Primary route: `http://127.0.0.1:8765/asr_realtime`
 
 ## Objective

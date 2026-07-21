@@ -67,7 +67,7 @@ async def test_asr_realtime_is_canonical_and_old_route_redirects(tmp_path: Path)
 
 - [ ] **Step 2: Run the focused test and confirm RED**
 
-Run: `pytest -q tests/test_webui.py::test_asr_realtime_is_canonical_and_old_route_redirects`  
+Run: `pytest -q tests/test_webui.py::test_asr_realtime_is_canonical_and_old_route_redirects`
 Expected: FAIL because `/asr_realtime` is not served and `/realtime` still returns 200.
 
 - [ ] **Step 3: Implement canonical FastAPI routes**
@@ -105,7 +105,7 @@ Change the AudioWorklet URL to `/asr_realtime/pcm-capture.worklet.js`, and updat
 
 - [ ] **Step 5: Build and verify GREEN**
 
-Run: `npm --prefix frontend/realtime run build && pytest -q tests/test_webui.py::test_asr_realtime_is_canonical_and_old_route_redirects`  
+Run: `npm --prefix frontend/realtime run build && pytest -q tests/test_webui.py::test_asr_realtime_is_canonical_and_old_route_redirects`
 Expected: Vite build succeeds and the focused pytest passes.
 
 - [ ] **Step 6: Commit**
@@ -146,7 +146,7 @@ Update the old homepage accessibility test to require `:focus-visible`, 44 px ta
 
 - [ ] **Step 2: Run homepage tests and confirm RED**
 
-Run: `pytest -q tests/test_webui.py -k 'root_is_project_guide or webui_css'`  
+Run: `pytest -q tests/test_webui.py -k 'root_is_project_guide or webui_css'`
 Expected: FAIL because the legacy operator console is still present.
 
 - [ ] **Step 3: Add generated artwork**
@@ -177,7 +177,7 @@ Use CSS variables for graphite, ice blue, and violet; provide hover and `:active
 
 - [ ] **Step 6: Run homepage tests and commit**
 
-Run: `pytest -q tests/test_webui.py -k 'root_is_project_guide or webui_css'`  
+Run: `pytest -q tests/test_webui.py -k 'root_is_project_guide or webui_css'`
 Expected: PASS.
 
 ```bash
@@ -217,7 +217,7 @@ test('records one completed utterance and resets for a new client session', () =
 
 - [ ] **Step 2: Run reducer tests and confirm RED**
 
-Run: `npm --prefix frontend/realtime test -- src/state/reducer.test.ts`  
+Run: `npm --prefix frontend/realtime test -- src/state/reducer.test.ts`
 Expected: FAIL because `stage`, completion IDs, and the reset action do not exist.
 
 - [ ] **Step 3: Implement types and reducer mapping**
@@ -233,7 +233,7 @@ Extend state with `stage` and `completedUtteranceIds`. Handle the exact event ma
 
 - [ ] **Step 4: Run reducer tests and commit**
 
-Run: `npm --prefix frontend/realtime test -- src/state/reducer.test.ts`  
+Run: `npm --prefix frontend/realtime test -- src/state/reducer.test.ts`
 Expected: PASS.
 
 ```bash
@@ -270,7 +270,7 @@ test('reduced motion keeps semantic state without trail animation', () => {
 
 - [ ] **Step 2: Run the new test and confirm RED**
 
-Run: `npm --prefix frontend/realtime test -- src/components/ProcessCycle.test.tsx`  
+Run: `npm --prefix frontend/realtime test -- src/components/ProcessCycle.test.tsx`
 Expected: FAIL because the component does not exist.
 
 - [ ] **Step 3: Implement the component**
@@ -279,7 +279,7 @@ Render the five fixed stages with Lucide icons. Track the previous non-idle stag
 
 - [ ] **Step 4: Run component tests and commit**
 
-Run: `npm --prefix frontend/realtime test -- src/components/ProcessCycle.test.tsx`  
+Run: `npm --prefix frontend/realtime test -- src/components/ProcessCycle.test.tsx`
 Expected: PASS.
 
 ```bash
@@ -321,7 +321,7 @@ test('adds chronological edges and only thresholded similarity edges', () => {
 
 - [ ] **Step 2: Run graph-model tests and confirm RED**
 
-Run: `npm --prefix frontend/realtime test -- src/graph/textGraph.test.ts`  
+Run: `npm --prefix frontend/realtime test -- src/graph/textGraph.test.ts`
 Expected: FAIL because the graph model does not exist.
 
 - [ ] **Step 3: Implement deterministic vectors and graph building**
@@ -330,7 +330,7 @@ Implement Unicode normalization, Mandarin/Latin/number unigrams and adjacent bi-
 
 - [ ] **Step 4: Run graph tests and commit**
 
-Run: `npm --prefix frontend/realtime test -- src/graph/textGraph.test.ts`  
+Run: `npm --prefix frontend/realtime test -- src/graph/textGraph.test.ts`
 Expected: PASS.
 
 ```bash
@@ -369,7 +369,7 @@ test('hover shows corrected text without changing position transform', async () 
 
 - [ ] **Step 2: Run graph component tests and confirm RED**
 
-Run: `npm --prefix frontend/realtime test -- src/components/UtteranceGraph.test.tsx`  
+Run: `npm --prefix frontend/realtime test -- src/components/UtteranceGraph.test.tsx`
 Expected: FAIL because the component does not exist.
 
 - [ ] **Step 3: Implement layered SVG and tooltip**
@@ -378,7 +378,7 @@ Build graph input by joining completed IDs with current transcript rows. Render 
 
 - [ ] **Step 4: Run component tests and commit**
 
-Run: `npm --prefix frontend/realtime test -- src/components/UtteranceGraph.test.tsx`  
+Run: `npm --prefix frontend/realtime test -- src/components/UtteranceGraph.test.tsx`
 Expected: PASS.
 
 ```bash
@@ -400,7 +400,7 @@ Mock the realtime client boundary and verify that the page renders the new headl
 
 - [ ] **Step 2: Run App tests and confirm RED**
 
-Run: `npm --prefix frontend/realtime test -- src/App.test.tsx`  
+Run: `npm --prefix frontend/realtime test -- src/App.test.tsx`
 Expected: FAIL because the approved layout and components are not composed.
 
 - [ ] **Step 3: Compose the page**
@@ -422,7 +422,7 @@ Use the approved graphite/ice-blue/violet palette, oversized gradient background
 
 - [ ] **Step 5: Run the complete frontend suite and build**
 
-Run: `npm --prefix frontend/realtime test && npm --prefix frontend/realtime run build`  
+Run: `npm --prefix frontend/realtime test && npm --prefix frontend/realtime run build`
 Expected: all Vitest tests pass and production assets are emitted to `web/asr_realtime`.
 
 - [ ] **Step 6: Commit**
@@ -458,7 +458,7 @@ Expected: no whitespace errors, all frontend tests pass, Vite builds, and `TESTS
 
 - [ ] **Step 3: Rebuild and start the approved runtime**
 
-Run: `AGENT_SPEAK_ACCELERATOR=auto ./run.sh --rebuild`  
+Run: `AGENT_SPEAK_ACCELERATOR=auto ./run.sh --rebuild`
 Expected: NVIDIA preflight selects `nvidia`; gateway, ASR worker, and correction worker become healthy.
 
 - [ ] **Step 4: Verify live URLs without starting hardware**
