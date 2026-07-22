@@ -63,6 +63,7 @@ def test_realtime_workers_are_internal_and_gpu_override_targets_inference_only()
     assert "AGENT_SPEAK_IMAGE_VARIANT" in dockerfile
     assert "nvidia-cublas-cu12" in pyproject
     assert "nvidia-cudnn-cu12" in pyproject
+    assert '"torch>=2.6,<2.8"' in pyproject
 
 
 def test_test_services_have_no_audio_gpu_models_or_network() -> None:
