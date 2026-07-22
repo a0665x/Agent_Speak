@@ -133,6 +133,10 @@ class FasterWhisperASR:
     def warm(self) -> None:
         self._load_model()
 
+    def close(self) -> None:
+        with self._lock:
+            self._model = None
+
     def transcribe_mode(self, audio: bytes, mode: str) -> str:
         if mode not in {"partial", "final"}:
             raise ValueError("mode must be partial or final")

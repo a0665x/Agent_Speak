@@ -76,6 +76,18 @@ def test_faster_whisper_warm_loads_model_without_transcribing() -> None:
     assert model.audio_header == b""
 
 
+def test_faster_whisper_close_allows_model_to_reload() -> None:
+    model = FakeWhisperModel()
+    factory = CapturingWhisperFactory(model)
+    provider = FasterWhisperASR(accelerator="cpu", model_factory=factory)
+
+    provider.warm()
+    provider.close()
+    provider.warm()
+
+    assert len(factory.calls) == 2
+
+
 def test_faster_whisper_reuses_one_model_with_request_time_language_hints() -> None:
     model = FakeWhisperModel()
     factory = CapturingWhisperFactory(model)
