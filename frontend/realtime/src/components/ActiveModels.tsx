@@ -1,4 +1,5 @@
 import type { ASRModelId, CorrectionModelId, ModelCatalog } from '../models';
+import type { ModelPresentation } from '../modelPresentation';
 import { useI18n } from '../i18n';
 
 type Props = {
@@ -6,17 +7,13 @@ type Props = {
   asrModel: ASRModelId;
   correctionModel: CorrectionModelId;
   switching: boolean;
+  presentation: ModelPresentation;
+  statusText: string;
   onChange: (asrModel: ASRModelId, correctionModel: CorrectionModelId) => void;
 };
 
-export function ActiveModels({ catalog, asrModel, correctionModel, switching, onChange }: Props) {
+export function ActiveModels({ catalog, asrModel, correctionModel, switching, presentation, statusText, onChange }: Props) {
   const { t } = useI18n();
-  const stateLabels = {
-    ready: t('models.state.ready'), loading: t('models.state.loading'), warming: t('models.state.warming'),
-    unloading: t('models.state.unloading'), rollback: t('models.state.rollback'), failed: t('models.state.failed'),
-    idle: t('models.state.idle'), unavailable: t('models.state.unavailable'),
-  } as const;
-  const lifecycle = switching ? t('models.switching') : stateLabels[catalog.active.state as keyof typeof stateLabels];
 
   return (
     <div className="model-selectors">
@@ -46,8 +43,14 @@ export function ActiveModels({ catalog, asrModel, correctionModel, switching, on
           ))}
         </select>
       </label>
-      <p className={`model-lifecycle state-${catalog.active.state}`} role="status">
-        <span aria-hidden="true" />{lifecycle || catalog.active.state} · {catalog.active.device}
+      <p
+        className={`model-lifecycle state-${presentation.ready ? 'ready' : presentation.lifecycle}${presentation.switching ? ' is-switching' : ''}`}
+        role="status"
+        aria-live="polite"
+        data-ready={presentation.ready ? 'true' : 'false'}
+      >
+        <span className={presentation.switching ? 'model-spinner' : ''} aria-hidden="true" />
+        {statusText} · {presentation.device}
       </p>
     </div>
   );

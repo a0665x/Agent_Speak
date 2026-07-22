@@ -17,6 +17,7 @@ import {
   type CorrectionModelId,
   type ModelCatalog,
 } from './models';
+import { deriveModelPresentation, type ModelLifecycle } from './modelPresentation';
 import { SUPPORTED_LOCALES, useI18n, type Locale } from './i18n';
 import { Waves } from './vendor/reactbits/Waves';
 import {
@@ -61,6 +62,18 @@ export function App({ forceReducedMotion = false }: AppProps) {
     () => forceReducedMotion || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true,
     [forceReducedMotion]
   );
+  const modelPresentation = useMemo(
+    () => modelCatalog ? deriveModelPresentation(modelCatalog, asrModel, correctionModel, switchingModels) : null,
+    [modelCatalog, asrModel, correctionModel, switchingModels],
+  );
+  const modelStateLabels: Record<ModelLifecycle, string> = {
+    ready: t('models.state.ready'), loading: t('models.state.loading'), warming: t('models.state.warming'),
+    unloading: t('models.state.unloading'), rollback: t('models.state.rollback'), failed: t('models.state.failed'),
+    idle: t('models.state.idle'), unavailable: t('models.state.unavailable'),
+  };
+  const modelStatusText = modelPresentation
+    ? (modelPresentation.switching ? t('models.switching') : modelStateLabels[modelPresentation.lifecycle])
+    : '';
 
   useEffect(() => {
     const client = new RealtimeClient({ onEvent: event => {
@@ -162,17 +175,19 @@ export function App({ forceReducedMotion = false }: AppProps) {
   const changeModels = async (nextAsr: ASRModelId, nextCorrection: CorrectionModelId) => {
     if (switchingModels || (nextAsr === asrModel && nextCorrection === correctionModel)) return;
     const resume = active && gate.ready;
+    const previousAsr = asrModel;
+    const previousCorrection = correctionModel;
     setSwitchingModels(true);
     setBusy(true);
     setError('');
+    setAsrModel(nextAsr);
+    setCorrectionModel(nextCorrection);
     try {
       if (active) {
         await clientRef.current?.stop('model-switch');
         setActive(false);
       }
       dispatch({ type: 'client.model_switched' });
-      setAsrModel(nextAsr);
-      setCorrectionModel(nextCorrection);
       for (let attempt = 0; attempt < 20; attempt += 1) {
         const released = await fetchModelCatalog();
         setModelCatalog(released);
@@ -192,6 +207,16 @@ export function App({ forceReducedMotion = false }: AppProps) {
       }
       if (resume) await createAndStart(false, nextAsr, nextCorrection);
     } catch (cause) {
+      let rollbackAsr = previousAsr;
+      let rollbackCorrection = previousCorrection;
+      try {
+        const confirmed = await fetchModelCatalog();
+        setModelCatalog(confirmed);
+        rollbackAsr = confirmed.active.asr_model ?? rollbackAsr;
+        rollbackCorrection = confirmed.active.correction_model;
+      } catch { /* Preserve the last confirmed local selection. */ }
+      setAsrModel(rollbackAsr);
+      setCorrectionModel(rollbackCorrection);
       setError(cause instanceof Error ? cause.message : t('error.modelSwitch'));
     } finally {
       setSwitchingModels(false);
@@ -266,12 +291,14 @@ export function App({ forceReducedMotion = false }: AppProps) {
           <AudioStage samples={envelope} state={state.stream} />
           <section className="worker-card" aria-label={t('models.aria')}>
             <div><p className="eyebrow">{t('models.eyebrow')}</p><span className={`worker-state${active ? ' live' : ''}`}>{active ? t('models.streaming') : t('models.standby')}</span></div>
-            {modelCatalog && (
+            {modelCatalog && modelPresentation && (
               <ActiveModels
                 catalog={modelCatalog}
                 asrModel={asrModel}
                 correctionModel={correctionModel}
                 switching={switchingModels}
+                presentation={modelPresentation}
+                statusText={modelStatusText}
                 onChange={changeModels}
               />
             )}
@@ -280,11 +307,25 @@ export function App({ forceReducedMotion = false }: AppProps) {
               <div>
                 <dt>ASR</dt>
                 <dd>
-                  {modelCatalog?.active.asr_model ?? inference.asr}
-                  <small>{modelCatalog?.active.device ?? inference.asrDevice}</small>
+                  {modelPresentation?.asrModel ?? inference.asr}
+                  <ModelDetailStatus
+                    switching={modelPresentation?.switching ?? false}
+                    status={modelStatusText}
+                    device={modelPresentation?.device ?? inference.asrDevice}
+                  />
                 </dd>
               </div>
-              <div><dt>{t('models.correction')}</dt><dd>{inference.correction}<small>{inference.correctionDevice}</small></dd></div>
+              <div>
+                <dt>{t('models.correction')}</dt>
+                <dd>
+                  {modelPresentation?.correctionModel ?? inference.correction}
+                  <ModelDetailStatus
+                    switching={modelPresentation?.switching ?? false}
+                    status={modelStatusText}
+                    device={inference.correctionDevice}
+                  />
+                </dd>
+              </div>
               <div><dt>{t('models.endpoint')}</dt><dd>{state.endpointMs || 900} ms<small>{t('models.hard', { value: 1800 })}</small></dd></div>
               <div><dt>{t('models.queue')}</dt><dd>{t('models.pending', { value: state.asrQueue })}</dd></div>
             </dl>
@@ -296,6 +337,15 @@ export function App({ forceReducedMotion = false }: AppProps) {
         <p className="sr-status" aria-live="polite">{gate.ready ? t('sr.devicesReady') : t('sr.devicesNotReady')}; {state.stage}</p>
       </main>
     </>
+  );
+}
+
+function ModelDetailStatus({ switching, status, device }: { switching: boolean; status: string; device: string }) {
+  return (
+    <small className={`model-detail-status${switching ? ' is-switching' : ''}`}>
+      {switching && <span className="model-spinner" aria-hidden="true" />}
+      <span>{status}</span>{status && ' · '}{device}
+    </small>
   );
 }
 

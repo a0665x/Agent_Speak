@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { App } from './App';
 import { I18nProvider, type Locale } from './i18n';
+import type { ASRModelId, CorrectionModelId, ModelCatalog } from './models';
 
 const realtime = vi.hoisted(() => ({
   checkDevices: vi.fn(),
@@ -39,7 +40,7 @@ beforeEach(() => {
       return { ok: true, json: async () => modelCatalog() } as Response;
     }
     if (url === '/api/v1/models/active') {
-      const selection = JSON.parse(String(init?.body)) as { asr_model: string; correction_model: string };
+      const selection = JSON.parse(String(init?.body)) as { asr_model: ASRModelId; correction_model: CorrectionModelId };
       return { ok: true, json: async () => modelCatalog(selection.asr_model, selection.correction_model) } as Response;
     }
     const params = new URL(url, 'http://test').searchParams;
@@ -50,7 +51,10 @@ beforeEach(() => {
 }));
 });
 
-function modelCatalog(asrModel = 'qwen3-asr-1.7b', correctionModel = 'qwen2.5-correction') {
+function modelCatalog(
+  asrModel: ModelCatalog['active']['asr_model'] = 'qwen3-asr-1.7b',
+  correctionModel: ModelCatalog['active']['correction_model'] = 'qwen2.5-correction',
+): ModelCatalog {
   return {
     asr: [
       { id: 'qwen3-asr-1.7b', label: 'Qwen3-ASR 1.7B', description: 'Multilingual and code-switching.', ready: true },
@@ -101,6 +105,108 @@ test('switches active models immediately without a submit button', async () => {
     body: JSON.stringify({ asr_model: 'breeze-asr-25', correction_model: 'qwen2.5-correction' }),
   }));
   expect(screen.queryByRole('button', { name: /submit/i })).not.toBeInTheDocument();
+});
+
+test('keeps the selected model and worker row synchronized until the new model is ready', async () => {
+  let resolveReady!: (catalog: ReturnType<typeof modelCatalog>) => void;
+  const readyCatalog = new Promise<ReturnType<typeof modelCatalog>>(resolve => { resolveReady = resolve; });
+  let modelReads = 0;
+  vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url === '/api/v1/capabilities') {
+      return { ok: true, json: async () => ({ providers: [] }) } as Response;
+    }
+    if (url === '/api/v1/models/active') {
+      const loading = modelCatalog();
+      loading.active.requested_asr_model = 'breeze-asr-25';
+      loading.active.state = 'loading';
+      return { ok: true, json: async () => loading } as Response;
+    }
+    if (url === '/api/v1/models') {
+      modelReads += 1;
+      if (modelReads <= 2) return { ok: true, json: async () => modelCatalog() } as Response;
+      return { ok: true, json: async () => readyCatalog } as Response;
+    }
+    const params = new URL(url, 'http://test').searchParams;
+    return {
+      ok: true,
+      json: async () => ({ id: 'session-1', speech_language: params.get('speech_language') }),
+    } as Response;
+  });
+
+  renderApp();
+  const selector = await screen.findByRole('combobox', { name: 'ASR model' });
+  fireEvent.change(selector, { target: { value: 'breeze-asr-25' } });
+
+  await waitFor(() => expect(selector).toBeDisabled());
+  const lifecycle = document.querySelector('.model-lifecycle');
+  expect(lifecycle).not.toBeNull();
+  expect(lifecycle).toHaveAttribute('data-ready', 'false');
+  expect(lifecycle).toHaveClass('is-switching');
+  expect(lifecycle?.querySelector('.model-spinner')).not.toBeNull();
+  const asrRow = screen.getByText('ASR').closest('div');
+  expect(asrRow).not.toBeNull();
+  expect(within(asrRow!).getByText('breeze-asr-25')).toBeInTheDocument();
+  expect(screen.queryByText('Ready')).not.toBeInTheDocument();
+
+  resolveReady(modelCatalog('breeze-asr-25'));
+  await waitFor(() => expect(selector).toBeEnabled());
+  expect(lifecycle).toHaveAttribute('data-ready', 'true');
+  expect(lifecycle).not.toHaveClass('is-switching');
+  expect(screen.getAllByText('Ready').length).toBeGreaterThan(0);
+  expect(selector).toHaveValue('breeze-asr-25');
+  expect(within(asrRow!).getByText('breeze-asr-25')).toBeInTheDocument();
+});
+
+test('rolls the selector and worker row back together when model activation fails', async () => {
+  vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url === '/api/v1/capabilities') {
+      return { ok: true, json: async () => ({ providers: [] }) } as Response;
+    }
+    if (url === '/api/v1/models') {
+      return { ok: true, json: async () => modelCatalog() } as Response;
+    }
+    if (url === '/api/v1/models/active') {
+      return { ok: false, json: async () => ({ code: 'model_load_failed' }) } as Response;
+    }
+    return { ok: true, json: async () => ({ id: 'session-1', speech_language: 'en' }) } as Response;
+  });
+
+  renderApp();
+  const selector = await screen.findByRole('combobox', { name: 'ASR model' });
+  fireEvent.change(selector, { target: { value: 'breeze-asr-25' } });
+
+  await screen.findByRole('alert');
+  expect(selector).toHaveValue('qwen3-asr-1.7b');
+  const asrRow = screen.getByText('ASR').closest('div');
+  expect(asrRow).not.toBeNull();
+  expect(within(asrRow!).getByText('qwen3-asr-1.7b')).toBeInTheDocument();
+});
+
+test('shows the target model while an active stream is still stopping', async () => {
+  let releaseStop!: () => void;
+  const stopping = new Promise<void>(resolve => { releaseStop = resolve; });
+
+  renderApp();
+  fireEvent.click(screen.getByRole('button', { name: 'Check devices' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Start realtime listening' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Start realtime listening' }));
+  await waitFor(() => expect(realtime.start).toHaveBeenCalledTimes(1));
+  realtime.stop.mockReturnValueOnce(stopping);
+
+  const selector = await screen.findByRole('combobox', { name: 'ASR model' });
+  fireEvent.change(selector, { target: { value: 'breeze-asr-25' } });
+  await waitFor(() => expect(selector).toBeDisabled());
+
+  try {
+    const asrRow = screen.getByText('ASR').closest('div');
+    expect(asrRow).not.toBeNull();
+    expect(within(asrRow!).getByText('breeze-asr-25')).toBeInTheDocument();
+    expect(document.querySelector('.model-lifecycle')).toHaveClass('is-switching');
+  } finally {
+    releaseStop();
+  }
 });
 
 test('safely stops and resumes a ready active stream when the ASR model changes', async () => {
