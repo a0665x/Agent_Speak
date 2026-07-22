@@ -42,7 +42,6 @@ class Settings(BaseModel):
     realtime_partial_queue: int = Field(default=8, ge=1, le=128)
     realtime_final_queue: int = Field(default=8, ge=1, le=128)
     realtime_text_queue: int = Field(default=8, ge=1, le=128)
-    realtime_expected_device: str = Field(default="Zone Vibe 100", min_length=1, max_length=200)
     asr_worker_url: str = ""
     correction_worker_url: str = ""
     correction_model: str = "Qwen2.5-1.5B-Instruct-Q4_K_M"

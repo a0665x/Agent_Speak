@@ -5,16 +5,12 @@
   if (typeof module === "object" && module.exports) module.exports = api;
   root.AgentSpeakCodexRecorder = api;
 }(typeof globalThis === "object" ? globalThis : this, function buildCore() {
-  const TARGET = "zone vibe 100";
-
-  function normalizeDeviceLabel(label) {
-    return String(label || "").trim().toLowerCase().replace(/\s+/g, " ");
-  }
-
-  function findZoneVibeDevices(devices) {
+  function findDefaultAudioDevices(devices) {
     const list = Array.from(devices || []);
     const match = (kind) => list.find(
-      (device) => device.kind === kind && normalizeDeviceLabel(device.label).includes(TARGET),
+      (device) => device.kind === kind && device.deviceId === "default",
+    ) || list.find(
+      (device) => device.kind === kind && String(device.label || "").trim(),
     ) || null;
     return { input: match("audioinput"), output: match("audiooutput") };
   }
@@ -36,5 +32,5 @@
     return `00:${String(bounded).padStart(2, "0")} / 00:30`;
   }
 
-  return { normalizeDeviceLabel, findZoneVibeDevices, hasRequiredDevices, controlsForState, formatTimer };
+  return { findDefaultAudioDevices, hasRequiredDevices, controlsForState, formatTimer };
 }));

@@ -3,7 +3,7 @@
 const MAX_RECORDING_SECONDS = 30;
 const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
 const {
-  findZoneVibeDevices,
+  findDefaultAudioDevices,
   hasRequiredDevices,
   controlsForState,
   formatTimer,
@@ -103,15 +103,15 @@ async function checkDevices() {
     assertCaptureSupport();
     permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const devices = await navigator.mediaDevices.enumerateDevices();
-    state.devices = findZoneVibeDevices(devices);
-    elements.inputLabel.textContent = state.devices.input?.label || "找不到 Zone Vibe 100 麥克風";
-    elements.outputLabel.textContent = state.devices.output?.label || "找不到 Zone Vibe 100 喇叭";
+    state.devices = findDefaultAudioDevices(devices);
+    elements.inputLabel.textContent = state.devices.input?.label || "找不到目前的系統麥克風";
+    elements.outputLabel.textContent = state.devices.output?.label || "找不到目前的系統音訊輸出";
     if (!hasRequiredDevices(state.devices)) {
       const missing = [
         !state.devices.input ? "麥克風" : "",
         !state.devices.output ? "喇叭" : "",
       ].filter(Boolean).join("與");
-      throw new Error(`找不到 Zone Vibe 100 ${missing}，請確認藍牙設定後重新檢查。`);
+      throw new Error(`找不到目前的系統${missing}，請確認系統音訊設定後重新檢查。`);
     }
     elements.deviceStatus.textContent = "麥克風與喇叭皆可由瀏覽器看見；檢查沒有錄音或播放聲音。";
     elements.recordingStatus.textContent = "裝置已確認，可以開始錄音。";
@@ -271,7 +271,7 @@ async function processRecording() {
 
 async function startRecording() {
   if (!hasRequiredDevices(state.devices)) {
-    showError("請先確認 Zone Vibe 100 麥克風與喇叭。");
+    showError("請先確認目前的系統麥克風與音訊輸出。");
     setPhase("unchecked");
     return;
   }

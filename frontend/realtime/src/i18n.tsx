@@ -18,8 +18,8 @@ const en = {
   'session.label': 'SESSION',
   'session.notStarted': 'not started',
   'session.aria': 'Current session: {value}',
-  'error.retry': 'Check the worker status and headset connection, then try again.',
-  'error.deviceCheck': 'Unable to check headset devices',
+  'error.retry': 'Check the worker status and system audio connection, then try again.',
+  'error.deviceCheck': 'Unable to check system audio devices',
   'error.createSession': 'Unable to create a realtime session',
   'error.start': 'Unable to start realtime listening',
   'warning.pipeline': 'Pipeline warning: {value}',
@@ -31,6 +31,7 @@ const en = {
   'controls.startAria': 'Start realtime listening',
   'controls.stopAria': 'Stop realtime listening',
   'device.eyebrow': 'DEVICE GATE',
+  'device.title': 'System audio',
   'device.inputMissing': 'Microphone not confirmed',
   'device.outputMissing': 'Audio output not confirmed',
   'speech.label': 'Speech language',
@@ -87,8 +88,8 @@ const en = {
   'graph.empty': 'Nodes appear here after the first corrected utterance is complete.',
   'graph.canvas': 'Text relationship graph for completed speech segments',
   'graph.node': 'Speech segment {value}',
-  'sr.devicesReady': 'Zone Vibe 100 input and output confirmed',
-  'sr.devicesNotReady': 'Zone Vibe 100 input and output not checked',
+  'sr.devicesReady': 'System audio input and output confirmed',
+  'sr.devicesNotReady': 'System audio input and output not checked',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -100,11 +101,11 @@ const zhTW: Catalog = {
   'hero.eyebrow': '持續語音體驗', 'hero.title': '說話，看見文字流動。', 'hero.titleLead': '說話。', 'hero.titleAccent': '看見文字流動。',
   'hero.lede': '聲音進來，文字成形。每次說話、停頓與校正，都由真實 pipeline event 即時呈現。',
   'session.label': '工作階段', 'session.notStarted': '尚未開始', 'session.aria': '目前工作階段：{value}',
-  'error.retry': '請確認 worker 狀態與耳機連線後重試。', 'error.deviceCheck': '無法檢查耳機裝置',
+  'error.retry': '請確認 worker 狀態與系統音訊連線後重試。', 'error.deviceCheck': '無法檢查系統音訊裝置',
   'error.createSession': '無法建立 realtime 工作階段', 'error.start': '無法開始即時聆聽', 'warning.pipeline': 'Pipeline 警告：{value}',
   'controls.aria': '即時語音控制', 'controls.checking': '正在檢查…', 'controls.checkDevices': '檢查裝置',
   'controls.start': '開始聆聽', 'controls.stop': '停止聆聽', 'controls.startAria': '開始即時聆聽', 'controls.stopAria': '停止即時聆聽',
-  'device.eyebrow': '裝置閘門', 'device.inputMissing': '麥克風尚未確認', 'device.outputMissing': '音訊輸出尚未確認',
+  'device.eyebrow': '裝置閘門', 'device.title': '系統音訊', 'device.inputMissing': '麥克風尚未確認', 'device.outputMissing': '音訊輸出尚未確認',
   'speech.label': '語音語言', 'speech.auto': '自動偵測', 'speech.locked': '本工作階段已鎖定：{value}', 'speech.nextSession': '將套用至下一個工作階段',
   'process.eyebrow': '持續循環', 'process.title': '即時處理', 'stage.listening': '聆聽中', 'stage.listeningDetail': '等待語音',
   'stage.voice': '偵測到語音', 'stage.voiceDetail': 'VAD 啟用', 'stage.asr': 'ASR 暫定結果', 'stage.asrDetail': '文字持續更新',
@@ -119,7 +120,7 @@ const zhTW: Catalog = {
   'graph.eyebrow': '語句關係圖', 'graph.title': 'ASR 文字關係', 'graph.description': '每個 endpoint 是一段文字；實線代表時間，虛線代表本機文字相似度。',
   'graph.legend': '圖例', 'graph.timeline': '時間順序', 'graph.similarity': '文字相似', 'graph.empty': '完成第一段校正後，節點會出現在這裡。',
   'graph.canvas': '已完成語音片段的文字關係圖', 'graph.node': '語音片段 {value}',
-  'sr.devicesReady': 'Zone Vibe 100 輸入與輸出已確認', 'sr.devicesNotReady': '尚未檢查 Zone Vibe 100 輸入與輸出',
+  'sr.devicesReady': '系統音訊輸入與輸出已確認', 'sr.devicesNotReady': '尚未檢查系統音訊輸入與輸出',
 };
 
 const ja: Catalog = {
@@ -128,11 +129,11 @@ const ja: Catalog = {
   'hero.eyebrow': '継続音声エクスペリエンス', 'hero.title': '話す。流れが見える。', 'hero.titleLead': '話す。', 'hero.titleAccent': '流れが見える。',
   'hero.lede': '音声が入り、テキストが形になります。発話、間、補正のすべてを実際の pipeline event で realtime に表示します。',
   'session.label': 'セッション', 'session.notStarted': '未開始', 'session.aria': '現在の session：{value}',
-  'error.retry': 'worker の状態と headset 接続を確認して、もう一度お試しください。', 'error.deviceCheck': 'headset device を確認できません',
+  'error.retry': 'worker の状態と system audio 接続を確認して、もう一度お試しください。', 'error.deviceCheck': 'system audio device を確認できません',
   'error.createSession': 'realtime session を作成できません', 'error.start': 'realtime listening を開始できません', 'warning.pipeline': 'Pipeline warning：{value}',
   'controls.aria': 'Realtime 音声コントロール', 'controls.checking': '確認中…', 'controls.checkDevices': 'Device を確認',
   'controls.start': 'Listening を開始', 'controls.stop': 'Listening を停止', 'controls.startAria': 'Realtime listening を開始', 'controls.stopAria': 'Realtime listening を停止',
-  'device.eyebrow': 'DEVICE GATE', 'device.inputMissing': 'マイク未確認', 'device.outputMissing': '音声出力未確認',
+  'device.eyebrow': 'DEVICE GATE', 'device.title': 'System audio', 'device.inputMissing': 'マイク未確認', 'device.outputMissing': '音声出力未確認',
   'speech.label': '音声言語', 'speech.auto': '自動検出', 'speech.locked': 'この session で固定：{value}', 'speech.nextSession': '次の session に適用されます',
   'process.eyebrow': '継続サイクル', 'process.title': 'Realtime 処理', 'stage.listening': 'Listening', 'stage.listeningDetail': '音声を待機',
   'stage.voice': '音声を検出', 'stage.voiceDetail': 'VAD 動作中', 'stage.asr': 'ASR 暫定結果', 'stage.asrDetail': 'テキスト更新中',
@@ -147,7 +148,7 @@ const ja: Catalog = {
   'graph.eyebrow': '発話グラフ', 'graph.title': 'ASR テキストの関係', 'graph.description': '各 endpoint は 1 つのテキスト block です。実線は時間、破線はローカル text similarity を示します。',
   'graph.legend': 'グラフ凡例', 'graph.timeline': '時間順', 'graph.similarity': 'テキスト類似度', 'graph.empty': '最初の補正済み発話が完了すると node が表示されます。',
   'graph.canvas': '完了した音声 segment のテキスト関係グラフ', 'graph.node': '音声 segment {value}',
-  'sr.devicesReady': 'Zone Vibe 100 の入力と出力を確認済み', 'sr.devicesNotReady': 'Zone Vibe 100 の入力と出力は未確認',
+  'sr.devicesReady': 'System audio の入力と出力を確認済み', 'sr.devicesNotReady': 'System audio の入力と出力は未確認',
 };
 
 const ko: Catalog = {
@@ -156,11 +157,11 @@ const ko: Catalog = {
   'hero.eyebrow': '연속 음성 경험', 'hero.title': '말하고, 흐름을 확인하세요.', 'hero.titleLead': '말하세요.', 'hero.titleAccent': '흐름을 확인하세요.',
   'hero.lede': '음성이 들어오면 텍스트가 만들어집니다. 발화, 멈춤, 교정을 실제 pipeline event로 realtime 표시합니다.',
   'session.label': '세션', 'session.notStarted': '시작 전', 'session.aria': '현재 session: {value}',
-  'error.retry': 'worker 상태와 headset 연결을 확인한 뒤 다시 시도하세요.', 'error.deviceCheck': 'headset device를 확인할 수 없습니다',
+  'error.retry': 'worker 상태와 system audio 연결을 확인한 뒤 다시 시도하세요.', 'error.deviceCheck': 'system audio device를 확인할 수 없습니다',
   'error.createSession': 'realtime session을 만들 수 없습니다', 'error.start': 'realtime listening을 시작할 수 없습니다', 'warning.pipeline': 'Pipeline 경고: {value}',
   'controls.aria': 'Realtime 음성 제어', 'controls.checking': '확인 중…', 'controls.checkDevices': 'Device 확인',
   'controls.start': 'Listening 시작', 'controls.stop': 'Listening 중지', 'controls.startAria': 'Realtime listening 시작', 'controls.stopAria': 'Realtime listening 중지',
-  'device.eyebrow': 'DEVICE GATE', 'device.inputMissing': '마이크 확인 전', 'device.outputMissing': '오디오 출력 확인 전',
+  'device.eyebrow': 'DEVICE GATE', 'device.title': 'System audio', 'device.inputMissing': '마이크 확인 전', 'device.outputMissing': '오디오 출력 확인 전',
   'speech.label': '음성 언어', 'speech.auto': '자동 감지', 'speech.locked': '현재 session에 고정: {value}', 'speech.nextSession': '다음 session에 적용됩니다',
   'process.eyebrow': '연속 사이클', 'process.title': 'Realtime 처리', 'stage.listening': 'Listening', 'stage.listeningDetail': '음성 대기',
   'stage.voice': '음성 감지', 'stage.voiceDetail': 'VAD 활성', 'stage.asr': 'ASR 부분 결과', 'stage.asrDetail': '텍스트 업데이트',
@@ -175,7 +176,7 @@ const ko: Catalog = {
   'graph.eyebrow': '발화 그래프', 'graph.title': 'ASR 텍스트 관계', 'graph.description': '각 endpoint는 하나의 텍스트 block입니다. 실선은 시간, 점선은 로컬 text similarity를 나타냅니다.',
   'graph.legend': '그래프 범례', 'graph.timeline': '시간 순서', 'graph.similarity': '텍스트 유사도', 'graph.empty': '첫 교정 발화가 완료되면 node가 여기에 표시됩니다.',
   'graph.canvas': '완료된 음성 segment의 텍스트 관계 그래프', 'graph.node': '음성 segment {value}',
-  'sr.devicesReady': 'Zone Vibe 100 입력 및 출력 확인됨', 'sr.devicesNotReady': 'Zone Vibe 100 입력 및 출력 확인 전',
+  'sr.devicesReady': 'System audio 입력 및 출력 확인됨', 'sr.devicesNotReady': 'System audio 입력 및 출력 확인 전',
 };
 
 export const messages: Record<Locale, Catalog> = { en, 'zh-TW': zhTW, ja, ko };

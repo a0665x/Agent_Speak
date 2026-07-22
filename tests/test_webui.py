@@ -163,7 +163,7 @@ async def test_codex_recorder_and_local_assets_are_served(tmp_path: Path) -> Non
 
 
 @pytest.mark.anyio
-async def test_codex_recorder_gates_capture_on_zone_vibe_input_and_output(tmp_path: Path) -> None:
+async def test_codex_recorder_gates_capture_on_default_input_and_output(tmp_path: Path) -> None:
     app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         javascript = (await client.get("/static/codex.js")).text
@@ -171,7 +171,7 @@ async def test_codex_recorder_gates_capture_on_zone_vibe_input_and_output(tmp_pa
     required = (
         "navigator.mediaDevices.getUserMedia",
         "navigator.mediaDevices.enumerateDevices",
-        "findZoneVibeDevices",
+        "findDefaultAudioDevices",
         "hasRequiredDevices",
         'addEventListener("devicechange"',
         'audio: { deviceId: { exact: state.devices.input.deviceId } }',

@@ -49,7 +49,7 @@ OpenAPI: http://127.0.0.1:8765/docs?lang=en
 
 Realtime Studio: http://127.0.0.1:8765/asr_realtime?lang=en
 
-`/asr_realtime` is continuous transcription only: it does not call the Agent stage, TTS, Codex injection, or speaker playback. The legacy `/realtime` path redirects there for compatibility. The browser enables Start only after an explicit check can see both Zone Vibe 100 input and output endpoints; output visibility is not proof of physical playback. Raw PCM16 travels over the realtime WebSocket, while MCP remains a low-frequency control plane.
+`/asr_realtime` is continuous transcription only: it does not call the Agent stage, TTS, Codex injection, or speaker playback. The legacy `/realtime` path redirects there for compatibility. The browser enables Start only after an explicit check can see the current system-default input and output endpoints (with a first-labeled-device fallback); output visibility is not proof of physical playback. Raw PCM16 travels over the realtime WebSocket, while MCP remains a low-frequency control plane.
 
 Choose English, Traditional Chinese, Japanese, or Korean from any top-right presentation-language selector. The selection persists and follows navigation links. Swagger localizes endpoint titles, descriptions, parameters, request fields, and response fields while keeping paths and payload identifiers unchanged.
 

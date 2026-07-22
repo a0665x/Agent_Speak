@@ -10,7 +10,7 @@ export function DeviceGate({ gate }: { gate: DeviceGateResult }) {
         <span className="device-ready-dot" aria-hidden="true" />
         <div>
         <p className="eyebrow"><ShieldCheck size={16} /> {t('device.eyebrow')}</p>
-        <h2 id="device-gate-title">Zone Vibe 100</h2>
+        <h2 id="device-gate-title">{t('device.title')}</h2>
         </div>
       </div>
       <div className="device-list">

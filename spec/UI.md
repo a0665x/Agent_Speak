@@ -8,7 +8,7 @@ The visual system uses graphite surfaces, restrained ice-blue/violet gradients, 
 
 ## ASR Realtime
 
-`/asr_realtime` is the canonical React/Vite continuous transcription surface; `/realtime` redirects there for compatibility. It requires an explicit browser device check that confirms both Zone Vibe 100 `audioinput` and `audiooutput` before Start Listening is enabled. Enumeration proves browser visibility only, not physical playback. Starting creates a normal API session and sends exact 20 ms, 16 kHz mono PCM16 frames over `WS /api/v1/realtime/sessions/{session_id}`; raw audio never crosses MCP JSON-RPC and is not persisted.
+`/asr_realtime` is the canonical React/Vite continuous transcription surface; `/realtime` redirects there for compatibility. It requires an explicit browser device check that confirms both system-default `audioinput` and `audiooutput` before Start Listening is enabled, falling back to the first labeled endpoint of each kind when `default` is absent. Enumeration proves browser visibility only, not physical playback. Starting creates a normal API session and sends exact 20 ms, 16 kHz mono PCM16 frames over `WS /api/v1/realtime/sessions/{session_id}`; raw audio never crosses MCP JSON-RPC and is not persisted.
 
 The same top-right selector localizes all presentation copy in English, Traditional Chinese, Japanese, or Korean without resetting completed transcripts, graph nodes, device state, or the realtime pipeline. It keeps the current locale in the URL and storage and passes it back to the project guide and Swagger UI.
 
@@ -26,7 +26,7 @@ This page stops at corrected transcription. It never invokes an Agent, TTS, Code
 
 The dedicated `/codex` page remains a compact Traditional Chinese clipboard recorder. It is separate from `/asr_realtime` and never calls the development Agent or TTS stages. The operator remains responsible for pasting the corrected text into Codex CLI and pressing Enter; the page must not claim direct session injection.
 
-Recording stays disabled until an explicit device check gives the browser microphone permission and confirms both a Zone Vibe 100 `audioinput` and `audiooutput`. Device checking stops its temporary permission stream immediately and does not record or play sound. A `devicechange` event invalidates the check and disables recording until the operator checks again.
+Recording stays disabled until an explicit device check gives the browser microphone permission and confirms both a system-default `audioinput` and `audiooutput`, or the first labeled fallback endpoints. No brand name or Bluetooth label is required. Device checking stops its temporary permission stream immediately and does not record or play sound. A `devicechange` event invalidates the check and disables recording until the operator checks again.
 
 The page uses separate Start and Stop buttons. Recording stops automatically at 30 seconds. The browser converts bounded audio to mono 16-bit PCM WAV, calls `/api/v1/audio/asr` followed by `/api/v1/text/correct`, displays raw and corrected text, and attempts `navigator.clipboard.writeText`. Clipboard denial keeps the text visible and exposes a manual copy control.
 

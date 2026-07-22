@@ -1,20 +1,17 @@
 import type { DeviceGateResult } from '../types';
 
 export async function checkAudioDevices(
-  mediaDevices: MediaDevices,
-  expectedLabel: string
+  mediaDevices: MediaDevices
 ): Promise<DeviceGateResult> {
   let permissionStream: MediaStream | undefined;
   try {
     permissionStream = await mediaDevices.getUserMedia({ audio: true, video: false });
     const devices = await mediaDevices.enumerateDevices();
-    const expected = expectedLabel.toLocaleLowerCase();
-    const input = devices.find(
-      device => device.kind === 'audioinput' && device.label.toLocaleLowerCase().includes(expected)
-    );
-    const output = devices.find(
-      device => device.kind === 'audiooutput' && device.label.toLocaleLowerCase().includes(expected)
-    );
+    const select = (kind: MediaDeviceKind) =>
+      devices.find(device => device.kind === kind && device.deviceId === 'default')
+      ?? devices.find(device => device.kind === kind && device.label.trim().length > 0);
+    const input = select('audioinput');
+    const output = select('audiooutput');
     if (!input) return { ready: false, output, reason: 'missing_input' };
     if (!output) return { ready: false, input, reason: 'missing_output' };
     return { ready: true, input, output, reason: 'ready' };

@@ -4,21 +4,22 @@ const assert = require("node:assert/strict");
 const core = require("../web/codex-recorder-core.js");
 
 const devices = [
-  { kind: "audioinput", deviceId: "mic-zone", label: "Logitech Zone Vibe 100 Hands-Free" },
-  { kind: "audiooutput", deviceId: "speaker-zone", label: "Zone Vibe 100" },
+  { kind: "audioinput", deviceId: "usb", label: "USB microphone" },
+  { kind: "audioinput", deviceId: "default", label: "Default Bluetooth microphone" },
+  { kind: "audiooutput", deviceId: "default", label: "Default Bluetooth audio" },
   { kind: "audioinput", deviceId: "laptop", label: "Built-in Audio" },
 ];
 
-assert.deepEqual(core.findZoneVibeDevices(devices), {
-  input: devices[0],
-  output: devices[1],
+assert.deepEqual(core.findDefaultAudioDevices(devices), {
+  input: devices[1],
+  output: devices[2],
 });
-assert.deepEqual(core.findZoneVibeDevices(devices.slice(0, 1)), {
+assert.deepEqual(core.findDefaultAudioDevices([devices[0]]), {
   input: devices[0],
   output: null,
 });
-assert.equal(core.hasRequiredDevices(core.findZoneVibeDevices(devices)), true);
-assert.equal(core.hasRequiredDevices(core.findZoneVibeDevices(devices.slice(0, 1))), false);
+assert.equal(core.hasRequiredDevices(core.findDefaultAudioDevices(devices)), true);
+assert.equal(core.hasRequiredDevices(core.findDefaultAudioDevices([devices[0]])), false);
 assert.deepEqual(core.controlsForState("unchecked", false), {
   checkDisabled: false,
   startDisabled: true,

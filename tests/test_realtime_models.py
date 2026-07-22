@@ -51,7 +51,7 @@ def test_realtime_defaults_match_approved_design() -> None:
     assert settings.realtime_endpoint_ms == 900
     assert settings.realtime_hard_endpoint_ms == 1_800
     assert settings.realtime_endpoint_timeout_ms == 250
-    assert settings.realtime_expected_device == "Zone Vibe 100"
+    assert "realtime_expected_device" not in Settings.model_fields
     assert settings.asr_worker_url == ""
     assert settings.correction_worker_url == ""
     assert settings.effective_accelerator == "cpu"

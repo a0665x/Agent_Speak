@@ -31,12 +31,12 @@ export class RealtimeClient {
     this.onEvent = options.onEvent ?? (() => undefined);
   }
 
-  async checkDevices(expectedLabel = 'Zone Vibe 100'): Promise<DeviceGateResult> {
+  async checkDevices(): Promise<DeviceGateResult> {
     if (!this.mediaDevices) {
       this.gate = { ready: false, reason: 'permission_denied' };
       return this.gate;
     }
-    this.gate = await checkAudioDevices(this.mediaDevices, expectedLabel);
+    this.gate = await checkAudioDevices(this.mediaDevices);
     this.unwatch?.();
     this.unwatch = watchDeviceChanges(this.mediaDevices, () => {
       this.gate = { ready: false, reason: 'unchecked' };

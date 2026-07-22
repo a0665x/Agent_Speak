@@ -84,7 +84,7 @@ def test_codex_voice_recorder_is_documented() -> None:
     testing = (ROOT / "spec" / "TESTING.md").read_text(encoding="utf-8")
 
     assert "`/codex`" in ui
-    assert "Zone Vibe 100" in ui
+    assert "system-default" in ui
     assert "clipboard" in ui.lower()
     assert "Codex CLI" in testing
     assert "physical playback" in testing
@@ -99,7 +99,7 @@ def test_realtime_studio_contract_is_documented_without_agent_claims() -> None:
     combined = "\n".join(texts)
     for phrase in (
         "/realtime",
-        "Zone Vibe 100",
+        "system-default",
         "900",
         "1,800",
         "WebSocket",
@@ -112,6 +112,24 @@ def test_realtime_studio_contract_is_documented_without_agent_claims() -> None:
         assert phrase in combined
     assert "continuous transcription only" in texts[0]
     assert "只做持續轉錄" in texts[1]
+
+
+def test_active_device_gate_and_readmes_do_not_pin_a_headset_brand() -> None:
+    files = [
+        ROOT / "README.md",
+        ROOT / "README.zh-TW.md",
+        ROOT / "spec" / "UI.md",
+        ROOT / ".env.example",
+        ROOT / "src" / "agent_speak" / "config.py",
+        *sorted((ROOT / "frontend" / "realtime" / "src").rglob("*.ts")),
+        *sorted((ROOT / "frontend" / "realtime" / "src").rglob("*.tsx")),
+        ROOT / "web" / "codex.html",
+        ROOT / "web" / "codex.js",
+        ROOT / "web" / "codex-recorder-core.js",
+    ]
+
+    for path in files:
+        assert "Zone Vibe 100" not in path.read_text(encoding="utf-8"), path
 
 
 def test_multilingual_ui_and_openapi_contract_is_documented() -> None:

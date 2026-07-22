@@ -39,8 +39,8 @@ test('sends stream.start before PCM and releases every owned resource', async ()
   client.approveForTest({
     ready: true,
     reason: 'ready',
-    input: { deviceId: 'mic', label: 'Zone Vibe 100' } as MediaDeviceInfo,
-    output: { deviceId: 'out', label: 'Zone Vibe 100' } as MediaDeviceInfo
+    input: { deviceId: 'default', label: 'Default Bluetooth microphone' } as MediaDeviceInfo,
+    output: { deviceId: 'default', label: 'Default Bluetooth audio' } as MediaDeviceInfo
   });
 
   await client.start('session');
@@ -53,4 +53,31 @@ test('sends stream.start before PCM and releases every owned resource', async ()
   expect(disconnect).toHaveBeenCalled();
   expect(closeContext).toHaveBeenCalledOnce();
   expect(socket.close).toHaveBeenCalledOnce();
+});
+
+test('devicechange invalidates readiness and stops an active client', async () => {
+  let invalidate: (() => void) | undefined;
+  const stop = vi.fn();
+  const events: string[] = [];
+  const mediaDevices = {
+    getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [{ stop }] }),
+    enumerateDevices: vi.fn().mockResolvedValue([
+      { kind: 'audioinput', deviceId: 'default', label: 'Default input' },
+      { kind: 'audiooutput', deviceId: 'default', label: 'Default output' },
+    ]),
+    addEventListener: vi.fn((_type: string, callback: () => void) => { invalidate = callback; }),
+    removeEventListener: vi.fn(),
+  } as unknown as MediaDevices;
+  const client = new RealtimeClient({
+    mediaDevices,
+    onEvent: event => events.push(event.type),
+  });
+
+  await client.checkDevices();
+  invalidate?.();
+  await Promise.resolve();
+
+  expect(events).toContain('device.ready');
+  expect(events).toContain('device.invalidated');
+  await expect(client.start('session')).rejects.toThrow(/device gate/i);
 });

@@ -25,8 +25,8 @@ beforeEach(() => {
   realtime.checkDevices.mockResolvedValue({
     ready: true,
     reason: 'ready',
-    input: { deviceId: 'mic', label: 'Zone Vibe 100 Microphone', kind: 'audioinput' },
-    output: { deviceId: 'speaker', label: 'Zone Vibe 100', kind: 'audiooutput' },
+    input: { deviceId: 'default', label: 'Default Bluetooth microphone', kind: 'audioinput' },
+    output: { deviceId: 'default', label: 'Default Bluetooth audio', kind: 'audiooutput' },
   });
   realtime.start.mockResolvedValue(undefined);
   realtime.stop.mockResolvedValue(undefined);
@@ -59,7 +59,7 @@ test('renders the disabled realtime start control', () => {
 test('reduced motion keeps ambient status textual and static', () => {
   render(<I18nProvider initialLocale="en"><App forceReducedMotion /></I18nProvider>);
   expect(screen.getByTestId('ambient-waves')).toHaveAttribute('data-animated', 'false');
-  expect(screen.getByText(/Zone Vibe 100 input and output not checked/)).toBeInTheDocument();
+  expect(screen.getByText(/System audio input and output not checked/)).toBeInTheDocument();
 });
 
 test('changes the complete realtime surface language from the navigation selector', () => {
