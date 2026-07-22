@@ -277,7 +277,13 @@ export function App({ forceReducedMotion = false }: AppProps) {
             )}
             <dl>
               <div><dt>VAD</dt><dd>{inference.vad}</dd></div>
-              <div><dt>ASR</dt><dd>{inference.asr}<small>{inference.asrDevice}</small></dd></div>
+              <div>
+                <dt>ASR</dt>
+                <dd>
+                  {modelCatalog?.active.asr_model ?? inference.asr}
+                  <small>{modelCatalog?.active.device ?? inference.asrDevice}</small>
+                </dd>
+              </div>
               <div><dt>{t('models.correction')}</dt><dd>{inference.correction}<small>{inference.correctionDevice}</small></dd></div>
               <div><dt>{t('models.endpoint')}</dt><dd>{state.endpointMs || 900} ms<small>{t('models.hard', { value: 1800 })}</small></dd></div>
               <div><dt>{t('models.queue')}</dt><dd>{t('models.pending', { value: state.asrQueue })}</dd></div>

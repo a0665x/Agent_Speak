@@ -90,6 +90,7 @@ test('switches active models immediately without a submit button', async () => {
   renderApp();
   const asr = await screen.findByRole('combobox', { name: 'ASR model' });
   expect(asr).toHaveValue('qwen3-asr-1.7b');
+  expect(screen.getByText('qwen3-asr-1.7b')).toBeInTheDocument();
   expect(screen.getByRole('combobox', { name: 'Correction model' })).toHaveValue('qwen2.5-correction');
 
   fireEvent.change(asr, { target: { value: 'breeze-asr-25' } });
