@@ -7,6 +7,7 @@ from collections import OrderedDict, deque
 from dataclasses import dataclass
 from typing import Literal
 
+from .model_ids import ASRModelId, CorrectionModelId, DEFAULT_ASR_MODEL, DEFAULT_CORRECTION_MODEL
 from .speech_languages import SpeechLanguage
 
 
@@ -26,6 +27,7 @@ class ASRJob:
     mode: Literal["partial", "final"]
     pcm: bytes
     speech_language: SpeechLanguage
+    asr_model: ASRModelId = DEFAULT_ASR_MODEL
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +38,7 @@ class TextJob:
     previous_text: str
     current_text: str
     speech_language: SpeechLanguage
+    correction_model: CorrectionModelId = DEFAULT_CORRECTION_MODEL
 
 
 class ASRScheduler:

@@ -217,3 +217,11 @@ class ModelCatalogService:
             snapshot = self.worker.activate(asr_model)
             self._correction_model = correction_model
             return self._catalog(snapshot)
+
+    def acquire(self, session_id: str, asr_model: ASRModelId) -> dict[str, object]:
+        with self._lock:
+            return self.worker.acquire(session_id, asr_model)
+
+    def release(self, session_id: str) -> dict[str, object]:
+        with self._lock:
+            return self.worker.release(session_id)

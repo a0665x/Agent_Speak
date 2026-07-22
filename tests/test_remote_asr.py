@@ -46,3 +46,31 @@ def test_remote_asr_forwards_explicit_session_language_without_changing_legacy_c
         {"audio": b"RIFF", "mode": "final", "speech_language": "auto"},
         {"audio": b"RIFF", "mode": "final"},
     ]
+
+
+def test_remote_asr_forwards_frozen_model_and_lease_owner() -> None:
+    requests: list[dict[str, object]] = []
+    provider = RemoteASRProvider(
+        "http://asr-worker:8771",
+        request=lambda payload: requests.append(payload)
+        or {"text": "mixed speech", "device": "cuda"},
+    )
+
+    result = provider.transcribe_mode(
+        b"RIFF",
+        "final",
+        "zh-TW",
+        "breeze-asr-25",
+        "session-a",
+    )
+
+    assert result == "mixed speech"
+    assert requests == [
+        {
+            "audio": b"RIFF",
+            "mode": "final",
+            "speech_language": "zh-TW",
+            "asr_model": "breeze-asr-25",
+            "session_id": "session-a",
+        }
+    ]

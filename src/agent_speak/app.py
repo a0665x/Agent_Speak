@@ -217,6 +217,7 @@ def create_app(
             app.state.pipeline.providers.correction,
         ),
         broker=app.state.broker,
+        model_control=app.state.model_control,
     )
     if app.state.realtime.broker is None:
         app.state.realtime.broker = app.state.broker

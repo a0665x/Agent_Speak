@@ -25,6 +25,14 @@ async def test_final_precedes_partial_and_new_partial_replaces_old_generation() 
     assert partial.pcm == b"new"
 
 
+def test_jobs_freeze_asr_and_correction_models() -> None:
+    asr = ASRJob("s", "u", 1, "final", b"pcm", "zh-TW", "breeze-asr-25")
+    text = TextJob("s", "u", "correction", "前句", "本句", "zh-TW", "disabled")
+
+    assert asr.asr_model == "breeze-asr-25"
+    assert text.correction_model == "disabled"
+
+
 @pytest.mark.anyio
 async def test_full_final_queue_raises_instead_of_dropping_audio() -> None:
     queue = ASRScheduler(max_finals=1, max_partials=1)

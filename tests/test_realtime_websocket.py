@@ -33,12 +33,17 @@ async def test_realtime_socket_accepts_start_binary_and_stops_cleanly(tmp_path) 
         realtime=coordinator,
     )
     session = await app.state.broker.create(speech_language="en")
-    observed_languages: list[str] = []
+    observed: list[tuple[str, str, str]] = []
     original_open = coordinator.open
 
-    async def recording_open(session_id: str, speech_language: str):
-        observed_languages.append(speech_language)
-        return await original_open(session_id, speech_language)
+    async def recording_open(
+        session_id: str,
+        speech_language: str,
+        asr_model: str,
+        correction_model: str,
+    ):
+        observed.append((speech_language, asr_model, correction_model))
+        return await original_open(session_id, speech_language, asr_model, correction_model)
 
     coordinator.open = recording_open  # type: ignore[method-assign]
     incoming: asyncio.Queue[dict[str, object]] = asyncio.Queue()
@@ -80,7 +85,7 @@ async def test_realtime_socket_accepts_start_binary_and_stops_cleanly(tmp_path) 
     assert "stream.accepted" in sent
     assert "stream.started" in sent
     assert "stream.stopped" in sent
-    assert observed_languages == ["en"]
+    assert observed == [("en", "qwen3-asr-1.7b", "qwen2.5-correction")]
     await coordinator.close()
 
 

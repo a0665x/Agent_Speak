@@ -25,6 +25,8 @@ def register_realtime_routes(app: FastAPI) -> None:
             stream = await app.state.realtime.open(
                 session_id,
                 session.speech_language,
+                session.asr_model,
+                session.correction_model,
             )
         except PlatformError:
             await websocket.close(code=4429, reason="Realtime capacity is full")

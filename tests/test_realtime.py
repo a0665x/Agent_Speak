@@ -3,7 +3,7 @@ import struct
 import pytest
 
 from agent_speak.realtime import RealtimeCoordinator
-from agent_speak.realtime_queue import TextJob
+from agent_speak.realtime_queue import ASRJob, TextJob
 
 
 class FakeVAD:
@@ -16,10 +16,17 @@ class FakeVAD:
 
 class FakeASR:
     def __init__(self) -> None:
-        self.calls: list[tuple[str, str]] = []
+        self.calls: list[tuple[str, str, str, str]] = []
 
-    def transcribe_mode(self, audio: bytes, mode: str, speech_language: str) -> str:
-        self.calls.append((mode, speech_language))
+    def transcribe_mode(
+        self,
+        audio: bytes,
+        mode: str,
+        speech_language: str,
+        asr_model: str = "qwen3-asr-1.7b",
+        session_id: str = "session",
+    ) -> str:
+        self.calls.append((mode, speech_language, asr_model, session_id))
         return "因為" if mode == "partial" else "因為需要測試"
 
 
@@ -65,7 +72,8 @@ async def test_coordinator_streams_partial_final_revision_and_returns_to_listeni
     assert "transcript.revised" in types
     assert "utterance.completed" in types
     assert stream.state == "listening"
-    assert {language for _, language in asr.calls} == {"ja"}
+    assert {language for _, language, _, _ in asr.calls} == {"ja"}
+    assert {model for _, _, model, _ in asr.calls} == {"qwen3-asr-1.7b"}
     assert text.detect_languages == ["ja"]
     assert text.revise_languages == ["ja"]
     await coordinator.close()
@@ -106,6 +114,79 @@ async def test_existing_realtime_stream_keeps_its_frozen_language() -> None:
         await coordinator.open("session", "ko")
 
     assert stream.speech_language == "en"
+    await coordinator.close()
+
+
+class FakeModelControl:
+    def __init__(self) -> None:
+        self.acquired: list[tuple[str, str]] = []
+        self.released: list[str] = []
+
+    def acquire(self, session_id: str, asr_model: str) -> dict[str, object]:
+        self.acquired.append((session_id, asr_model))
+        return {}
+
+    def release(self, session_id: str) -> dict[str, object]:
+        self.released.append(session_id)
+        return {}
+
+
+@pytest.mark.anyio
+async def test_realtime_uses_frozen_models_and_releases_lease() -> None:
+    control = FakeModelControl()
+    coordinator = RealtimeCoordinator(
+        RealtimeCoordinator.for_test(vad=FakeVAD(), asr=FakeASR(), text=FakeText()).settings,
+        vad=FakeVAD(),
+        asr=FakeASR(),
+        text=FakeText(),
+        model_control=control,
+    )
+
+    stream = await coordinator.open(
+        "session-a",
+        "zh-TW",
+        "breeze-asr-25",
+        "disabled",
+    )
+    await stream.stop()
+
+    assert control.acquired == [("session-a", "breeze-asr-25")]
+    assert control.released == ["session-a"]
+    assert stream.asr_model == "breeze-asr-25"
+    assert stream.correction_model == "disabled"
+    await coordinator.close()
+
+
+@pytest.mark.anyio
+async def test_existing_stream_rejects_frozen_model_mismatch() -> None:
+    coordinator = RealtimeCoordinator.for_test(vad=FakeVAD(), asr=FakeASR(), text=FakeText())
+    await coordinator.open("session", "en", "qwen3-asr-1.7b", "qwen2.5-correction")
+
+    with pytest.raises(RuntimeError, match="model mismatch"):
+        await coordinator.open("session", "en", "breeze-asr-25", "qwen2.5-correction")
+    with pytest.raises(RuntimeError, match="model mismatch"):
+        await coordinator.open("session", "en", "qwen3-asr-1.7b", "disabled")
+
+    await coordinator.close()
+
+
+@pytest.mark.anyio
+async def test_disabled_correction_completes_with_raw_final_asr() -> None:
+    text = FakeText()
+    coordinator = RealtimeCoordinator.for_test(vad=FakeVAD(), asr=FakeASR(), text=text)
+    stream = await coordinator.open("session", "zh-TW", "breeze-asr-25", "disabled")
+    job = ASRJob("session", "utterance", 1, "final", b"pcm", "zh-TW", "breeze-asr-25")
+
+    await stream._accept_asr_result(job, "raw 中英 text", None)
+    await stream.wait_idle()
+
+    assert text.revise_languages == []
+    assert stream.ledger.rows()[-1].text == "raw 中英 text"
+    revision = next(event for event in stream.history if event.type == "transcript.revised")
+    completed = next(event for event in stream.history if event.type == "utterance.completed")
+    assert revision.data["policy"] == "disabled"
+    assert completed.data["asr_model"] == "breeze-asr-25"
+    assert completed.data["correction_model"] == "disabled"
     await coordinator.close()
 
 

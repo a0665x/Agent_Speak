@@ -8,10 +8,13 @@ from typing import Any, Literal
 import httpx
 
 from .errors import PlatformError
+from .model_ids import ASRModelId
 from .speech_languages import SpeechLanguage
 
 
 _OMIT_SPEECH_LANGUAGE = object()
+_OMIT_MODEL = object()
+_OMIT_SESSION = object()
 
 
 class RemoteASRProvider:
@@ -39,6 +42,8 @@ class RemoteASRProvider:
         audio: bytes,
         mode: Literal["partial", "final"] | str,
         speech_language: SpeechLanguage | object = _OMIT_SPEECH_LANGUAGE,
+        asr_model: ASRModelId | object = _OMIT_MODEL,
+        session_id: str | object = _OMIT_SESSION,
     ) -> str:
         if mode not in {"partial", "final"}:
             raise ValueError("mode must be partial or final")
@@ -52,6 +57,10 @@ class RemoteASRProvider:
         payload: dict[str, object] = {"audio": audio, "mode": mode}
         if speech_language is not _OMIT_SPEECH_LANGUAGE:
             payload["speech_language"] = speech_language
+        if asr_model is not _OMIT_MODEL:
+            payload["asr_model"] = asr_model
+        if session_id is not _OMIT_SESSION:
+            payload["session_id"] = session_id
         if self._injected_request is not None:
             result = self._injected_request(payload)
         else:
@@ -59,6 +68,10 @@ class RemoteASRProvider:
                 params: dict[str, object] = {"mode": mode}
                 if speech_language is not _OMIT_SPEECH_LANGUAGE:
                     params["speech_language"] = speech_language
+                if asr_model is not _OMIT_MODEL:
+                    params["asr_model"] = asr_model
+                if session_id is not _OMIT_SESSION:
+                    params["session_id"] = session_id
                 response = self._client.post(
                     f"{self.base_url}/internal/v1/asr",
                     params=params,

@@ -11,6 +11,12 @@ from typing import Any
 from .concurrency import run_sync
 from .config import Settings
 from .errors import PlatformError
+from .model_ids import (
+    ASRModelId,
+    CorrectionModelId,
+    DEFAULT_ASR_MODEL,
+    DEFAULT_CORRECTION_MODEL,
+)
 from .realtime_audio import PCMContract, pcm16_to_wav
 from .realtime_endpoint import DetectorAction, DetectorConfig, UtteranceDetector
 from .realtime_models import CorrectionRevision, RealtimeEvent
@@ -74,12 +80,14 @@ class RealtimeCoordinator:
         asr: Any,
         text: Any,
         broker: Any | None = None,
+        model_control: Any | None = None,
     ) -> None:
         self.settings = settings
         self.vad = vad
         self.asr = asr
         self.text = text
         self.broker = broker
+        self.model_control = model_control
         self.asr_queue = ASRScheduler(
             max_finals=settings.realtime_final_queue,
             max_partials=settings.realtime_partial_queue,
@@ -107,13 +115,19 @@ class RealtimeCoordinator:
         self._retain(self._text_loop())
 
     async def open(
-        self, session_id: str, speech_language: SpeechLanguage
+        self,
+        session_id: str,
+        speech_language: SpeechLanguage,
+        asr_model: ASRModelId = DEFAULT_ASR_MODEL,
+        correction_model: CorrectionModelId = DEFAULT_CORRECTION_MODEL,
     ) -> "RealtimeStream":
         await self.start()
         if session_id in self._streams:
             stream = self._streams[session_id]
             if stream.speech_language != speech_language:
                 raise RuntimeError("realtime session language mismatch")
+            if stream.asr_model != asr_model or stream.correction_model != correction_model:
+                raise RuntimeError("realtime session model mismatch")
             return stream
         if len(self._streams) >= self.settings.max_sessions:
             raise PlatformError(
@@ -123,9 +137,21 @@ class RealtimeCoordinator:
                 stage="asr",
                 retryable=True,
             )
-        stream = RealtimeStream(self, session_id, speech_language)
+        if self.model_control is not None:
+            await run_sync(self.model_control.acquire, session_id, asr_model)
+        stream = RealtimeStream(
+            self,
+            session_id,
+            speech_language,
+            asr_model,
+            correction_model,
+        )
         self._streams[session_id] = stream
         return stream
+
+    async def release_lease(self, session_id: str) -> None:
+        if self.model_control is not None:
+            await run_sync(self.model_control.release, session_id)
 
     async def close_stream(self, session_id: str, reason: str = "user") -> None:
         stream = self._streams.pop(session_id, None)
@@ -169,6 +195,8 @@ class RealtimeCoordinator:
                         wav,
                         job.mode,
                         job.speech_language,
+                        job.asr_model,
+                        job.session_id,
                     )
                     error = None
                     break
@@ -200,6 +228,12 @@ class RealtimeCoordinator:
                         ),
                         timeout=self.settings.realtime_endpoint_timeout_ms / 1_000,
                     )
+                elif job.correction_model == "disabled":
+                    result = CorrectionRevision(
+                        job.previous_text,
+                        job.current_text,
+                        False,
+                    )
                 else:
                     result = await run_sync(
                         self.text.revise,
@@ -221,11 +255,15 @@ class RealtimeStream:
         coordinator: RealtimeCoordinator,
         session_id: str,
         speech_language: SpeechLanguage,
+        asr_model: ASRModelId,
+        correction_model: CorrectionModelId,
     ) -> None:
         self.coordinator = coordinator
         self.settings = coordinator.settings
         self.session_id = session_id
         self.speech_language = speech_language
+        self.asr_model = asr_model
+        self.correction_model = correction_model
         self.state = "ready"
         self.contract = PCMContract(16_000, 1, self.settings.realtime_frame_ms)
         self.detector = UtteranceDetector(
@@ -253,6 +291,7 @@ class RealtimeStream:
         self._idle = asyncio.Event()
         self._idle.set()
         self._stopping = False
+        self._lease_released = False
 
     async def start(self) -> None:
         if self.state == "listening":
@@ -285,20 +324,25 @@ class RealtimeStream:
         if self.state == "stopped" or self._stopping:
             return
         self._stopping = True
-        if self._utterance_id is not None and self._current_pcm:
-            utterance_id = self._utterance_id
-            pcm = bytes(self._current_pcm)
+        try:
+            if self._utterance_id is not None and self._current_pcm:
+                utterance_id = self._utterance_id
+                pcm = bytes(self._current_pcm)
+                self.detector.reset()
+                self._clear_utterance()
+                await self._queue_final(utterance_id, pcm)
+            await self.wait_idle()
+            self.ledger.finalize()
             self.detector.reset()
-            self._clear_utterance()
-            await self._queue_final(utterance_id, pcm)
-        await self.wait_idle()
-        self.ledger.finalize()
-        self.detector.reset()
-        self.coordinator.vad.reset()
-        self.state = "stopped"
-        await self._emit("stream.stopped", data={"reason": reason})
-        with suppress(asyncio.QueueFull):
-            self._events.put_nowait(None)
+            self.coordinator.vad.reset()
+            self.state = "stopped"
+            await self._emit("stream.stopped", data={"reason": reason})
+            with suppress(asyncio.QueueFull):
+                self._events.put_nowait(None)
+        finally:
+            if not self._lease_released:
+                await self.coordinator.release_lease(self.session_id)
+                self._lease_released = True
 
     async def wait_idle(self) -> None:
         await self._idle.wait()
@@ -332,6 +376,7 @@ class RealtimeStream:
                     "",
                     current_text,
                     self.speech_language,
+                    self.correction_model,
                 )
             )
         elif action.kind == "endpoint_cancelled":
@@ -352,6 +397,7 @@ class RealtimeStream:
             "partial",
             bytes(self._current_pcm),
             self.speech_language,
+            self.asr_model,
         )
         try:
             inserted = await self.coordinator.asr_queue.put_partial(job)
@@ -374,6 +420,7 @@ class RealtimeStream:
             "final",
             pcm,
             self.speech_language,
+            self.asr_model,
         )
         try:
             await self.coordinator.asr_queue.put_final(job)
@@ -435,9 +482,18 @@ class RealtimeStream:
             return
 
         self.ledger.accept_final(job.utterance_id, text)
-        await self._emit("asr.final", utterance_id=job.utterance_id, data={"text": text})
+        await self._emit(
+            "asr.final",
+            utterance_id=job.utterance_id,
+            data={"text": text, "asr_model": self.asr_model},
+        )
         rows = self.ledger.rows()
         previous = rows[-2].text if len(rows) > 1 else ""
+        await self._emit(
+            "correction.processing",
+            utterance_id=job.utterance_id,
+            data={"policy": self.correction_model},
+        )
         await self._queue_text(
             TextJob(
                 self.session_id,
@@ -446,6 +502,7 @@ class RealtimeStream:
                 previous,
                 text,
                 self.speech_language,
+                self.correction_model,
             )
         )
 
@@ -498,12 +555,26 @@ class RealtimeStream:
                 "previous_text": result.previous_text,
                 "current_text": result.current_text,
                 "changed": result.changed,
+                "policy": job.correction_model,
             },
         )
         await self._complete_utterance(job.utterance_id)
 
     async def _complete_utterance(self, utterance_id: str) -> None:
-        await self._emit("utterance.completed", utterance_id=utterance_id)
+        text = ""
+        for row in reversed(self.ledger.rows()):
+            if row.utterance_id == utterance_id:
+                text = row.text
+                break
+        await self._emit(
+            "utterance.completed",
+            utterance_id=utterance_id,
+            data={
+                "text": text,
+                "asr_model": self.asr_model,
+                "correction_model": self.correction_model,
+            },
+        )
         if not self._stopping:
             self.state = "listening"
 
@@ -554,5 +625,7 @@ class RealtimeStream:
                     "utterance_id": utterance_id or "",
                     "realtime_type": event_type,
                     "text": str(event.data.get("text", "")),
+                    "asr_model": self.asr_model,
+                    "correction_model": self.correction_model,
                 },
             )
