@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { ArrowLeft, CircleStop, Headphones, ShieldCheck } from 'lucide-react';
 import { RealtimeClient } from './audio/realtimeClient';
 import { AudioStage } from './components/AudioStage';
+import { ActiveModels } from './components/ActiveModels';
 import { DeviceGate } from './components/DeviceGate';
 import { ProcessCycle } from './components/ProcessCycle';
 import { SpeechLanguageControl } from './components/SpeechLanguageControl';
@@ -9,6 +10,13 @@ import { TranscriptPanel } from './components/TranscriptPanel';
 import { UtteranceGraph } from './components/UtteranceGraph';
 import { initialState, realtimeReducer } from './state/reducer';
 import type { DeviceGateResult, RealtimeEvent } from './types';
+import {
+  activateModels,
+  fetchModelCatalog,
+  type ASRModelId,
+  type CorrectionModelId,
+  type ModelCatalog,
+} from './models';
 import { SUPPORTED_LOCALES, useI18n, type Locale } from './i18n';
 import { Waves } from './vendor/reactbits/Waves';
 import {
@@ -41,6 +49,10 @@ export function App({ forceReducedMotion = false }: AppProps) {
   const [pendingSpeechLanguage, setPendingSpeechLanguage] = useState<SpeechLanguage>(initialSpeechLanguage.value);
   const [speechLanguageOverridden, setSpeechLanguageOverridden] = useState(initialSpeechLanguage.overridden);
   const [lockedSpeechLanguage, setLockedSpeechLanguage] = useState<SpeechLanguage | null>(null);
+  const [modelCatalog, setModelCatalog] = useState<ModelCatalog | null>(null);
+  const [asrModel, setAsrModel] = useState<ASRModelId>('qwen3-asr-1.7b');
+  const [correctionModel, setCorrectionModel] = useState<CorrectionModelId>('qwen2.5-correction');
+  const [switchingModels, setSwitchingModels] = useState(false);
   const [inference, setInference] = useState<InferenceDetails>({
     vad: 'unknown', asr: 'unknown', asrDevice: 'unknown', correction: 'unknown', correctionDevice: 'unknown'
   });
@@ -72,6 +84,11 @@ export function App({ forceReducedMotion = false }: AppProps) {
         correctionDevice: provider('correction')?.device ?? 'unknown'
       });
     }).catch(() => undefined);
+    void fetchModelCatalog().then(catalog => {
+      setModelCatalog(catalog);
+      setAsrModel(catalog.active.requested_asr_model ?? catalog.active.asr_model ?? 'qwen3-asr-1.7b');
+      setCorrectionModel(catalog.active.correction_model);
+    }).catch(() => undefined);
     return () => client.dispose();
   }, []);
 
@@ -99,12 +116,18 @@ export function App({ forceReducedMotion = false }: AppProps) {
     }
   };
 
-  const start = async () => {
-    setBusy(true);
-    setError('');
-    dispatch({ type: 'client.session_reset' });
+  const createAndStart = async (
+    resetTranscript: boolean,
+    selectedAsr: ASRModelId = asrModel,
+    selectedCorrection: CorrectionModelId = correctionModel,
+  ) => {
+    if (resetTranscript) dispatch({ type: 'client.session_reset' });
     try {
-      const query = new URLSearchParams({ speech_language: pendingSpeechLanguage });
+      const query = new URLSearchParams({
+        speech_language: pendingSpeechLanguage,
+        asr_model: selectedAsr,
+        correction_model: selectedCorrection,
+      });
       const response = await fetch(`/api/v1/sessions?${query.toString()}`, { method: 'POST' });
       if (!response.ok) throw new Error(t('error.createSession'));
       const session = await response.json() as { id: string; speech_language: SpeechLanguage };
@@ -112,11 +135,18 @@ export function App({ forceReducedMotion = false }: AppProps) {
       setLockedSpeechLanguage(session.speech_language);
       await clientRef.current!.start(session.id);
       setActive(true);
+      return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('error.start'));
-    } finally {
-      setBusy(false);
+      return false;
     }
+  };
+
+  const start = async () => {
+    setBusy(true);
+    setError('');
+    await createAndStart(true);
+    setBusy(false);
   };
 
   const stop = async () => {
@@ -125,6 +155,39 @@ export function App({ forceReducedMotion = false }: AppProps) {
       await clientRef.current?.stop('user');
       setActive(false);
     } finally {
+      setBusy(false);
+    }
+  };
+
+  const changeModels = async (nextAsr: ASRModelId, nextCorrection: CorrectionModelId) => {
+    if (switchingModels || (nextAsr === asrModel && nextCorrection === correctionModel)) return;
+    const resume = active && gate.ready;
+    setSwitchingModels(true);
+    setBusy(true);
+    setError('');
+    try {
+      if (active) {
+        await clientRef.current?.stop('model-switch');
+        setActive(false);
+      }
+      setAsrModel(nextAsr);
+      setCorrectionModel(nextCorrection);
+      let catalog = await activateModels(nextAsr, nextCorrection);
+      setModelCatalog(catalog);
+      for (let attempt = 0; catalog.active.state !== 'ready' && attempt < 120; attempt += 1) {
+        await new Promise(resolve => globalThis.setTimeout(resolve, 500));
+        catalog = await fetchModelCatalog();
+        setModelCatalog(catalog);
+        if (catalog.active.state === 'failed' || catalog.active.state === 'unavailable') break;
+      }
+      if (catalog.active.state !== 'ready' || catalog.active.asr_model !== nextAsr) {
+        throw new Error(catalog.active.error_code ?? t('error.modelSwitch'));
+      }
+      if (resume) await createAndStart(false, nextAsr, nextCorrection);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('error.modelSwitch'));
+    } finally {
+      setSwitchingModels(false);
       setBusy(false);
     }
   };
@@ -196,6 +259,15 @@ export function App({ forceReducedMotion = false }: AppProps) {
           <AudioStage samples={envelope} state={state.stream} />
           <section className="worker-card" aria-label={t('models.aria')}>
             <div><p className="eyebrow">{t('models.eyebrow')}</p><span className={`worker-state${active ? ' live' : ''}`}>{active ? t('models.streaming') : t('models.standby')}</span></div>
+            {modelCatalog && (
+              <ActiveModels
+                catalog={modelCatalog}
+                asrModel={asrModel}
+                correctionModel={correctionModel}
+                switching={switchingModels}
+                onChange={changeModels}
+              />
+            )}
             <dl>
               <div><dt>VAD</dt><dd>{inference.vad}</dd></div>
               <div><dt>ASR</dt><dd>{inference.asr}<small>{inference.asrDevice}</small></dd></div>
