@@ -49,7 +49,7 @@ def test_manifest_pins_all_models_and_excludes_breeze_training_artifacts() -> No
 
 def test_cached_verified_models_perform_no_downloads(tmp_path: Path) -> None:
     for model_id in model_manifest():
-        populate_entry(tmp_path, model_id)
+        populate_entry(tmp_path, model_id).chmod(0o700)
     calls: list[str] = []
 
     result = download_all(
@@ -62,6 +62,7 @@ def test_cached_verified_models_perform_no_downloads(tmp_path: Path) -> None:
     assert calls == []
     assert result == []
     assert verify_models(tmp_path) == []
+    assert all((tmp_path / entry.target).stat().st_mode & 0o777 == 0o755 for entry in model_manifest().values())
 
 
 def test_downloads_exact_revisions_into_atomic_targets(tmp_path: Path) -> None:

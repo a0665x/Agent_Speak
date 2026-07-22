@@ -192,6 +192,22 @@ def _adopt_complete_legacy_targets(root: Path) -> None:
         marker = target / MODEL_REVISION_MARKER
         if _required_files_ready(target, entry) and not marker.exists():
             marker.write_text(entry.revision, encoding="utf-8")
+        if _entry_ready(root, entry):
+            _make_runtime_readable(target)
+
+
+def _make_runtime_readable(target: Path) -> None:
+    """Keep Docker-created private weights readable/manageable by the host owner."""
+    for directory, directory_names, file_names in os.walk(target):
+        Path(directory).chmod(0o755)
+        for name in directory_names:
+            path = Path(directory) / name
+            if not path.is_symlink():
+                path.chmod(0o755)
+        for name in file_names:
+            path = Path(directory) / name
+            if not path.is_symlink():
+                path.chmod(0o644)
 
 
 def download_all(
@@ -243,6 +259,7 @@ def download_all(
             (partial / MODEL_REVISION_MARKER).write_text(entry.revision, encoding="utf-8")
             if not _entry_ready_from_target(partial, entry):
                 raise RuntimeError("download did not produce all required inference artifacts")
+            _make_runtime_readable(partial)
             partial.rename(target)
             downloaded.append(entry.model_id)
         except Exception as exc:
