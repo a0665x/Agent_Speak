@@ -4,7 +4,7 @@ English | [繁體中文](README.zh-TW.md)
 
 Agent Speak is a Docker-first voice gateway that gives an external AI agent ears and a voice without locking the runtime to one LLM. Hermes, Codex, OpenClaw, Ollama-based agents, and other MCP-capable hosts can use the same bounded voice pipeline:
 
-`microphone → VAD → Faster-Whisper ASR → external agent → Piper TTS → speaker`
+`microphone → VAD → selectable local ASR → external agent → Piper TTS → speaker`
 
 The gateway exposes REST, WebSocket events, a four-language WebUI, fully localized OpenAPI documentation, and a stdio MCP control plane. English is the default; the top-right selector switches English, Traditional Chinese, Japanese, and Korean across the project portal, Realtime Studio, and Swagger. The built-in Agent stage remains a transparent development echo; real reasoning belongs to the connected external agent.
 
@@ -40,6 +40,7 @@ Requirements: Linux, Docker Engine with Compose v2, `/dev/snd`, and network acce
 ```sh
 git clone https://github.com/a0665x/Agent_Speak.git
 cd Agent_Speak
+./run.sh --models
 ./run.sh --build
 ```
 
@@ -53,11 +54,11 @@ Realtime Studio: http://127.0.0.1:8765/asr_realtime?lang=en
 
 Choose English, Traditional Chinese, Japanese, or Korean from any top-right presentation-language selector. The selection persists and follows navigation links. Swagger localizes endpoint titles, descriptions, parameters, request fields, and response fields while keeping paths and payload identifiers unchanged.
 
-Realtime Studio has a separate **Speech language** selector: Auto detect, English, 繁體中文, 日本語, or 한국어. Until explicitly changed, it follows the presentation language. Start snapshots the choice into `POST /api/v1/sessions?speech_language=...`; ASR, endpoint detection, and correction keep that value for the entire session. A change made while listening is queued for the next session. The existing multilingual Faster-Whisper `small` and Qwen2.5 models handle all five policies, so switching does not download another ASR or correction model. TTS voice selection is separate and is not changed by this control.
+Realtime Studio has independent **Speech language**, **ASR model**, and **Correction model** selectors. Speech language supports Auto detect, English, 繁體中文, 日本語, and 한국어; until explicitly changed, it follows the presentation language. The ASR choices are Qwen3-ASR 1.7B (default), Breeze-ASR-25, and Faster Whisper Small. Correction is Qwen2.5 Correction or Disabled / Raw ASR. Every selection is frozen into the newly created session. Changing a model requires no Submit button: the UI safely stops an active stream, activates one resident ASR model, creates a new frozen session, and resumes only if the audio device gate remains ready. Completed transcript and graph data stay visible; unfinished partial text is discarded. TTS voice selection remains separate.
 
 VAD produces rolling partial text, so the current words may change. Qwen correction may revise the previous sentence together with the current sentence; older sentences lock. A silence candidate starts at 900 ms and may extend to the 1,800 ms hard endpoint. Invalid, late, or excessive Qwen edits fall back to final ASR text. The client does not reconnect automatically. CPU mode is functional, while realtime latency and GPU gains depend on the host.
 
-`./run.sh --build` builds and starts the isolated stack. Compose maps `/dev/snd` by default and persists private state in ignored `data/`, `runtime/`, and `models/` directories.
+`./run.sh --models` explicitly and idempotently downloads all pinned inference artifacts after an 8 GiB free-space reserve check. The download is atomic, verifies exact revisions and required files, excludes training checkpoints, and leaves cached models untouched. Expect roughly 10 GiB of model data plus temporary download overhead. Normal `--build` and `--up` are verify-only and never begin a multi-gigabyte download. Compose maps `/dev/snd` by default and persists private state in ignored `data/`, `runtime/`, and `models/` directories.
 
 ## Verify the installation
 
@@ -81,6 +82,7 @@ Expected success markers include `STATUS_HEALTHY`, `HEALTH_SMOKE_OK mode=docker`
 ./run.sh --down_up    Recreate the stack
 ./run.sh --restart    Same as --down_up
 ./run.sh --rebuild    No-cache rebuild and start
+./run.sh --models     Download and verify all pinned inference models
 ./run.sh --status     Container, API, and audio status
 ./run.sh --logs       Latest gateway logs
 ./run.sh --test       Full test suite in Docker

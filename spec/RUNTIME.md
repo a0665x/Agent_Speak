@@ -6,11 +6,12 @@ Public operation uses one root entrypoint. Run `./run.sh --build` to build the m
 
 - `--up`, `--down`, `--down_up`, `--restart`
 - `--rebuild` for a no-cache rebuild
+- `--models` for explicit pinned model provisioning
 - `--status`, `--logs`, `--test`, `--help`
 
 `compose.yaml` publishes the service to `127.0.0.1:${AGENT_SPEAK_PORT:-8765}`, maps host `/dev/snd` into the container by default, adds the host audio group, and uses a healthcheck plus `restart: unless-stopped`. Host `data/`, `runtime/`, and `models/` directories are bind-mounted to `/app` and survive container recreation. Their host paths can be overridden with `AGENT_SPEAK_DATA_PATH`, `AGENT_SPEAK_RUNTIME_PATH`, and `AGENT_SPEAK_MODELS_PATH`. They are ignored by Git and excluded from the Docker build context together with credentials and private Agent state.
 
-The image supports Docker's native `linux/amd64` and `linux/arm64` platforms through `python:3.11-slim-bookworm`. It installs ALSA utilities and local inference dependencies. The entrypoint downloads Piper `zh_CN-huayan-medium` into persistent model storage only when missing. Faster-Whisper downloads lazily into `models/` on the first ASR request.
+The image supports Docker's native `linux/amd64` and `linux/arm64` platforms. Gateway, ASR runtime, test, and model-downloader are separate Docker targets so the public API does not carry every inference build dependency. `./run.sh --models` is the only production path that downloads weights: a pinned manifest provisions Faster Whisper Small, Breeze-ASR-25, Qwen3-ASR 1.7B, Qwen2.5 correction, and Piper `zh_CN-huayan-medium`. It preflights disk space, downloads into model-specific partial directories, validates exact revisions and required files, then atomically publishes each directory. Normal startup runs verify-only and fails with a bounded instruction when an artifact is absent; no entrypoint or first ASR call downloads weights lazily.
 
 `AGENT_SPEAK_ACCELERATOR=auto` is the default. It selects the separate NVIDIA image only when `nvidia-smi` and Docker's NVIDIA runtime are both ready; otherwise it prints the reason and starts the CPU image. Use `cpu` to force the portable CPU/INT8 path or `nvidia` to require CUDA and fail instead of falling back. NVIDIA mode requires the NVIDIA Container Toolkit and builds `agent-speak:gpu-local` with CUDA 12 and cuDNN 9. The GPU override requests only the Compose `gpu` capability; it does not use privileged mode, broad `/dev` mounts, or host CUDA directory mounts.
 

@@ -14,6 +14,7 @@ Agent Speak gives arbitrary external Agents a common voice peripheral. The Gatew
 
 ```sh
 ./run.sh --build
+./run.sh --models
 ./run.sh --status
 ```
 
@@ -43,7 +44,7 @@ Host configuration concept:
 
 The built-in `/api/v1/agent/respond` provider is a transparent development echo, not external-Agent reasoning. For a full session, clients may instead use `POST /sessions`, a bounded WAV turn, and WebSocket events.
 
-Realtime clients may create `POST /api/v1/sessions?speech_language=auto|en|zh-TW|ja|ko`. The selected value is frozen in the session and routes realtime ASR, endpoint, and correction policy; `zh-TW` maps to Whisper `zh`, while `auto` enables model detection. One multilingual Faster-Whisper model and one multilingual Qwen model are reused, so no per-language weights are required. MCP `listen_once` and standalone `/audio/asr` deliberately keep the configured server default because they do not own browser session state. TTS voice selection is a separate concern.
+Realtime clients create sessions with frozen `speech_language`, `asr_model`, and `correction_model`. The public model catalog and activation routes are `GET /api/v1/models` and `PUT /api/v1/models/active`; one ASR provider can be resident and leased by a realtime session at a time. Qwen3-ASR 1.7B is the default, Breeze-ASR-25 targets Taiwanese Mandarin/code-switching, and Faster Whisper Small is the compact compatibility option. All are multilingual, so presentation-language changes require no new weights. MCP `listen_once` and standalone `/audio/asr` deliberately keep configured defaults because they do not own browser session state and must not switch a model leased by realtime. TTS voice selection is separate.
 
 ## MCP tools
 

@@ -2,9 +2,9 @@
 
 Base path: `/api/v1`.
 
-Core: `GET /health`, `GET /capabilities`, `POST /sessions`, `GET /sessions/{id}`, `WS /sessions/{id}/events`, `POST /sessions/{id}/turns`.
+Core: `GET /health`, `GET /capabilities`, `GET /models`, `PUT /models/active`, `POST /sessions`, `GET /sessions/{id}`, `WS /sessions/{id}/events`, `POST /sessions/{id}/turns`.
 
-`POST /sessions?speech_language=...` accepts `auto`, `en`, `zh-TW`, `ja`, or `ko`; omission remains backward compatible and defaults to `zh-TW`. The value is returned as `SessionSummary.speech_language`, is immutable for that session, and is copied into realtime ASR, endpoint, and correction jobs. Faster-Whisper maps `zh-TW` to `zh` and maps `auto` to model language detection while reusing the same loaded model. The standalone `/audio/asr`, full-turn, and MCP `listen_once` paths keep the configured server default and do not inherit Web UI presentation state.
+`POST /sessions` freezes `speech_language`, `asr_model`, and `correction_model`. Speech language accepts `auto`, `en`, `zh-TW`, `ja`, or `ko`; ASR accepts `qwen3-asr-1.7b`, `breeze-asr-25`, or `faster-whisper-small`; correction accepts `qwen2.5-correction` or `disabled`. `GET /models` reports selectable options and worker lifecycle state. `PUT /models/active` requests an idempotent hot switch; lease conflicts and unavailable workers use bounded errors. The standalone `/audio/asr`, full-turn, and MCP `listen_once` paths keep configured defaults and do not inherit Web UI presentation state.
 
 `POST /sessions/{id}/turns` and the audio stage endpoints accept a raw 16-bit PCM WAV request body (`Content-Type: audio/wav`). Ingress is counted while streaming and rejected as soon as the configured byte limit is crossed. A successful turn returns transcript, corrected text, endpoint decision, agent response, per-stage milliseconds, and a local `audio_url`. Session reads include bounded recent ordered event history; WebSocket connections replay that retained history and then stream new events through a bounded per-connection queue.
 

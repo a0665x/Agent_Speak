@@ -4,7 +4,7 @@
 
 Agent Speak 是 Docker-first 通用語音閘道，讓外部 AI Agent 取得耳朵與聲音，但不綁定單一 LLM。Hermes、Codex、OpenClaw、以 Ollama 建立的 Agent，以及其他支援 MCP 的宿主，都能使用同一套有界語音流程：
 
-`麥克風 → VAD → Faster-Whisper ASR → 外部 Agent → Piper TTS → 喇叭`
+`麥克風 → VAD → 可切換本機 ASR → 外部 Agent → Piper TTS → 喇叭`
 
 Gateway 提供 REST、WebSocket events、英／繁中／日／韓 WebUI、完整多語 OpenAPI 與 stdio MCP 控制平面。介面預設英文，右上角可切換語言，選擇會跨首頁、Realtime Studio 與 Swagger 延續。內建 Agent 階段仍是透明的 development echo；真正推理應由連接的外部 Agent 負責。
 
@@ -15,6 +15,7 @@ Gateway 提供 REST、WebSocket events、英／繁中／日／韓 WebUI、完整
 ```sh
 git clone https://github.com/a0665x/Agent_Speak.git
 cd Agent_Speak
+./run.sh --models
 ./run.sh --build
 ```
 
@@ -26,9 +27,11 @@ Realtime Studio：http://127.0.0.1:8765/asr_realtime?lang=zh-TW
 
 `/asr_realtime` 只做持續轉錄，不呼叫 Agent、TTS、Codex session injection 或喇叭播放；舊 `/realtime` 會相容轉址到新路徑。瀏覽器必須先取得明確操作並同時看見目前系統預設的輸入與輸出端點（找不到 `default` 時退回第一個有標籤的裝置），才會開放開始按鈕；看見 output 不代表已完成 physical playback。Raw PCM16 走 realtime WebSocket，MCP 維持低頻控制平面。
 
+Realtime Studio 的**語音語言**、**ASR 模型**與**校正模型**互相獨立。ASR 可選預設的 Qwen3-ASR 1.7B、Breeze-ASR-25 或 Faster Whisper Small；校正可選 Qwen2.5 Correction 或 Disabled / Raw ASR。下拉選單不需要 Submit：若正在聆聽，UI 會先安全停止、切換唯一常駐的 ASR 模型、建立選項已固定的新 session，並只在裝置閘門仍 Ready 時恢復。已完成的 transcript 與 graph 會保留，未完成 partial 會丟棄。
+
 VAD 期間會持續產生 partial 文字，因此當前文字可能更新。Qwen 校正只可一起修訂 previous sentence（前一句）與當前句，更早的句子會鎖定。靜音 900 ms 形成候選句尾，必要時延長到 1,800 ms hard endpoint；Qwen timeout、格式錯誤或改寫過度時保留 final ASR。前端不會自動重連。CPU 模式可用，但 realtime latency 與 GPU 效益依主機而異。
 
-`./run.sh --build` 會建置並啟動隔離環境。Compose 預設映射 `/dev/snd`，私有狀態持久化於已排除版控的 `data/`、`runtime/`、`models/`。
+`./run.sh --models` 會在保留至少 8 GiB 空間的前提下，明確且可重複地下載所有固定 revision 的推論檔案。下載採 atomic partial 目錄、驗證必要檔案、排除訓練 checkpoint，既有完整 cache 不會重抓。模型約需 10 GiB，另需暫存下載空間；一般 `--build` 與 `--up` 只驗證模型，不會自行開始數 GB 下載。Compose 預設映射 `/dev/snd`，私有狀態持久化於已排除版控的 `data/`、`runtime/`、`models/`。
 
 ## 驗證安裝
 
@@ -52,6 +55,7 @@ VAD 期間會持續產生 partial 文字，因此當前文字可能更新。Qwen
 ./run.sh --down_up    重建執行狀態
 ./run.sh --restart    與 --down_up 相同
 ./run.sh --rebuild    不用快取重建並啟動
+./run.sh --models     下載並驗證所有固定版本推論模型
 ./run.sh --status     顯示容器、API 與音訊狀態
 ./run.sh --logs       顯示最新 Gateway logs
 ./run.sh --test       在 Docker 執行完整測試

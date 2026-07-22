@@ -20,6 +20,8 @@ Each completed endpoint becomes one bounded utterance graph node. Partial ASR ne
 
 Ambient Waves are a locally vendored, visually subordinate React Bits adaptation. The microphone envelope is drawn separately from real local samples. Text and icons carry every status, 44–48 px controls remain keyboard reachable, mobile layouts avoid horizontal scrolling, and reduced motion disables ambient/pulse/scale effects while preserving semantic contrast. CPU mode remains functional; model and device labels report actual capabilities.
 
+The Active Models card uses immediate ASR and correction selects with no Submit button. Its lifecycle label exposes loading, warming, ready, rollback, failure, and device state. Switching while listening closes the current stream, discards its unfinished partial, activates one resident ASR provider, creates a new frozen session, and resumes only while the generic system-audio gate remains ready. Completed transcript rows and graph nodes remain visible. Live Audio renders three smooth, symmetric gradient signal ribbons from the real envelope instead of a single polygonal line; reduced motion removes pulse animation without hiding amplitude.
+
 This page stops at corrected transcription. It never invokes an Agent, TTS, Codex injection, or speaker output, and it does not reconnect or restart capture automatically.
 
 ## Codex CLI voice recorder
