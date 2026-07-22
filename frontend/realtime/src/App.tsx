@@ -170,8 +170,15 @@ export function App({ forceReducedMotion = false }: AppProps) {
         await clientRef.current?.stop('model-switch');
         setActive(false);
       }
+      dispatch({ type: 'client.model_switched' });
       setAsrModel(nextAsr);
       setCorrectionModel(nextCorrection);
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        const released = await fetchModelCatalog();
+        setModelCatalog(released);
+        if (!released.active.leased_by) break;
+        await new Promise(resolve => globalThis.setTimeout(resolve, 100));
+      }
       let catalog = await activateModels(nextAsr, nextCorrection);
       setModelCatalog(catalog);
       for (let attempt = 0; catalog.active.state !== 'ready' && attempt < 120; attempt += 1) {

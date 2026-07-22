@@ -24,6 +24,20 @@ test('records one completed utterance and resets for a new client session', () =
   expect(realtimeReducer(duplicate, { type: 'client.session_reset' })).toEqual(initialState);
 });
 
+test('model switch preserves completed rows, drops partial text, and resets event ordering', () => {
+  const completed = realtimeReducer(
+    realtimeReducer(initialState, event('asr.final', { text: 'kept' }, 'u1', 1)),
+    event('utterance.completed', {}, 'u1', 2),
+  );
+  const withPartial = realtimeReducer(completed, event('asr.partial', { text: 'discard me' }, 'u2', 3));
+
+  const switched = realtimeReducer(withPartial, { type: 'client.model_switched' });
+
+  expect(switched.rows.map(row => row.text)).toEqual(['kept']);
+  expect(switched.lastSequence).toBe(0);
+  expect(realtimeReducer(switched, event('stream.started', {}, null, 1)).stage).toBe('listening');
+});
+
 test('ignores duplicate sequence and never mixes utterance partials', () => {
   const one = realtimeReducer(initialState, {
     sequence: 2, session_id: 's', utterance_id: 'u1', type: 'asr.partial', at: '', data: { text: '第一' }

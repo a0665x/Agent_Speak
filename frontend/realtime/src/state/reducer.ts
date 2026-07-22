@@ -28,7 +28,17 @@ export const initialState: RealtimeState = {
 };
 
 export function realtimeReducer(state: RealtimeState, event: RealtimeAction): RealtimeState {
-  if (!('sequence' in event)) return initialState;
+  if (!('sequence' in event)) {
+    if (event.type === 'client.model_switched') {
+      const completed = new Set(state.completedUtteranceIds);
+      return {
+        ...initialState,
+        rows: state.rows.filter(row => completed.has(row.utteranceId)),
+        completedUtteranceIds: state.completedUtteranceIds,
+      };
+    }
+    return initialState;
+  }
   if (event.sequence <= state.lastSequence) return state;
   let next: RealtimeState = { ...state, lastSequence: event.sequence };
   switch (event.type) {

@@ -192,4 +192,3 @@ def test_qwen_warm_is_idempotent_and_close_allows_reload(tmp_path: Path) -> None
     assert len(calls) == 2
     assert calls[0]["model_path"] == tmp_path / "qwen"
     assert calls[0]["device"] == "cpu"
-

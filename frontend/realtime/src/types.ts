@@ -9,7 +9,7 @@ export type RealtimeEvent = {
 
 export type PipelineStage = 'idle' | 'listening' | 'voice' | 'asr' | 'endpoint' | 'correction' | 'error';
 
-export type RealtimeAction = RealtimeEvent | { type: 'client.session_reset' };
+export type RealtimeAction = RealtimeEvent | { type: 'client.session_reset' | 'client.model_switched' };
 
 export type DeviceGateResult = {
   ready: boolean;
