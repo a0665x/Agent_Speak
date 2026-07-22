@@ -7,6 +7,12 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .model_ids import (
+    ASRModelId,
+    CorrectionModelId,
+    DEFAULT_ASR_MODEL,
+    DEFAULT_CORRECTION_MODEL,
+)
 from .speech_languages import DEFAULT_SPEECH_LANGUAGE, SpeechLanguage
 
 
@@ -63,6 +69,16 @@ class SessionSummary(StrictModel):
         default=DEFAULT_SPEECH_LANGUAGE,
         description="工作階段建立時固定的語音語言",
         examples=["zh-TW"],
+    )
+    asr_model: ASRModelId = Field(
+        default=DEFAULT_ASR_MODEL,
+        description="工作階段建立時固定的 ASR 模型",
+        examples=["qwen3-asr-1.7b"],
+    )
+    correction_model: CorrectionModelId = Field(
+        default=DEFAULT_CORRECTION_MODEL,
+        description="工作階段建立時固定的文字校正策略",
+        examples=["qwen2.5-correction"],
     )
     created_at: datetime = Field(description="UTC 建立時間", examples=["2026-01-01T00:00:00Z"])
     events: list[PipelineEvent] = Field(default_factory=list, description="目前保留的流程事件")

@@ -255,3 +255,30 @@ async def test_openapi_localizes_session_speech_language_contract(
     assert parameter["schema"]["enum"] == ["auto", "en", "zh-TW", "ja", "ko"]
     assert field["examples"] == ["zh-TW"]
     assert default_phrase in asr["description"]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("locale", ["en", "zh-TW", "ja", "ko"])
+async def test_openapi_describes_frozen_session_model_contract(
+    tmp_path: Path, locale: str
+) -> None:
+    async with make_client(tmp_path) as client:
+        schema = (await client.get(f"/openapi.json?lang={locale}")).json()
+
+    create = schema["paths"]["/api/v1/sessions"]["post"]
+    parameters = {item["name"]: item for item in create["parameters"]}
+    summary = schema["components"]["schemas"]["SessionSummary"]["properties"]
+
+    assert parameters["asr_model"]["schema"]["enum"] == [
+        "faster-whisper-small",
+        "breeze-asr-25",
+        "qwen3-asr-1.7b",
+    ]
+    assert parameters["correction_model"]["schema"]["enum"] == [
+        "qwen2.5-correction",
+        "disabled",
+    ]
+    assert parameters["asr_model"]["description"]
+    assert parameters["correction_model"]["description"]
+    assert summary["asr_model"]["examples"] == ["qwen3-asr-1.7b"]
+    assert summary["correction_model"]["examples"] == ["qwen2.5-correction"]

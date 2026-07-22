@@ -18,6 +18,12 @@ from .concurrency import run_sync
 from .config import Settings
 from .errors import PlatformError
 from .locales import DOCS_UI_TEXT, localize_openapi, normalize_locale
+from .model_ids import (
+    ASRModelId,
+    CorrectionModelId,
+    DEFAULT_ASR_MODEL,
+    DEFAULT_CORRECTION_MODEL,
+)
 from .pipeline import Pipeline, ProviderSet
 from .realtime import RealtimeCoordinator, RealtimeTextAdapter
 from .realtime_audio import EnergyFrameVAD
@@ -384,8 +390,14 @@ def create_app(
     @app.post("/api/v1/sessions", response_model=SessionSummary, status_code=status.HTTP_201_CREATED, tags=["對話流程"], summary="建立對話工作階段", description="輸入：無。輸出：新的工作階段識別碼、狀態與事件清單。")
     async def create_session(
         speech_language: SpeechLanguage = DEFAULT_SPEECH_LANGUAGE,
+        asr_model: ASRModelId = DEFAULT_ASR_MODEL,
+        correction_model: CorrectionModelId = DEFAULT_CORRECTION_MODEL,
     ) -> SessionSummary:
-        return await app.state.broker.create(speech_language=speech_language)
+        return await app.state.broker.create(
+            speech_language=speech_language,
+            asr_model=asr_model,
+            correction_model=correction_model,
+        )
 
     @app.get("/api/v1/sessions/{session_id}", response_model=SessionSummary, tags=["對話流程"], summary="取得對話工作階段", description="輸入：工作階段識別碼。輸出：目前狀態與已保留的流程事件。")
     async def get_session(session_id: str) -> SessionSummary:

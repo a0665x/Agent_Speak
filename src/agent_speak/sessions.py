@@ -9,6 +9,12 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from .errors import PlatformError
+from .model_ids import (
+    ASRModelId,
+    CorrectionModelId,
+    DEFAULT_ASR_MODEL,
+    DEFAULT_CORRECTION_MODEL,
+)
 from .schemas import PipelineEvent, SessionSummary
 from .speech_languages import DEFAULT_SPEECH_LANGUAGE, SpeechLanguage
 
@@ -25,12 +31,18 @@ class SessionBroker:
         self._lock = asyncio.Lock()
 
     async def create(
-        self, *, speech_language: SpeechLanguage = DEFAULT_SPEECH_LANGUAGE
+        self,
+        *,
+        speech_language: SpeechLanguage = DEFAULT_SPEECH_LANGUAGE,
+        asr_model: ASRModelId = DEFAULT_ASR_MODEL,
+        correction_model: CorrectionModelId = DEFAULT_CORRECTION_MODEL,
     ) -> SessionSummary:
         session = SessionSummary(
             id=uuid4().hex,
             state="ready",
             speech_language=speech_language,
+            asr_model=asr_model,
+            correction_model=correction_model,
             created_at=datetime.now(timezone.utc),
         )
         async with self._lock:
@@ -59,7 +71,12 @@ class SessionBroker:
         await self.emit(
             session.id,
             "session.created",
-            data={"state": "ready", "speech_language": speech_language},
+            data={
+                "state": "ready",
+                "speech_language": speech_language,
+                "asr_model": asr_model,
+                "correction_model": correction_model,
+            },
         )
         return session
 

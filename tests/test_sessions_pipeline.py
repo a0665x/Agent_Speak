@@ -150,6 +150,79 @@ async def test_session_rejects_unknown_speech_language_with_stable_validation_er
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize(
+    "asr_model",
+    ["faster-whisper-small", "breeze-asr-25", "qwen3-asr-1.7b"],
+)
+async def test_session_freezes_requested_asr_model(
+    tmp_path: Path, asr_model: str
+) -> None:
+    client, _ = make_client(tmp_path)
+    async with client:
+        created = await client.post(
+            "/api/v1/sessions", params={"asr_model": asr_model}
+        )
+        fetched = await client.get(f"/api/v1/sessions/{created.json()['id']}")
+
+    assert created.status_code == 201
+    assert created.json()["asr_model"] == asr_model
+    assert fetched.json()["asr_model"] == asr_model
+    assert fetched.json()["events"][0]["data"]["asr_model"] == asr_model
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("correction_model", ["qwen2.5-correction", "disabled"])
+async def test_session_freezes_requested_correction_model(
+    tmp_path: Path, correction_model: str
+) -> None:
+    client, _ = make_client(tmp_path)
+    async with client:
+        created = await client.post(
+            "/api/v1/sessions", params={"correction_model": correction_model}
+        )
+
+    assert created.status_code == 201
+    assert created.json()["correction_model"] == correction_model
+    assert created.json()["events"][0]["data"]["correction_model"] == correction_model
+
+
+@pytest.mark.anyio
+async def test_session_model_defaults_are_qwen_asr_and_qwen_correction(
+    tmp_path: Path,
+) -> None:
+    client, _ = make_client(tmp_path)
+    async with client:
+        created = await client.post("/api/v1/sessions")
+
+    assert created.status_code == 201
+    assert created.json()["asr_model"] == "qwen3-asr-1.7b"
+    assert created.json()["correction_model"] == "qwen2.5-correction"
+    assert created.json()["events"][0]["data"] == {
+        "state": "ready",
+        "speech_language": "zh-TW",
+        "asr_model": "qwen3-asr-1.7b",
+        "correction_model": "qwen2.5-correction",
+    }
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("parameter", "value"),
+    [("asr_model", "unknown-asr"), ("correction_model", "unknown-correction")],
+)
+async def test_session_rejects_unknown_model_ids_with_stable_validation_error(
+    tmp_path: Path, parameter: str, value: str
+) -> None:
+    client, _ = make_client(tmp_path)
+    async with client:
+        response = await client.post("/api/v1/sessions", params={parameter: value})
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
+    assert response.json()["error"]["retryable"] is False
+
+
+@pytest.mark.anyio
 async def test_full_turn_runs_stages_in_order_and_records_timings(tmp_path: Path) -> None:
     client, _ = make_client(tmp_path)
     async with client:
