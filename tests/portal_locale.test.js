@@ -40,3 +40,12 @@ test("provides localized live status wording", () => {
   assert.equal(translate("ja", "status.ready"), "Gateway とモデル機能に接続しました");
   assert.equal(translate("ko", "status.ready"), "Gateway와 모델 기능이 연결되었습니다");
 });
+
+test("localizes the Agent listening hero message", () => {
+  assert.equal(translate("en", "hero.title"), "Let your Agent listen freely,");
+  assert.equal(translate("en", "hero.titleAccent"), "and join the conversation.");
+  assert.equal(translate("zh-TW", "hero.title"), "讓你的 Agent 自由聆聽，");
+  assert.equal(translate("zh-TW", "hero.titleAccent"), "自然接話。");
+  assert.match(translate("ja", "hero.lede"), /Agent/);
+  assert.match(translate("ko", "hero.lede"), /Agent/);
+});

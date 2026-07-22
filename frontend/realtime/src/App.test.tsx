@@ -84,7 +84,9 @@ function renderApp(locale: Locale = 'en') {
 test('renders the disabled realtime start control', () => {
   renderApp();
   expect(screen.getByRole('button', { name: /Start realtime listening/ })).toBeDisabled();
-  expect(screen.getByRole('heading', { name: /Speak\. See it flow\./ })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'ASR Realtime Demo' })).toBeInTheDocument();
+  expect(screen.getByText('Quickly locate model selection, processing state, and transcript data visualization.')).toBeInTheDocument();
+  expect(screen.getByTestId('particle-field')).toHaveAttribute('data-profile', 'subtle');
   expect(screen.getByRole('heading', { name: 'Realtime processing' })).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'ASR text relationships' })).toBeInTheDocument();
   expect(screen.getAllByRole('listitem')).toHaveLength(5);
@@ -230,7 +232,7 @@ test('safely stops and resumes a ready active stream when the ASR model changes'
 
 test('reduced motion keeps ambient status textual and static', () => {
   render(<I18nProvider initialLocale="en"><App forceReducedMotion /></I18nProvider>);
-  expect(screen.getByTestId('ambient-waves')).toHaveAttribute('data-animated', 'false');
+  expect(screen.getByTestId('particle-field')).toHaveAttribute('data-animated', 'false');
   expect(screen.getByText(/System audio input and output not checked/)).toBeInTheDocument();
 });
 
@@ -238,7 +240,7 @@ test('changes the complete realtime surface language from the navigation selecto
   renderApp();
   const selector = screen.getByRole('combobox', { name: 'Language' });
   fireEvent.change(selector, { target: { value: 'ja' } });
-  expect(screen.getByRole('heading', { name: '話す。流れが見える。' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'ASR リアルタイムデモ' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Realtime listening を開始' })).toBeDisabled();
   expect(screen.getByRole('heading', { name: 'ASR テキストの関係' })).toBeInTheDocument();
 });

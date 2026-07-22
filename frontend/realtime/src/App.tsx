@@ -19,7 +19,7 @@ import {
 } from './models';
 import { deriveModelPresentation, type ModelLifecycle } from './modelPresentation';
 import { SUPPORTED_LOCALES, useI18n, type Locale } from './i18n';
-import { Waves } from './vendor/reactbits/Waves';
+import { ParticleField } from './components/ParticleField';
 import {
   defaultSpeechLanguage,
   readSpeechLanguage,
@@ -227,7 +227,7 @@ export function App({ forceReducedMotion = false }: AppProps) {
   return (
     <>
       <a className="skip-link" href="#studio-main">{t('skip')}</a>
-      <Waves animated={!reducedMotion && active} />
+      <ParticleField profile="subtle" reducedMotion={reducedMotion} />
       <div className="background-word background-word-top" aria-hidden="true">VOICE · SIGNAL · TEXT</div>
       <div className="background-word background-word-bottom" aria-hidden="true">LISTEN</div>
       <main id="studio-main" className="studio-shell">

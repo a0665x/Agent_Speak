@@ -6,11 +6,13 @@
   <meta name="description" content="Agent Speak local speech gateway: APIs, realtime ASR, and live system status.">
   <title>Agent Speak · Local Speech Gateway</title>
   <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/particle-field.js" defer></script>
   <script src="/static/locale.js" defer></script>
   <script src="/static/app.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main" data-i18n="skip">Skip to main content</a>
+  <canvas id="particle-field" class="particle-field" data-profile="hero" aria-hidden="true"></canvas>
   <div class="ambient-word ambient-word-top" aria-hidden="true">VOICE · SIGNAL · TEXT</div>
   <div class="ambient-word ambient-word-bottom" aria-hidden="true">SPEAK</div>
   <header class="site-nav" aria-label="Site navigation" data-i18n-aria-label="nav.aria">
@@ -31,8 +33,8 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-copy">
         <p class="eyebrow" data-i18n="hero.eyebrow">LOCAL · PRIVATE · REALTIME</p>
-        <h1 id="hero-title"><span class="hero-title-line" data-i18n="hero.title">Turn voice into</span><br><span data-i18n="hero.titleAccent">a usable signal.</span></h1>
-        <p class="hero-lede" data-i18n="hero.lede">A local speech gateway that stays independent of any one Agent. Start with the API, or watch speech become text in realtime.</p>
+        <h1 id="hero-title"><span class="hero-title-line" data-i18n="hero.title">Let your Agent listen freely,</span><br><span data-i18n="hero.titleAccent">and join the conversation.</span></h1>
+        <p class="hero-lede" data-i18n="hero.lede">Give any Agent a local voice layer that can listen, understand pauses, and naturally join the conversation.</p>
         <a class="hero-action" href="/asr_realtime?lang=en" data-route="/asr_realtime"><span data-i18n="hero.action">Open ASR Realtime</span> <span aria-hidden="true">↗</span></a>
       </div>
       <figure class="hero-visual">

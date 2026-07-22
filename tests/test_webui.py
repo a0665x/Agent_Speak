@@ -59,6 +59,9 @@ async def test_root_is_project_guide_without_capture_controls(tmp_path: Path) ->
     assert 'fetch("/api/v1/capabilities")' in javascript
     assert "innerHTML" not in javascript
     assert 'src="/static/locale.js"' in page
+    assert 'id="particle-field"' in page
+    assert 'data-profile="hero"' in page
+    assert 'src="/static/particle-field.js"' in page
 
 
 @pytest.mark.anyio
@@ -68,11 +71,15 @@ async def test_project_guide_local_assets_are_served(tmp_path: Path) -> None:
         css = await client.get("/static/app.css")
         javascript = await client.get("/static/app.js")
         locale = await client.get("/static/locale.js")
+        particles = await client.get("/static/particle-field.js")
         artwork = await client.get("/static/speech-core-hero.png")
 
     assert css.headers["content-type"].startswith("text/css")
     assert javascript.headers["content-type"].startswith("text/javascript")
     assert locale.headers["content-type"].startswith("text/javascript")
+    assert particles.status_code == 200
+    assert particles.headers["content-type"].startswith("text/javascript")
+    assert "createParticleLayout" in particles.text
     assert artwork.status_code == 200
     assert artwork.headers["content-type"] == "image/png"
 

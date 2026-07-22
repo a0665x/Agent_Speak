@@ -34,12 +34,11 @@ svg { flex: 0 0 auto; }
 
 .skip-link { position: fixed; z-index: 30; top: 10px; left: 10px; min-height: 44px; padding: 11px 16px; border-radius: 999px; color: #080b11; background: #fff; transform: translateY(-160%); }
 .skip-link:focus { transform: none; }
-.ambient-waves { position: fixed; inset: 0; z-index: -2; pointer-events: none; opacity: .34; }
-.ambient-waves canvas { display: block; width: 100%; height: 100%; }
-.background-word { position: fixed; z-index: -1; white-space: nowrap; font-weight: 800; letter-spacing: -.08em; pointer-events: none; user-select: none; }
+.ambient-particles { position: fixed; z-index: 0; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: .52; }
+.background-word { position: fixed; z-index: 1; white-space: nowrap; font-weight: 800; letter-spacing: -.08em; pointer-events: none; user-select: none; }
 .background-word-top { top: 7vh; left: -2vw; font-size: clamp(5rem, 15vw, 13rem); color: transparent; background: linear-gradient(90deg, rgba(168, 190, 247, .13), rgba(199, 171, 243, .055), transparent); background-clip: text; }
 .background-word-bottom { right: -4vw; bottom: -9vh; font-size: clamp(9rem, 23vw, 21rem); color: rgba(154, 178, 239, .024); }
-.studio-shell { width: min(1120px, calc(100% - 36px)); margin: 0 auto; padding: 30px 0 82px; }
+.studio-shell { position: relative; z-index: 2; width: min(1120px, calc(100% - 36px)); margin: 0 auto; padding: 30px 0 82px; }
 .studio-nav { min-height: 52px; display: flex; align-items: center; justify-content: space-between; color: #8792a0; font: 650 11px/1.2 ui-monospace, "SFMono-Regular", monospace; letter-spacing: .12em; }
 .studio-nav-tools { display: flex; align-items: center; gap: 16px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
@@ -231,7 +230,7 @@ h2 { margin: 0; font-size: 20px; letter-spacing: -.025em; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
-  .ambient-waves { display: none; }
+  .ambient-particles { opacity: .32; }
   .process-stage[data-state="active"], .process-stage[data-state="active"] .stage-node, .graph-node.hovered .node-visual { transform: none; }
 }
 

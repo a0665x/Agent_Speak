@@ -24,6 +24,16 @@ test('keeps every realtime locale catalog complete', () => {
   }
 });
 
+test('provides localized ASR demo purpose in all four languages', () => {
+  expect(messages.en['hero.title']).toBe('ASR Realtime Demo');
+  expect(messages['zh-TW']['hero.title']).toBe('ASR 即時演示');
+  expect(messages.ja['hero.title']).toBe('ASR リアルタイムデモ');
+  expect(messages.ko['hero.title']).toBe('ASR 실시간 데모');
+  for (const locale of SUPPORTED_LOCALES) {
+    expect(messages[locale]['hero.lede'].length).toBeGreaterThan(20);
+  }
+});
+
 test('localizes internal navigation links', () => {
   expect(localizedHref('/', 'ko')).toBe('/?lang=ko');
   expect(localizedHref('/docs?view=full', 'ja')).toBe('/docs?view=full&lang=ja');
@@ -41,8 +51,10 @@ test('provider updates the document language and persists explicit selection', (
   localStorage.clear();
   render(<I18nProvider initialLocale="ja"><Probe /></I18nProvider>);
   expect(document.documentElement.lang).toBe('ja');
-  expect(screen.getByText('ja:話す。流れが見える。')).toBeInTheDocument();
+  expect(screen.getByText('ja:ASR リアルタイムデモ')).toBeInTheDocument();
+  expect(document.title).toBe('Agent Speak · ASR リアルタイムデモ');
   fireEvent.click(screen.getByRole('button', { name: 'change' }));
   expect(document.documentElement.lang).toBe('zh-TW');
+  expect(document.title).toBe('Agent Speak · ASR 即時演示');
   expect(localStorage.getItem('agent-speak-locale')).toBe('zh-TW');
 });

@@ -18,8 +18,8 @@
 - Modify: `frontend/realtime/src/i18n.test.tsx`
 - Modify: `frontend/realtime/src/App.test.tsx`
 
-- [ ] Write failing tests for the English-default and Traditional Chinese homepage hero, all four complete locale catalogs, localized ASR title/copy, document title, homepage particle canvas, ASR subtle particle canvas, and `/static/particle-field.js`.
-- [ ] Run the focused Node, Pytest, and Vitest tests and confirm failures identify missing copy, canvas hooks, and static asset.
+- [x] Write failing tests for the English-default and Traditional Chinese homepage hero, all four complete locale catalogs, localized ASR title/copy, document title, homepage particle canvas, ASR subtle particle canvas, and `/static/particle-field.js`.
+- [x] Run the focused Node, Pytest, and Vitest tests and confirm failures identify missing copy, canvas hooks, and static asset.
 
 ### Task 2: Implement the shared particle engine
 
@@ -31,10 +31,10 @@
 - Modify: `web/app.js`
 - Modify: `web/app.css`
 
-- [ ] Add failing pure tests for deterministic bounded point generation, stronger homepage versus subtle ASR profiles, pointer displacement radius, and spring return.
-- [ ] Implement the smallest pure functions that pass those tests, then add the Canvas mount lifecycle, resize handling, visibility pause, pointer tracking, capped DPR, and reduced-motion static frame.
-- [ ] Serve the shared asset, add the homepage canvas, mount it with the primary profile, and place it between the background gradients and content without changing click targets.
-- [ ] Run the particle, portal, and web route tests until green.
+- [x] Add failing pure tests for deterministic bounded point generation, stronger homepage versus subtle ASR profiles, pointer displacement radius, and spring return.
+- [x] Implement the smallest pure functions that pass those tests, then add the Canvas mount lifecycle, resize handling, visibility pause, pointer tracking, capped DPR, and reduced-motion static frame.
+- [x] Serve the shared asset, add the homepage canvas, mount it with the primary profile, and place it between the background gradients and content without changing click targets.
+- [x] Run the particle, portal, and web route tests until green.
 
 ### Task 3: Integrate ASR particles and four-language titles
 
@@ -48,10 +48,10 @@
 - Delete: `frontend/realtime/src/vendor/reactbits/Waves.tsx`
 - Delete: `frontend/realtime/src/vendor/reactbits/Waves.css`
 
-- [ ] Implement a React lifecycle wrapper around the shared browser mount API and render the subtle profile behind ASR content.
-- [ ] Replace the ASR hero and document metadata in English, Traditional Chinese, Japanese, and Korean.
-- [ ] Remove the old line-wave renderer so only one full-screen animation loop remains.
-- [ ] Run focused component/i18n tests, the complete Vitest suite, and `npm run build`.
+- [x] Implement a React lifecycle wrapper around the shared browser mount API and render the subtle profile behind ASR content.
+- [x] Replace the ASR hero and document metadata in English, Traditional Chinese, Japanese, and Korean.
+- [x] Remove the old line-wave renderer so only one full-screen animation loop remains.
+- [x] Run focused component/i18n tests, the complete Vitest suite, and `npm run build`.
 
 ### Task 4: Verify, document, deploy, and publish
 
@@ -60,8 +60,8 @@
 - Modify: `spec/UI.md`
 - Generated: `web/asr_realtime/`
 
-- [ ] Document the shared particle layer, reduced-motion behavior, and localized hero purpose.
-- [ ] Rebuild fresh Docker test images and run `./run.sh --test` to `TESTS_OK`.
-- [ ] Deploy without activating audio hardware and verify `/`, `/static/particle-field.js`, and `/asr_realtime` return HTTP 200.
-- [ ] Capture and inspect desktop, pointer-interaction, reduced-motion, and narrow-viewport screenshots for layering and readability.
+- [x] Document the shared particle layer, reduced-motion behavior, and localized hero purpose.
+- [x] Rebuild fresh Docker test images and run `./run.sh --test` to `TESTS_OK`.
+- [x] Deploy without activating audio hardware and verify `/`, `/static/particle-field.js`, and `/asr_realtime` return HTTP 200.
+- [x] Capture and inspect desktop, reduced-motion, and narrow-viewport screenshots for layering and readability; verify pointer displacement and spring return with deterministic motion tests.
 - [ ] Run `git diff --check`, commit only source/tests/spec/generated web assets, keep `.superpowers/` untracked, and push `main`.

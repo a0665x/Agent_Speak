@@ -6,15 +6,17 @@ const DEFAULT_LOCALE: Locale = 'en';
 const STORAGE_KEY = 'agent-speak-locale';
 
 const en = {
+  'page.title': 'Agent Speak · ASR Realtime Demo',
+  'meta.description': 'Realtime ASR demo for model selection, pipeline state, and transcript data visualization.',
   'skip': 'Skip to main content',
   'language.label': 'Language',
   'nav.projectHome': 'Project Home',
   'nav.aria': 'Realtime navigation',
-  'hero.eyebrow': 'CONTINUOUS SPEECH EXPERIENCE',
-  'hero.title': 'Speak. See it flow.',
-  'hero.titleLead': 'Speak.',
-  'hero.titleAccent': 'See it flow.',
-  'hero.lede': 'Voice comes in and text takes shape. Every utterance, pause, and correction appears through real pipeline events.',
+  'hero.eyebrow': 'ASR REALTIME DEMO',
+  'hero.title': 'ASR Realtime Demo',
+  'hero.titleLead': 'ASR Realtime',
+  'hero.titleAccent': 'Demo.',
+  'hero.lede': 'Quickly locate model selection, processing state, and transcript data visualization.',
   'session.label': 'SESSION',
   'session.notStarted': 'not started',
   'session.aria': 'Current session: {value}',
@@ -108,10 +110,11 @@ export type MessageKey = keyof typeof en;
 type Catalog = Record<MessageKey, string>;
 
 const zhTW: Catalog = {
+  'page.title': 'Agent Speak · ASR 即時演示', 'meta.description': 'ASR 即時演示：快速定位模型選擇、處理狀態與內容資料視覺化。',
   'skip': '跳至主要內容',
   'language.label': '語言', 'nav.projectHome': '專案首頁', 'nav.aria': '即時語音導覽',
-  'hero.eyebrow': '持續語音體驗', 'hero.title': '說話，看見文字流動。', 'hero.titleLead': '說話。', 'hero.titleAccent': '看見文字流動。',
-  'hero.lede': '聲音進來，文字成形。每次說話、停頓與校正，都由真實 pipeline event 即時呈現。',
+  'hero.eyebrow': 'ASR 即時演示', 'hero.title': 'ASR 即時演示', 'hero.titleLead': 'ASR 即時', 'hero.titleAccent': '演示。',
+  'hero.lede': '快速定位模型選擇、處理狀態與內容資料視覺化。',
   'session.label': '工作階段', 'session.notStarted': '尚未開始', 'session.aria': '目前工作階段：{value}',
   'error.retry': '請確認 worker 狀態與系統音訊連線後重試。', 'error.deviceCheck': '無法檢查系統音訊裝置',
   'error.createSession': '無法建立 realtime 工作階段', 'error.start': '無法開始即時聆聽', 'error.modelSwitch': '無法切換所選模型', 'warning.pipeline': 'Pipeline 警告：{value}',
@@ -138,10 +141,11 @@ const zhTW: Catalog = {
 };
 
 const ja: Catalog = {
+  'page.title': 'Agent Speak · ASR リアルタイムデモ', 'meta.description': 'モデル選択、処理状態、文字起こしデータ可視化をすばやく確認できる ASR リアルタイムデモ。',
   'skip': 'メインコンテンツへ移動',
   'language.label': '言語', 'nav.projectHome': 'プロジェクトホーム', 'nav.aria': 'Realtime ナビゲーション',
-  'hero.eyebrow': '継続音声エクスペリエンス', 'hero.title': '話す。流れが見える。', 'hero.titleLead': '話す。', 'hero.titleAccent': '流れが見える。',
-  'hero.lede': '音声が入り、テキストが形になります。発話、間、補正のすべてを実際の pipeline event で realtime に表示します。',
+  'hero.eyebrow': 'ASR リアルタイムデモ', 'hero.title': 'ASR リアルタイムデモ', 'hero.titleLead': 'ASR リアルタイム', 'hero.titleAccent': 'デモ。',
+  'hero.lede': 'モデル選択、処理状態、文字起こしデータの可視化をすばやく確認できます。',
   'session.label': 'セッション', 'session.notStarted': '未開始', 'session.aria': '現在の session：{value}',
   'error.retry': 'worker の状態と system audio 接続を確認して、もう一度お試しください。', 'error.deviceCheck': 'system audio device を確認できません',
   'error.createSession': 'realtime session を作成できません', 'error.start': 'realtime listening を開始できません', 'error.modelSwitch': '選択したモデルを切り替えられません', 'warning.pipeline': 'Pipeline warning：{value}',
@@ -168,10 +172,11 @@ const ja: Catalog = {
 };
 
 const ko: Catalog = {
+  'page.title': 'Agent Speak · ASR 실시간 데모', 'meta.description': '모델 선택, 처리 상태 및 전사 데이터 시각화를 빠르게 확인하는 ASR 실시간 데모입니다.',
   'skip': '주요 콘텐츠로 이동',
   'language.label': '언어', 'nav.projectHome': '프로젝트 홈', 'nav.aria': 'Realtime 탐색',
-  'hero.eyebrow': '연속 음성 경험', 'hero.title': '말하고, 흐름을 확인하세요.', 'hero.titleLead': '말하세요.', 'hero.titleAccent': '흐름을 확인하세요.',
-  'hero.lede': '음성이 들어오면 텍스트가 만들어집니다. 발화, 멈춤, 교정을 실제 pipeline event로 realtime 표시합니다.',
+  'hero.eyebrow': 'ASR 실시간 데모', 'hero.title': 'ASR 실시간 데모', 'hero.titleLead': 'ASR 실시간', 'hero.titleAccent': '데모.',
+  'hero.lede': '모델 선택, 처리 상태 및 전사 데이터 시각화를 빠르게 확인할 수 있습니다.',
   'session.label': '세션', 'session.notStarted': '시작 전', 'session.aria': '현재 session: {value}',
   'error.retry': 'worker 상태와 system audio 연결을 확인한 뒤 다시 시도하세요.', 'error.deviceCheck': 'system audio device를 확인할 수 없습니다',
   'error.createSession': 'realtime session을 만들 수 없습니다', 'error.start': 'realtime listening을 시작할 수 없습니다', 'error.modelSwitch': '선택한 모델을 전환할 수 없습니다', 'warning.pipeline': 'Pipeline 경고: {value}',
@@ -239,6 +244,9 @@ export function I18nProvider({ children, initialLocale }: { children: ReactNode;
 
   useEffect(() => {
     document.documentElement.lang = locale;
+    document.title = messages[locale]['page.title'];
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute('content', messages[locale]['meta.description']);
   }, [locale]);
 
   const setLocale = useCallback((nextLocale: Locale) => {

@@ -1,6 +1,9 @@
 "use strict";
 
 const localeApi = window.AgentSpeakLocale;
+const particleCanvas = document.querySelector("#particle-field");
+const particleField = window.AgentSpeakParticleField?.mount(particleCanvas, { profile: "hero" });
+window.addEventListener("pagehide", () => particleField?.destroy(), { once: true });
 let storedLocale = null;
 try {
   storedLocale = localStorage.getItem(localeApi.STORAGE_KEY);

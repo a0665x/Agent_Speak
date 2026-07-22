@@ -403,6 +403,10 @@ def create_app(
     async def web_locale_script() -> Response:
         return Response(content=(web_dir / "locale.js").read_text(encoding="utf-8"), media_type="text/javascript")
 
+    @app.get("/static/particle-field.js", include_in_schema=False)
+    async def particle_field_script() -> Response:
+        return Response(content=(web_dir / "particle-field.js").read_text(encoding="utf-8"), media_type="text/javascript")
+
     @app.get("/static/docs-locale.js", include_in_schema=False)
     async def docs_locale_script() -> Response:
         return Response(content=(web_dir / "docs-locale.js").read_text(encoding="utf-8"), media_type="text/javascript")
