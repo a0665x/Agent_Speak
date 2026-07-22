@@ -11,7 +11,7 @@ CMD ["npm", "test"]
 FROM realtime-frontend-deps AS realtime-frontend-build
 RUN npm run build
 
-FROM python:3.11-slim-bookworm AS runtime
+FROM python:3.11-slim-bookworm AS python-base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -30,13 +30,18 @@ COPY pyproject.toml LICENSE ./
 COPY src ./src
 ARG AGENT_SPEAK_IMAGE_VARIANT=cpu
 RUN python -m pip install --upgrade pip setuptools wheel \
-    && if [ "$AGENT_SPEAK_IMAGE_VARIANT" = "nvidia" ]; then \
-         python -m pip install -e '.[test,gpu]'; \
-       else \
-         python -m pip install -e '.[test]'; \
-       fi
+    && python -m pip install -e '.[test]'
 
 ENV LD_LIBRARY_PATH=/usr/local/lib/python3.11/site-packages/nvidia/cublas/lib:/usr/local/lib/python3.11/site-packages/nvidia/cudnn/lib
+
+FROM python-base AS model-downloader
+
+COPY . .
+RUN python -m pip install -e '.[models]'
+ENTRYPOINT ["python", "scripts/bootstrap_models.py"]
+CMD ["--verify"]
+
+FROM python-base AS runtime
 
 # Include runtime assets and the complete public repository contract after dependencies,
 # so documentation/script edits do not invalidate the expensive inference dependency layer.
@@ -54,3 +59,12 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=60s --retries=6 \
 
 ENTRYPOINT ["agent-speak-entrypoint"]
 CMD ["python", "-m", "uvicorn", "agent_speak.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8765"]
+
+FROM runtime AS asr-runtime
+
+ARG AGENT_SPEAK_IMAGE_VARIANT=cpu
+RUN if [ "$AGENT_SPEAK_IMAGE_VARIANT" = "nvidia" ]; then \
+      python -m pip install -e '.[asr,gpu]'; \
+    else \
+      python -m pip install -e '.[asr]'; \
+    fi

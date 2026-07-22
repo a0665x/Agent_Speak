@@ -81,7 +81,7 @@ def test_root_run_script_exposes_single_docker_operator_interface() -> None:
     subprocess.run(["bash", "-n", str(script)], check=True)
 
     help_result = subprocess.run([str(script), "--help"], cwd=ROOT, capture_output=True, text=True, check=True)
-    for option in ("--build", "--up", "--down", "--down_up", "--restart", "--rebuild", "--status", "--logs", "--test", "--help"):
+    for option in ("--models", "--build", "--up", "--down", "--down_up", "--restart", "--rebuild", "--status", "--logs", "--test", "--help"):
         assert option in help_result.stdout
     assert "docker compose" in source
     assert "/dev/snd/controlC*" in source
@@ -230,6 +230,7 @@ def test_run_script_dispatches_expected_compose_commands(tmp_path: Path) -> None
         "--status": ("compose -f compose.yaml ps",),
         "--logs": ("compose -f compose.yaml logs --tail",),
         "--test": ("compose -f compose.yaml run --rm --no-deps", "gateway-test"),
+        "--models": ("build model-downloader", "run --rm --no-deps model-downloader --download-all"),
     }
     for option, fragments in expectations.items():
         log.write_text("", encoding="utf-8")
@@ -238,6 +239,43 @@ def test_run_script_dispatches_expected_compose_commands(tmp_path: Path) -> None
         calls = log.read_text(encoding="utf-8")
         for fragment in fragments:
             assert fragment in calls, (option, fragment, calls)
+
+
+def test_model_download_is_explicit_and_normal_start_is_verify_only() -> None:
+    script = (ROOT / "run.sh").read_text(encoding="utf-8")
+    compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+
+    assert "--models" in script
+    assert "--download-all" in script
+    assert "--verify" in compose
+    assert "model-downloader" in compose
+    assert "AS model-downloader" in dockerfile
+    assert "AS asr-runtime" in dockerfile
+    assert "/var/run/docker.sock" not in compose
+
+
+def test_gateway_and_tests_exclude_asr_heavy_dependencies() -> None:
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    compose = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+
+    assert compose["services"]["asr-worker"]["build"]["target"] == "asr-runtime"
+    assert compose["services"]["gateway"]["build"]["target"] == "runtime"
+    assert compose["services"]["model-bootstrap"]["command"] == ["--verify"]
+    assert "qwen-asr" in pyproject
+    assert "transformers" in pyproject
+    runtime_section = dockerfile.split("FROM python-base AS runtime", 1)[1].split("FROM runtime AS", 1)[0]
+    assert "[asr]" not in runtime_section
+    asr_section = dockerfile.split("AS asr-runtime", 1)[1]
+    assert "[asr]" in asr_section
+
+
+def test_entrypoint_never_downloads_models_at_service_start() -> None:
+    entrypoint = (ROOT / "docker" / "entrypoint.sh").read_text(encoding="utf-8")
+
+    assert "piper.download_voices" not in entrypoint
+    assert "Downloading Piper" not in entrypoint
 
 
 def test_docker_configuration_overrides_have_effective_container_wiring() -> None:

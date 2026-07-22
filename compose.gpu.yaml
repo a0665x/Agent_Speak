@@ -1,9 +1,10 @@
 services:
   asr-worker:
     build:
+      target: asr-runtime
       args:
         AGENT_SPEAK_IMAGE_VARIANT: nvidia
-    image: agent-speak:gpu-local
+    image: agent-speak-asr:gpu-local
     runtime: nvidia
     environment:
       AGENT_SPEAK_ACCELERATOR: nvidia

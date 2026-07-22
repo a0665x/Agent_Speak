@@ -15,6 +15,7 @@ Agent Speak — Docker-first operator
 Usage: ./run.sh OPTION
 
   --build       Build the image, then start the gateway
+  --models      Explicitly download and verify all pinned speech models
   --up          Start the gateway in the background
   --down        Stop and remove containers; preserve data, runtime, and models
   --down_up     Recreate the running stack (same behavior as --restart)
@@ -160,6 +161,10 @@ fi
 prepare_runtime
 
 case "$1" in
+  --models)
+    compose --profile models build model-downloader
+    compose --profile models run --rm --no-deps model-downloader --download-all
+    ;;
   --build)
     compose build
     compose up -d

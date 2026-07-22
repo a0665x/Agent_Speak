@@ -8,13 +8,28 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: agent-speak:local
+      target: model-downloader
+    image: agent-speak-model-downloader:local
     init: true
     restart: "no"
-    entrypoint: ["python"]
-    command: ["scripts/bootstrap_models.py"]
+    command: ["--verify"]
     environment:
-      AGENT_SPEAK_ASR_MODEL: "${AGENT_SPEAK_ASR_MODEL:-small}"
+      HOME: /app/models/home
+      HF_HOME: /app/models/huggingface
+      XDG_CACHE_HOME: /app/models/cache
+    volumes: *model-volume
+
+  model-downloader:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: model-downloader
+    image: agent-speak-model-downloader:local
+    profiles: ["models"]
+    init: true
+    restart: "no"
+    command: ["--download-all"]
+    environment:
       HOME: /app/models/home
       HF_HOME: /app/models/huggingface
       XDG_CACHE_HOME: /app/models/cache
@@ -24,7 +39,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: agent-speak:local
+      target: asr-runtime
+    image: agent-speak-asr:local
     init: true
     restart: unless-stopped
     command: ["python", "-m", "uvicorn", "agent_speak.asr_worker:create_asr_worker", "--factory", "--host", "0.0.0.0", "--port", "8771"]
@@ -72,6 +88,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runtime
     image: agent-speak:local
     restart: unless-stopped
     init: true
@@ -127,6 +144,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runtime
     image: agent-speak:local
     profiles: ["test"]
     init: true
