@@ -16,6 +16,7 @@ class Settings(BaseModel):
     port: int = Field(default=8765, ge=1, le=65_535)
     data_dir: Path = Path("data")
     runtime_dir: Path = Path("runtime")
+    models_root: Path = Path("models")
     max_audio_bytes: int = Field(default=8 * 1024 * 1024, ge=44, le=64 * 1024 * 1024)
     max_audio_seconds: float = Field(default=30.0, gt=0, le=300)
     vad_rms_threshold: float = Field(default=0.015, gt=0, lt=1)
