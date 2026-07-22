@@ -374,3 +374,36 @@ async def test_openapi_describes_frozen_session_model_contract(
     assert parameters["correction_model"]["description"]
     assert summary["asr_model"]["examples"] == ["qwen3-asr-1.7b"]
     assert summary["correction_model"]["examples"] == ["qwen2.5-correction"]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("locale", "catalog_summary", "activation_summary", "field_phrase"),
+    [
+        ("en", "View available inference models", "Switch active inference models", "Stable ASR model identifier"),
+        ("zh-TW", "查看可用推論模型", "切換啟用中的推論模型", "穩定的 ASR 模型識別碼"),
+        ("ja", "利用可能な推論モデルを表示", "有効な推論モデルを切り替え", "安定した ASR モデル ID"),
+        ("ko", "사용 가능한 추론 모델 보기", "활성 추론 모델 전환", "안정적인 ASR 모델 ID"),
+    ],
+)
+async def test_openapi_fully_localizes_model_control_contract(
+    tmp_path: Path,
+    locale: str,
+    catalog_summary: str,
+    activation_summary: str,
+    field_phrase: str,
+) -> None:
+    async with make_client(tmp_path) as client:
+        schema = (await client.get(f"/openapi.json?lang={locale}")).json()
+
+    catalog = schema["paths"]["/api/v1/models"]["get"]
+    activation = schema["paths"]["/api/v1/models/active"]["put"]
+    field = schema["components"]["schemas"]["ASRModelOption"]["properties"]["id"]
+
+    assert catalog["summary"] == catalog_summary
+    assert catalog["description"]
+    assert activation["summary"] == activation_summary
+    assert activation["description"]
+    assert field_phrase in field["description"]
+    for schema_name in ("ASRModelOption", "CorrectionModelOption", "ActiveModelSelection", "ModelCatalog", "ModelActivationInput"):
+        assert all(item.get("description") for item in schema["components"]["schemas"][schema_name]["properties"].values())
