@@ -24,6 +24,7 @@ from .model_ids import (
     DEFAULT_ASR_MODEL,
     DEFAULT_CORRECTION_MODEL,
 )
+from .model_control import ASRWorkerControlClient, ModelCatalogService, UnavailableWorkerModelControl
 from .pipeline import Pipeline, ProviderSet
 from .realtime import RealtimeCoordinator, RealtimeTextAdapter
 from .realtime_audio import EnergyFrameVAD
@@ -34,6 +35,8 @@ from .schemas import (
     ErrorBody,
     ErrorEnvelope,
     HealthResponse,
+    ModelActivationInput,
+    ModelCatalog,
     SessionSummary,
     SpeakerCreate,
     SpeakerEnvelope,
@@ -157,6 +160,7 @@ def create_app(
     *,
     providers: ProviderSet | None = None,
     realtime: RealtimeCoordinator | None = None,
+    model_control: ModelCatalogService | None = None,
 ) -> FastAPI:
     active = settings or Settings.from_env()
     active.prepare_directories()
@@ -190,6 +194,19 @@ def create_app(
         max_audio_bytes=active.max_audio_bytes,
         max_audio_seconds=active.max_audio_seconds,
         max_artifacts=active.max_artifacts,
+    )
+    worker_control = (
+        ASRWorkerControlClient(active.asr_worker_url)
+        if active.asr_worker_url
+        else UnavailableWorkerModelControl()
+    )
+    app.state.model_control = model_control or ModelCatalogService(
+        worker=worker_control,
+        correction_ready=lambda: next(
+            item.ready
+            for item in app.state.pipeline.providers.capabilities()
+            if item.stage == "correction"
+        ),
     )
     app.state.realtime = realtime or RealtimeCoordinator(
         active,
@@ -262,6 +279,30 @@ def create_app(
     @app.get("/api/v1/capabilities", response_model=CapabilitiesResponse, tags=["系統"], summary="查看目前處理能力", description="輸入：無。輸出：六個處理階段實際啟用的提供者、版本與限制。")
     async def capabilities() -> CapabilitiesResponse:
         return CapabilitiesResponse(providers=app.state.pipeline.providers.capabilities())
+
+    @app.get(
+        "/api/v1/models",
+        response_model=ModelCatalog,
+        tags=["系統"],
+        summary="查看可用推論模型",
+        description="輸入：無。輸出：ASR、校正選項，以及目前載入與租用狀態。",
+    )
+    async def models() -> ModelCatalog:
+        return await run_sync(app.state.model_control.catalog)
+
+    @app.put(
+        "/api/v1/models/active",
+        response_model=ModelCatalog,
+        tags=["系統"],
+        summary="切換啟用的推論模型",
+        description="輸入：ASR 模型與校正策略。輸出：切換後或載入中的完整模型狀態。",
+    )
+    async def activate_models(body: ModelActivationInput) -> ModelCatalog:
+        return await run_sync(
+            app.state.model_control.activate,
+            body.asr_model,
+            body.correction_model,
+        )
 
     @app.get("/docs", include_in_schema=False)
     async def localized_docs(lang: str | None = None) -> Response:

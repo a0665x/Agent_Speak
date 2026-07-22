@@ -53,6 +53,46 @@ class HealthResponse(StrictModel):
     storage_ready: bool = Field(description="本機資料目錄是否就緒", examples=[True])
 
 
+ModelLoadState = Literal[
+    "unavailable", "idle", "unloading", "loading", "warming", "ready", "failed", "rollback"
+]
+
+
+class ASRModelOption(StrictModel):
+    id: ASRModelId = Field(description="Stable ASR model identifier.")
+    label: str = Field(description="Human-readable ASR model name.")
+    description: str = Field(description="ASR model purpose and strengths.")
+    ready: bool = Field(description="Whether the model can currently be selected.")
+
+
+class CorrectionModelOption(StrictModel):
+    id: CorrectionModelId = Field(description="Stable correction policy identifier.")
+    label: str = Field(description="Human-readable correction policy name.")
+    description: str = Field(description="Correction policy behavior.")
+    ready: bool = Field(description="Whether the correction policy can currently be selected.")
+
+
+class ActiveModelSelection(StrictModel):
+    asr_model: ASRModelId | None = Field(description="Currently active ASR model, or null when unavailable.")
+    correction_model: CorrectionModelId = Field(description="Currently selected correction policy.")
+    requested_asr_model: ASRModelId | None = Field(description="ASR model currently being loaded, if any.")
+    state: ModelLoadState = Field(description="Current ASR model lifecycle stage.")
+    leased_by: str | None = Field(description="Realtime session holding the ASR model lease, if any.")
+    device: str = Field(description="Inference device reported by the ASR worker.")
+    error_code: str | None = Field(description="Bounded activation error code, if any.")
+
+
+class ModelCatalog(StrictModel):
+    asr: list[ASRModelOption] = Field(description="Selectable ASR models.")
+    correction: list[CorrectionModelOption] = Field(description="Selectable correction policies.")
+    active: ActiveModelSelection = Field(description="Active selections and model lifecycle state.")
+
+
+class ModelActivationInput(StrictModel):
+    asr_model: ASRModelId = Field(description="ASR model to activate.")
+    correction_model: CorrectionModelId = Field(description="Correction policy to select.")
+
+
 class PipelineEvent(StrictModel):
     sequence: int = Field(ge=1, description="工作階段內遞增的事件序號", examples=[1])
     type: str = Field(description="事件類型", examples=["pipeline.started"])

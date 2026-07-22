@@ -5,12 +5,104 @@ import pytest
 
 from agent_speak.app import create_app
 from agent_speak.config import Settings
+from agent_speak.errors import PlatformError
+from agent_speak.model_control import ModelCatalogService
 
 
 def make_client(tmp_path: Path) -> httpx.AsyncClient:
     settings = Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime")
     app = create_app(settings)
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
+
+
+class FakeWorkerModelControl:
+    def __init__(self) -> None:
+        self.active = "qwen3-asr-1.7b"
+        self.correction = "qwen2.5-correction"
+        self.leased_by: str | None = None
+
+    def snapshot(self) -> dict[str, object]:
+        return {
+            "state": "ready",
+            "active_asr_model": self.active,
+            "requested_asr_model": None,
+            "leased_by": self.leased_by,
+            "device": "cuda",
+            "error_code": None,
+        }
+
+    def activate(self, model_id: str) -> dict[str, object]:
+        if self.leased_by is not None and model_id != self.active:
+            raise PlatformError(
+                "model_in_use",
+                "The active ASR model is in use by another session",
+                status_code=409,
+                stage="asr",
+                retryable=True,
+            )
+        self.active = model_id
+        return self.snapshot()
+
+    def acquire(self, session_id: str, model_id: str) -> dict[str, object]:
+        del model_id
+        self.leased_by = session_id
+        return self.snapshot()
+
+    def release(self, session_id: str) -> dict[str, object]:
+        if self.leased_by == session_id:
+            self.leased_by = None
+        return self.snapshot()
+
+
+def app_with_model_control(tmp_path: Path) -> tuple[object, FakeWorkerModelControl]:
+    worker = FakeWorkerModelControl()
+    control = ModelCatalogService(worker=worker, correction_ready=lambda: True)
+    app = create_app(
+        Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"),
+        model_control=control,
+    )
+    return app, worker
+
+
+@pytest.mark.anyio
+async def test_public_model_catalog_and_direct_activation(tmp_path: Path) -> None:
+    app, _ = app_with_model_control(tmp_path)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        before = await client.get("/api/v1/models")
+        changed = await client.put(
+            "/api/v1/models/active",
+            json={"asr_model": "breeze-asr-25", "correction_model": "disabled"},
+        )
+
+    assert before.status_code == 200
+    assert {item["id"] for item in before.json()["asr"]} == {
+        "faster-whisper-small",
+        "breeze-asr-25",
+        "qwen3-asr-1.7b",
+    }
+    assert changed.status_code in {200, 202}
+    assert changed.json()["active"]["asr_model"] == "breeze-asr-25"
+    assert changed.json()["active"]["correction_model"] == "disabled"
+
+
+@pytest.mark.anyio
+async def test_public_model_activation_rejects_unknown_ids_and_active_lease(tmp_path: Path) -> None:
+    app, worker = app_with_model_control(tmp_path)
+    worker.leased_by = "session-a"
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        unknown = await client.put(
+            "/api/v1/models/active",
+            json={"asr_model": "unknown", "correction_model": "disabled"},
+        )
+        conflict = await client.put(
+            "/api/v1/models/active",
+            json={"asr_model": "breeze-asr-25", "correction_model": "disabled"},
+        )
+
+    assert unknown.status_code == 422
+    assert unknown.json()["error"]["code"] == "validation_error"
+    assert conflict.status_code == 409
+    assert conflict.json()["error"]["code"] == "model_in_use"
 
 
 @pytest.mark.anyio
