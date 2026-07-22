@@ -99,6 +99,13 @@ async def test_webui_css_has_accessible_responsive_and_motion_contract(tmp_path:
     assert "@media (prefers-reduced-transparency: reduce)" in css
     assert "@media (prefers-contrast: more)" in css
     assert "overflow-x: hidden" in css
+    assert "line-height: .94" in css
+    assert "letter-spacing: -.038em" in css
+
+    asr_css = Path("frontend/realtime/src/styles.css").read_text(encoding="utf-8")
+    assert "line-height: .90" in asr_css
+    assert "letter-spacing: -.038em" in asr_css
+    assert ".ambient-particles" in asr_css and "opacity: .92" in asr_css
 
 
 @pytest.mark.anyio

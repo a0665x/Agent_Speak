@@ -6,7 +6,10 @@ const test = require("node:test");
 const {
   PARTICLE_PROFILES,
   createParticleLayout,
+  decayEnergy,
+  injectTrailEnergy,
   mount,
+  particleAppearance,
   stepParticle,
 } = require("../web/particle-field.js");
 
@@ -20,13 +23,35 @@ test("creates a deterministic particle wave within the profile budget", () => {
   assert.ok(first.every((particle) => particle.radius > 0 && particle.alpha > 0));
 });
 
-test("uses a quieter and lighter particle budget for the ASR profile", () => {
+test("uses cinematic density with a slightly quieter ASR peak", () => {
   const hero = createParticleLayout(1440, 900, "hero");
   const subtle = createParticleLayout(1440, 900, "subtle");
 
+  assert.ok(hero.length > 1400);
+  assert.ok(subtle.length > 720);
   assert.ok(subtle.length < hero.length);
-  assert.ok(PARTICLE_PROFILES.subtle.opacity < PARTICLE_PROFILES.hero.opacity);
-  assert.ok(PARTICLE_PROFILES.subtle.pointerForce < PARTICLE_PROFILES.hero.pointerForce);
+  assert.ok(PARTICLE_PROFILES.subtle.activeOpacity < PARTICLE_PROFILES.hero.activeOpacity);
+  assert.equal(PARTICLE_PROFILES.subtle.pointerForce, PARTICLE_PROFILES.hero.pointerForce);
+});
+
+test("energizes a continuous pointer segment and leaves distant particles dormant", () => {
+  const particles = [
+    { baseX: 50, baseY: 50, x: 50, y: 50, vx: 0, vy: 0, depth: 1, energy: 0 },
+    { baseX: 500, baseY: 500, x: 500, y: 500, vx: 0, vy: 0, depth: 1, energy: 0 },
+  ];
+  const next = injectTrailEnergy(particles, { x: 0, y: 50 }, { x: 100, y: 50 }, "hero");
+
+  assert.ok(next[0].energy > 0.7);
+  assert.equal(next[1].energy, 0);
+});
+
+test("active particles grow, brighten, and fade near dark after four seconds", () => {
+  const dormant = particleAppearance({ depth: 1, energy: 0 }, "hero");
+  const active = particleAppearance({ depth: 1, energy: 1 }, "hero");
+
+  assert.ok(active.radius >= dormant.radius * 1.35);
+  assert.ok(active.alpha > dormant.alpha * 20);
+  assert.ok(Math.abs(decayEnergy(1, 4000, "hero") - 0.02) < 0.002);
 });
 
 test("repels a nearby particle from the pointer without moving a distant one", () => {

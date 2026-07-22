@@ -34,7 +34,7 @@ svg { flex: 0 0 auto; }
 
 .skip-link { position: fixed; z-index: 30; top: 10px; left: 10px; min-height: 44px; padding: 11px 16px; border-radius: 999px; color: #080b11; background: #fff; transform: translateY(-160%); }
 .skip-link:focus { transform: none; }
-.ambient-particles { position: fixed; z-index: 0; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: .52; }
+.ambient-particles { position: fixed; z-index: 0; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: .92; }
 .background-word { position: fixed; z-index: 1; white-space: nowrap; font-weight: 800; letter-spacing: -.08em; pointer-events: none; user-select: none; }
 .background-word-top { top: 7vh; left: -2vw; font-size: clamp(5rem, 15vw, 13rem); color: transparent; background: linear-gradient(90deg, rgba(168, 190, 247, .13), rgba(199, 171, 243, .055), transparent); background-clip: text; }
 .background-word-bottom { right: -4vw; bottom: -9vh; font-size: clamp(9rem, 23vw, 21rem); color: rgba(154, 178, 239, .024); }
@@ -52,7 +52,7 @@ svg { flex: 0 0 auto; }
 .studio-nav svg { width: 15px; }
 .studio-header { display: flex; justify-content: space-between; gap: 38px; align-items: flex-end; padding: 70px 0 42px; }
 .eyebrow { margin: 0 0 10px; color: #9ba7b7; font: 700 10px/1.3 ui-monospace, "SFMono-Regular", monospace; letter-spacing: .15em; text-transform: uppercase; }
-h1 { margin: 0; font-size: clamp(4rem, 9vw, 8rem); line-height: .82; letter-spacing: -.075em; }
+h1 { margin: 0; font-size: clamp(4rem, 9vw, 8rem); line-height: .90; letter-spacing: -.038em; }
 h1 span { color: transparent; background: linear-gradient(115deg, #fff 4%, var(--ice) 45%, var(--violet) 77%, #829cdf); background-clip: text; }
 h2 { margin: 0; font-size: 20px; letter-spacing: -.025em; }
 .lede { max-width: 650px; margin: 25px 0 0; color: #9ba6b4; font-size: 16px; line-height: 1.7; }

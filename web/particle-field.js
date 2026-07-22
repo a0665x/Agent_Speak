@@ -2,8 +2,8 @@
 
 (function exposeParticleField(globalScope) {
   const PARTICLE_PROFILES = Object.freeze({
-    hero: Object.freeze({ spacing: 25, maxParticles: 1400, opacity: 0.54, pointerRadius: 132, pointerForce: 1.05, spring: 0.042, damping: 0.84, float: 5.5, glow: 0.12 }),
-    subtle: Object.freeze({ spacing: 36, maxParticles: 720, opacity: 0.25, pointerRadius: 104, pointerForce: 0.58, spring: 0.046, damping: 0.82, float: 3.2, glow: 0.055 }),
+    hero: Object.freeze({ spacing: 18, maxParticles: 2600, dormantOpacity: 0.012, activeOpacity: 0.9, pointerRadius: 180, pointerForce: 2.4, activeRadiusScale: 1.45, trailLifetimeMs: 4000, trailFloor: 0.02, spring: 0.05, damping: 0.82, float: 4.8 }),
+    subtle: Object.freeze({ spacing: 20, maxParticles: 2200, dormantOpacity: 0.008, activeOpacity: 0.76, pointerRadius: 180, pointerForce: 2.4, activeRadiusScale: 1.45, trailLifetimeMs: 4000, trailFloor: 0.02, spring: 0.05, damping: 0.82, float: 4.2 }),
   });
 
   function profileFor(name) {
@@ -41,8 +41,9 @@
           vx: 0,
           vy: 0,
           depth,
-          radius: 0.5 + depth * 1.12,
-          alpha: profile.opacity * (0.3 + depth * 0.7),
+          radius: 0.72 + depth * 1.42,
+          alpha: profile.dormantOpacity * (0.35 + depth * 0.65),
+          energy: 0,
           phase: column * 0.39 + row * 0.57,
         });
       }
@@ -50,26 +51,86 @@
     return particles.slice(0, profile.maxParticles);
   }
 
-  function advanceParticle(particle, pointer, profile) {
-    const dx = particle.x - pointer.x;
-    const dy = particle.y - pointer.y;
-    const distance = Math.hypot(dx, dy);
-    if (pointer.active && distance > 0 && distance < profile.pointerRadius) {
-      const force = (1 - distance / profile.pointerRadius) * profile.pointerForce * particle.depth;
-      particle.vx += dx / distance * force;
-      particle.vy += dy / distance * force;
+  function decayEnergy(energy, elapsedMs, profileName) {
+    const profile = profileFor(profileName);
+    const safeEnergy = Math.max(0, Math.min(1, Number(energy) || 0));
+    const safeElapsed = Math.max(0, Number(elapsedMs) || 0);
+    return safeEnergy * Math.pow(profile.trailFloor, safeElapsed / profile.trailLifetimeMs);
+  }
+
+  function particleAppearance(particle, profileName) {
+    const profile = profileFor(profileName);
+    const depth = Math.max(0, Math.min(1, Number(particle.depth) || 0));
+    const energy = Math.max(0, Math.min(1, Number(particle.energy) || 0));
+    const baseRadius = particle.radius || 0.72 + depth * 1.42;
+    return {
+      radius: baseRadius * (1 + energy * (profile.activeRadiusScale - 1)),
+      alpha: (profile.dormantOpacity + energy * (profile.activeOpacity - profile.dormantOpacity)) * (0.35 + depth * 0.65),
+    };
+  }
+
+  function applyTrailEnergy(particles, start, end, profile) {
+    const segmentX = end.x - start.x;
+    const segmentY = end.y - start.y;
+    const segmentLength = Math.hypot(segmentX, segmentY);
+    const steps = Math.max(1, Math.ceil(segmentLength / 12));
+    const samples = [];
+    for (let index = 0; index <= steps; index += 1) {
+      const progress = index / steps;
+      samples.push({ x: start.x + segmentX * progress, y: start.y + segmentY * progress });
     }
+
+    for (const particle of particles) {
+      let closest = null;
+      let closestDistance = Infinity;
+      for (const sample of samples) {
+        const dx = particle.x - sample.x;
+        const dy = particle.y - sample.y;
+        const distance = Math.hypot(dx, dy);
+        if (distance < closestDistance) {
+          closest = { dx, dy };
+          closestDistance = distance;
+        }
+      }
+      if (!closest || closestDistance >= profile.pointerRadius) continue;
+      const influence = 1 - closestDistance / profile.pointerRadius;
+      particle.energy = Math.min(1, (particle.energy || 0) + influence * 0.9);
+      let directionX = closest.dx;
+      let directionY = closest.dy;
+      let directionLength = closestDistance;
+      if (directionLength < 0.001) {
+        directionX = segmentLength > 0 ? -segmentY / segmentLength : 1;
+        directionY = segmentLength > 0 ? segmentX / segmentLength : 0;
+        directionLength = 1;
+      }
+      const force = influence * profile.pointerForce * particle.depth;
+      particle.vx += directionX / directionLength * force;
+      particle.vy += directionY / directionLength * force;
+    }
+    return particles;
+  }
+
+  function injectTrailEnergy(source, start, end, profileName) {
+    return applyTrailEnergy(source.map((particle) => ({ ...particle })), start, end, profileFor(profileName));
+  }
+
+  function advanceParticle(particle, profile, elapsedMs) {
     particle.vx += (particle.baseX - particle.x) * profile.spring;
     particle.vy += (particle.baseY - particle.y) * profile.spring;
     particle.vx *= profile.damping;
     particle.vy *= profile.damping;
     particle.x += particle.vx;
     particle.y += particle.vy;
+    particle.energy = decayEnergy(particle.energy, elapsedMs, profile === PARTICLE_PROFILES.hero ? "hero" : "subtle");
+    if (particle.energy < 0.0005) particle.energy = 0;
     return particle;
   }
 
   function stepParticle(source, pointer, profileName) {
-    return advanceParticle({ ...source }, pointer, profileFor(profileName));
+    const profile = profileFor(profileName);
+    const particle = { energy: 0, ...source };
+    if (pointer.active) applyTrailEnergy([particle], pointer, pointer, profile);
+    return advanceParticle(particle, profile, 16.67);
   }
 
   function mount(canvas, options) {
@@ -83,32 +144,30 @@
     const documentRef = settings.document || windowRef.document;
     const media = windowRef.matchMedia?.("(prefers-reduced-motion: reduce)");
     const reducedMotion = settings.reducedMotion ?? media?.matches === true;
-    const pointer = { x: 0, y: 0, active: false };
     let particles = [];
     let width = 1;
     let height = 1;
     let frame = 0;
     let resizeFrame = 0;
     let destroyed = false;
+    let previousPointer = null;
+    let previousTime = 0;
 
     function draw(time, animate) {
       frame = 0;
       if (destroyed) return;
+      const elapsedMs = previousTime ? Math.min(50, Math.max(0, time - previousTime)) : 16.67;
+      previousTime = time;
       context.clearRect(0, 0, width, height);
-      const glow = context.createRadialGradient(width * 0.58, height * 0.34, 0, width * 0.58, height * 0.34, Math.max(width, height) * 0.62);
-      glow.addColorStop(0, `rgba(153, 177, 255, ${profile.glow})`);
-      glow.addColorStop(0.48, `rgba(171, 139, 226, ${profile.glow * 0.36})`);
-      glow.addColorStop(1, "rgba(5, 7, 12, 0)");
-      context.fillStyle = glow;
-      context.fillRect(0, 0, width, height);
 
       for (const particle of particles) {
-        if (animate) advanceParticle(particle, pointer, profile);
-        const floatY = animate ? Math.sin(time * 0.00042 + particle.phase) * profile.float * particle.depth : 0;
-        const color = Math.round(194 + particle.depth * 22);
+        if (animate) advanceParticle(particle, profile, elapsedMs);
+        const appearance = particleAppearance(particle, profileName);
+        const floatY = animate ? Math.sin(time * 0.00042 + particle.phase) * profile.float * particle.depth * particle.energy : 0;
+        const color = Math.round(194 + particle.depth * 22 + particle.energy * 18);
         context.beginPath();
-        context.fillStyle = `rgba(${color}, ${Math.round(199 + particle.depth * 28)}, 255, ${particle.alpha})`;
-        context.arc(particle.x, particle.y + floatY, particle.radius, 0, Math.PI * 2);
+        context.fillStyle = `rgba(${color}, ${Math.round(199 + particle.depth * 28 + particle.energy * 8)}, 255, ${appearance.alpha})`;
+        context.arc(particle.x, particle.y + floatY, appearance.radius, 0, Math.PI * 2);
         context.fill();
       }
       if (!reducedMotion && documentRef?.visibilityState !== "hidden") {
@@ -127,6 +186,7 @@
       canvas.height = Math.round(height * ratio);
       context.setTransform(ratio, 0, 0, ratio, 0, 0);
       particles = createParticleLayout(width, height, profileName);
+      previousTime = 0;
       draw(0, false);
     }
 
@@ -137,18 +197,20 @@
 
     function handlePointer(event) {
       if (reducedMotion || event.pointerType === "touch") return;
-      pointer.x = event.clientX;
-      pointer.y = event.clientY;
-      pointer.active = true;
+      const nextPointer = { x: event.clientX, y: event.clientY };
+      if (previousPointer && Math.hypot(nextPointer.x - previousPointer.x, nextPointer.y - previousPointer.y) < 1) return;
+      applyTrailEnergy(particles, previousPointer || nextPointer, nextPointer, profile);
+      previousPointer = nextPointer;
     }
 
-    function clearPointer() { pointer.active = false; }
+    function clearPointer() { previousPointer = null; }
 
     function handleVisibility() {
       if (documentRef.visibilityState === "hidden") {
         if (frame) windowRef.cancelAnimationFrame(frame);
         frame = 0;
       } else if (!reducedMotion && !frame) {
+        previousTime = 0;
         frame = windowRef.requestAnimationFrame((time) => draw(time, true));
       }
     }
@@ -178,7 +240,7 @@
     };
   }
 
-  const api = { PARTICLE_PROFILES, createParticleLayout, stepParticle, mount };
+  const api = { PARTICLE_PROFILES, createParticleLayout, decayEnergy, injectTrailEnergy, particleAppearance, stepParticle, mount };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   if (globalScope) {
     globalScope.AgentSpeakParticleField = api;
