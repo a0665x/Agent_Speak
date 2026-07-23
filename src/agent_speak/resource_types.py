@@ -343,7 +343,7 @@ class ResourceOperation:
 class ResourceSnapshot:
     requested_policy: ResourcePolicy
     resolved_policy: ResourcePolicy
-    profile: ResourceProfile
+    profile: ResourceProfile | None
     desired_workloads: frozenset[Workload]
     workloads: dict[Workload, WorkloadStatus]
     operation: ResourceOperation | None
@@ -387,7 +387,7 @@ class ResourceSnapshot:
         return {
             "requested_policy": self.requested_policy.value,
             "resolved_policy": self.resolved_policy.value,
-            "profile": self.profile.value,
+            "profile": self.profile.value if self.profile is not None else None,
             "desired_workloads": sorted(
                 workload.value for workload in self.desired_workloads
             ),
@@ -434,10 +434,17 @@ class ResourceSnapshot:
         last_ready = value["last_ready_profile"]
         if last_ready is not None and not isinstance(last_ready, str):
             raise ValueError("invalid last_ready_profile")
+        profile_value = value["profile"]
+        if profile_value is not None and not isinstance(profile_value, str):
+            raise ValueError("invalid profile")
         return cls(
             requested_policy=ResourcePolicy(value["requested_policy"]),
             resolved_policy=ResourcePolicy(value["resolved_policy"]),
-            profile=ResourceProfile(value["profile"]),
+            profile=(
+                ResourceProfile(profile_value)
+                if profile_value is not None
+                else None
+            ),
             desired_workloads=desired,
             workloads={
                 workload: WorkloadStatus.from_dict(
