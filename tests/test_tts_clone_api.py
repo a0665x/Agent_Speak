@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import json
+from dataclasses import replace
 
 import httpx
 import pytest
@@ -9,6 +10,13 @@ import pytest
 from agent_speak.app import create_app
 from agent_speak.config import Settings
 from agent_speak.errors import PlatformError
+from agent_speak.resource_types import (
+    ResourcePolicy,
+    ResourceProfile,
+    ResourceSnapshot,
+    Workload,
+    WorkloadLifecycle,
+)
 from tests.audio_fixtures import wav_bytes
 
 
@@ -26,6 +34,36 @@ class FakeCloneClient:
         if self.error is not None:
             raise self.error
         return wav_bytes(rate=48_000, seconds=1.0)
+
+
+class FakeResources:
+    def __init__(self, snapshot: ResourceSnapshot) -> None:
+        self.current = snapshot
+
+    def snapshot(self) -> ResourceSnapshot:
+        return self.current
+
+
+def tts_snapshot(*, ready: bool) -> ResourceSnapshot:
+    current = ResourceSnapshot.initial(
+        requested_policy=ResourcePolicy.AUTO,
+        resolved_policy=ResourcePolicy.CONCURRENT,
+        profile=ResourceProfile.TTS_ONLY,
+    )
+    tts = current.workloads[Workload.TTS]
+    workloads = dict(current.workloads)
+    workloads[Workload.TTS] = replace(
+        tts,
+        lifecycle=(
+            WorkloadLifecycle.READY
+            if ready
+            else WorkloadLifecycle.WARMING
+        ),
+        ready=ready,
+        model="voxcpm2" if ready else None,
+        device="cuda",
+    )
+    return replace(current, workloads=workloads)
 
 
 def clone_app(tmp_path: Path, *, client: FakeCloneClient | None = None):
@@ -59,6 +97,63 @@ async def test_clone_status_reports_wrong_mode_without_contacting_worker(tmp_pat
     assert response.json()["state"] == "stopped"
     assert response.json()["error_code"] == "wrong_gpu_mode"
     assert response.json()["operator_hint"] == "./run.sh --tts-up"
+
+
+@pytest.mark.anyio
+async def test_tts_status_uses_workload_truth_not_static_gpu_mode(
+    tmp_path: Path,
+) -> None:
+    fake = FakeCloneClient()
+    app = create_app(
+        Settings(
+            data_dir=tmp_path / "data",
+            runtime_dir=tmp_path / "runtime",
+            gpu_mode="asr",
+            effective_accelerator="nvidia",
+        ),
+        tts_clone=fake,
+        resource_control=FakeResources(tts_snapshot(ready=True)),
+    )
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.get("/api/v1/tts-clone/status")
+
+    assert response.status_code == 200
+    assert response.json()["ready"] is True
+    assert response.json()["gpu_mode"] == "tts"
+    assert response.json()["resource_policy"] == "concurrent"
+
+
+@pytest.mark.anyio
+async def test_tts_synthesis_rejects_warming_resource_before_worker(
+    tmp_path: Path,
+) -> None:
+    fake = FakeCloneClient()
+    app = create_app(
+        Settings(
+            data_dir=tmp_path / "data",
+            runtime_dir=tmp_path / "runtime",
+            effective_accelerator="nvidia",
+        ),
+        tts_clone=fake,
+        resource_control=FakeResources(tts_snapshot(ready=False)),
+    )
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.post(
+            "/api/v1/tts-clone/synthesize",
+            data={"text": "Hello", "use_clone": "false"},
+        )
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "tts_resource_not_ready"
+    assert fake.calls == []
 
 
 @pytest.mark.anyio

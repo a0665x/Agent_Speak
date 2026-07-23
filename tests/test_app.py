@@ -8,6 +8,11 @@ from agent_speak.app import create_app
 from agent_speak.config import Settings
 from agent_speak.errors import PlatformError
 from agent_speak.model_control import ModelCatalogService
+from agent_speak.resource_types import (
+    ResourcePolicy,
+    ResourceProfile,
+    ResourceSnapshot,
+)
 
 
 def make_client(tmp_path: Path) -> httpx.AsyncClient:
@@ -82,6 +87,15 @@ def app_with_model_control(tmp_path: Path) -> tuple[object, FakeWorkerModelContr
     return app, worker
 
 
+class StoppedASRResources:
+    def snapshot(self) -> ResourceSnapshot:
+        return ResourceSnapshot.initial(
+            requested_policy=ResourcePolicy.AUTO,
+            resolved_policy=ResourcePolicy.EXCLUSIVE,
+            profile=ResourceProfile.ASR_ONLY,
+        )
+
+
 @pytest.mark.anyio
 async def test_public_model_catalog_and_direct_activation(tmp_path: Path) -> None:
     app, _ = app_with_model_control(tmp_path)
@@ -121,6 +135,33 @@ async def test_public_model_activation_rejects_unknown_ids_and_active_lease(tmp_
     assert unknown.json()["error"]["code"] == "validation_error"
     assert conflict.status_code == 409
     assert conflict.json()["error"]["code"] == "model_in_use"
+
+
+@pytest.mark.anyio
+async def test_asr_session_and_activation_reject_stopped_resource(
+    tmp_path: Path,
+) -> None:
+    app, _ = app_with_model_control(tmp_path)
+    app.state.resource_control = StoppedASRResources()
+    app.state.enforce_resource_readiness = True
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        session = await client.post("/api/v1/sessions")
+        activation = await client.put(
+            "/api/v1/models/active",
+            json={
+                "asr_model": "breeze-asr-25",
+                "correction_model": "disabled",
+            },
+        )
+
+    assert session.status_code == 503
+    assert session.json()["error"]["code"] == "asr_resource_not_ready"
+    assert activation.status_code == 503
+    assert activation.json()["error"]["code"] == "asr_resource_not_ready"
 
 
 @pytest.mark.anyio

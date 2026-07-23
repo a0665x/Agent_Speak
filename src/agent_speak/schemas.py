@@ -195,6 +195,9 @@ class TtsOutput(StrictModel):
 class TTSCloneStatus(StrictModel):
     gpu_mode: Literal["asr", "tts"] = Field(description="目前互斥的 GPU 工作模式")
     accelerator: Literal["cpu", "nvidia"] = Field(description="目前有效的推論加速器")
+    resource_policy: Literal["auto", "exclusive", "concurrent", "multi_gpu"] = Field(
+        description="目前解析後的推論資源策略"
+    )
     state: Literal["stopped", "starting", "loading", "ready", "failed"] = Field(
         description="VoxCPM2 worker 與模型生命週期狀態"
     )

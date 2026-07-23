@@ -12,6 +12,7 @@ from .concurrency import run_sync
 from .config import Settings
 from .errors import PlatformError
 from .diagnostic_logging import log_event
+from .resource_types import ResourceSnapshot, Workload, WorkloadLifecycle
 from .schemas import TTSCloneStatus, TTSReferenceAssessment
 from .tts_clone import ReferenceAssessment, assess_reference, compile_style_cues
 
@@ -20,6 +21,10 @@ class TTSCloneProvider(Protocol):
     def is_ready(self) -> bool: ...
 
     def synthesize(self, *, text: str, reference_wav: bytes | None) -> bytes: ...
+
+
+class ResourceSnapshotProvider(Protocol):
+    def snapshot(self) -> ResourceSnapshot: ...
 
 
 REFERENCE_REQUEST_BODY = {
@@ -98,8 +103,54 @@ async def _read_upload(upload: UploadFile, settings: Settings) -> bytes:
     return bytes(body)
 
 
-def _require_runtime(settings: Settings, provider: TTSCloneProvider) -> None:
-    if settings.gpu_mode != "tts":
+def _resource_snapshot(
+    resources: ResourceSnapshotProvider | None,
+    *,
+    allow_legacy_fallback: bool,
+) -> ResourceSnapshot | None:
+    if resources is None:
+        return None
+    try:
+        return resources.snapshot()
+    except PlatformError as exc:
+        if (
+            allow_legacy_fallback
+            and exc.code == "resource_supervisor_unavailable"
+        ):
+            return None
+        raise
+
+
+def _require_runtime(
+    settings: Settings,
+    provider: TTSCloneProvider,
+    resources: ResourceSnapshotProvider | None,
+    allow_legacy_fallback: bool,
+) -> None:
+    snapshot = _resource_snapshot(
+        resources,
+        allow_legacy_fallback=allow_legacy_fallback,
+    )
+    if snapshot is not None:
+        workload = snapshot.workloads[Workload.TTS]
+        if not workload.desired:
+            raise PlatformError(
+                "tts_resource_not_desired",
+                "TTS resources are not requested",
+                status_code=409,
+                stage="tts_clone",
+                details={"operator_hint": "Use Reset TTS resources"},
+            )
+        if not workload.ready:
+            raise PlatformError(
+                "tts_resource_not_ready",
+                "TTS resources are still warming",
+                status_code=503,
+                stage="tts_clone",
+                retryable=True,
+                details={"operator_hint": "./run.sh --logs tts-worker"},
+            )
+    elif settings.gpu_mode != "tts":
         raise PlatformError(
             "wrong_gpu_mode",
             "TTS clone requires the exclusive TTS GPU mode",
@@ -117,8 +168,16 @@ def _require_runtime(settings: Settings, provider: TTSCloneProvider) -> None:
         )
     if not provider.is_ready():
         raise PlatformError(
-            "model_loading",
-            "VoxCPM2 is not ready yet",
+            (
+                "tts_resource_not_ready"
+                if snapshot is not None
+                else "model_loading"
+            ),
+            (
+                "TTS resources are still warming"
+                if snapshot is not None
+                else "VoxCPM2 is not ready yet"
+            ),
             status_code=503,
             stage="tts_clone",
             retryable=True,
@@ -140,6 +199,8 @@ def build_tts_clone_router(
     settings: Settings,
     provider: TTSCloneProvider,
     *,
+    resources: ResourceSnapshotProvider | None = None,
+    allow_legacy_fallback: bool = True,
     logger: logging.Logger | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/v1/tts-clone", tags=["TTS 克隆"])
@@ -151,20 +212,68 @@ def build_tts_clone_router(
         description="輸入：無。輸出：GPU 模式、加速器、worker 與 VoxCPM2 就緒狀態。",
     )
     async def clone_status() -> TTSCloneStatus:
-        if settings.gpu_mode != "tts":
+        snapshot = await run_sync(
+            _resource_snapshot,
+            resources,
+            allow_legacy_fallback=allow_legacy_fallback,
+        )
+        if snapshot is None and settings.gpu_mode != "tts":
             return TTSCloneStatus(
                 gpu_mode=settings.gpu_mode,
                 accelerator=settings.effective_accelerator,
+                resource_policy=settings.resource_policy,
                 state="stopped",
                 device=settings.effective_accelerator,
                 ready=False,
                 error_code="wrong_gpu_mode",
                 operator_hint="./run.sh --tts-up",
             )
+        if snapshot is not None:
+            workload = snapshot.workloads[Workload.TTS]
+            gpu_mode = "tts" if workload.desired else "asr"
+            if not workload.desired:
+                return TTSCloneStatus(
+                    gpu_mode=gpu_mode,
+                    accelerator=settings.effective_accelerator,
+                    resource_policy=snapshot.resolved_policy,
+                    state="stopped",
+                    device=workload.device,
+                    ready=False,
+                    error_code="tts_resource_not_desired",
+                    operator_hint="Use Reset TTS resources",
+                )
+            if not workload.ready:
+                state = (
+                    "failed"
+                    if workload.lifecycle is WorkloadLifecycle.FAILED
+                    else "starting"
+                    if workload.lifecycle is WorkloadLifecycle.STARTING
+                    else "loading"
+                )
+                return TTSCloneStatus(
+                    gpu_mode=gpu_mode,
+                    accelerator=settings.effective_accelerator,
+                    resource_policy=snapshot.resolved_policy,
+                    state=state,
+                    device=workload.device,
+                    ready=False,
+                    error_code=(
+                        workload.error_code or "tts_resource_not_ready"
+                    ),
+                    operator_hint=(
+                        workload.operator_hint
+                        or "./run.sh --logs tts-worker"
+                    ),
+                )
         if settings.effective_accelerator != "nvidia":
             return TTSCloneStatus(
-                gpu_mode=settings.gpu_mode,
+                gpu_mode="tts",
                 accelerator=settings.effective_accelerator,
+                resource_policy=(
+                    snapshot.resolved_policy
+                    if snapshot is not None
+                    else settings.resource_policy
+                ),
                 state="failed",
                 device=settings.effective_accelerator,
                 ready=False,
@@ -173,12 +282,29 @@ def build_tts_clone_router(
             )
         ready = await run_sync(provider.is_ready)
         return TTSCloneStatus(
-            gpu_mode=settings.gpu_mode,
+            gpu_mode="tts",
             accelerator=settings.effective_accelerator,
+            resource_policy=(
+                snapshot.resolved_policy
+                if snapshot is not None
+                else settings.resource_policy
+            ),
             state="ready" if ready else "loading",
-            device="cuda",
+            device=(
+                snapshot.workloads[Workload.TTS].device
+                if snapshot is not None
+                else "cuda"
+            ),
             ready=ready,
-            error_code=None if ready else "model_loading",
+            error_code=(
+                None
+                if ready
+                else (
+                    "tts_resource_not_ready"
+                    if snapshot is not None
+                    else "model_loading"
+                )
+            ),
             operator_hint=None if ready else "./run.sh --logs tts-worker",
         )
 
@@ -236,7 +362,13 @@ def build_tts_clone_router(
                 worker_state="requested",
             )
         try:
-            await run_sync(_require_runtime, settings, provider)
+            await run_sync(
+                _require_runtime,
+                settings,
+                provider,
+                resources,
+                allow_legacy_fallback,
+            )
             reference_wav: bytes | None = None
             if use_clone:
                 if reference is None:

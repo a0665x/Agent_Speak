@@ -35,6 +35,7 @@ from .realtime_audio import EnergyFrameVAD
 from .realtime_routes import register_realtime_routes
 from .resource_control import ResourceControlClient
 from .resource_routes import ResourceControl, build_resource_routers
+from .resource_types import Workload
 from .schemas import (
     CapabilitiesResponse,
     EndDetectOutput,
@@ -136,6 +137,32 @@ async def _invoke_stage(stage: str, operation: Callable[[], Any]) -> Any:
             stage=stage,
             retryable=True,
         ) from exc
+
+
+def _require_asr_resource(
+    control: ResourceControl,
+    *,
+    allow_legacy_fallback: bool,
+) -> None:
+    try:
+        snapshot = control.snapshot()
+    except PlatformError as exc:
+        if (
+            allow_legacy_fallback
+            and exc.code == "resource_supervisor_unavailable"
+        ):
+            return
+        raise
+    workload = snapshot.workloads[Workload.ASR]
+    if not workload.desired or not workload.ready:
+        raise PlatformError(
+            "asr_resource_not_ready",
+            "ASR resources are not ready",
+            status_code=503,
+            stage="asr",
+            retryable=True,
+            details={"operator_hint": "./run.sh --logs asr-worker"},
+        )
 
 
 async def _read_audio(request: Request, settings: Settings, *, stage: str) -> bytes:
@@ -243,17 +270,27 @@ def create_app(
     if app.state.realtime.broker is None:
         app.state.realtime.broker = app.state.broker
     register_realtime_routes(app)
+    allow_legacy_resource_fallback = resource_control is None
+    app.state.resource_control = resource_control or ResourceControlClient(
+        active.resource_socket_path,
+        timeout=min(5.0, active.resource_operation_timeout_seconds),
+    )
+    app.state.enforce_resource_readiness = not (
+        allow_legacy_resource_fallback
+    )
     app.state.tts_clone = tts_clone or VoxCPMClient(
         active.tts_clone_worker_url,
         max_output_bytes=active.tts_clone_max_output_bytes,
         max_output_seconds=active.tts_clone_max_output_seconds,
     )
     app.include_router(
-        build_tts_clone_router(active, app.state.tts_clone, logger=diagnostic_logger)
-    )
-    app.state.resource_control = resource_control or ResourceControlClient(
-        active.resource_socket_path,
-        timeout=min(5.0, active.resource_operation_timeout_seconds),
+        build_tts_clone_router(
+            active,
+            app.state.tts_clone,
+            resources=app.state.resource_control,
+            allow_legacy_fallback=allow_legacy_resource_fallback,
+            logger=diagnostic_logger,
+        )
     )
     resource_router, resource_operations_router = build_resource_routers(
         app.state.resource_control
@@ -365,6 +402,11 @@ def create_app(
         description="輸入：ASR 模型與校正策略。輸出：切換後或載入中的完整模型狀態。",
     )
     async def activate_models(body: ModelActivationInput) -> ModelCatalog:
+        await run_sync(
+            _require_asr_resource,
+            app.state.resource_control,
+            allow_legacy_fallback=not app.state.enforce_resource_readiness,
+        )
         return await run_sync(
             app.state.model_control.activate,
             body.asr_model,
@@ -530,6 +572,11 @@ def create_app(
         asr_model: ASRModelId = DEFAULT_ASR_MODEL,
         correction_model: CorrectionModelId = DEFAULT_CORRECTION_MODEL,
     ) -> SessionSummary:
+        await run_sync(
+            _require_asr_resource,
+            app.state.resource_control,
+            allow_legacy_fallback=not app.state.enforce_resource_readiness,
+        )
         return await app.state.broker.create(
             speech_language=speech_language,
             asr_model=asr_model,

@@ -41,6 +41,17 @@ class FakeWorkerClient:
         return dict(self.current)
 
 
+class FailingWorkerClient(FakeWorkerClient):
+    def snapshot(self) -> dict[str, object]:
+        raise PlatformError(
+            "asr_worker_unavailable",
+            "ASR worker control request failed",
+            status_code=503,
+            stage="asr",
+            retryable=True,
+        )
+
+
 def test_catalog_has_all_asr_and_independent_correction_choices() -> None:
     service = ModelCatalogService(worker=FakeWorkerClient(), correction_ready=lambda: True)
 
@@ -77,6 +88,24 @@ def test_correction_model_is_reported_unavailable_when_worker_is_down() -> None:
     correction = {item.id: item for item in catalog.correction}
     assert correction["qwen2.5-correction"].ready is False
     assert correction["disabled"].ready is True
+
+
+def test_catalog_keeps_pinned_options_when_asr_worker_is_stopped() -> None:
+    service = ModelCatalogService(
+        worker=FailingWorkerClient(),
+        correction_ready=lambda: False,
+    )
+
+    catalog = service.catalog()
+
+    assert [item.id for item in catalog.asr] == [
+        "qwen3-asr-1.7b",
+        "breeze-asr-25",
+        "faster-whisper-small",
+    ]
+    assert all(item.ready is False for item in catalog.asr)
+    assert catalog.active.state == "unavailable"
+    assert catalog.active.error_code == "asr_worker_unavailable"
 
 
 def test_worker_client_uses_bounded_internal_routes() -> None:

@@ -202,7 +202,13 @@ class ModelCatalogService:
 
     def catalog(self) -> ModelCatalog:
         with self._lock:
-            return self._catalog(self.worker.snapshot())
+            try:
+                snapshot = self.worker.snapshot()
+            except PlatformError as exc:
+                if exc.code != "asr_worker_unavailable":
+                    raise
+                snapshot = UnavailableWorkerModelControl().snapshot()
+            return self._catalog(snapshot)
 
     def activate(self, asr_model: ASRModelId, correction_model: CorrectionModelId) -> ModelCatalog:
         with self._lock:
