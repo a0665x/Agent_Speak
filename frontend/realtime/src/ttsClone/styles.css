@@ -506,6 +506,27 @@ button { border: 0; }
 
 :focus-visible { outline: 2px solid #a8c6ff; outline-offset: 3px; }
 
+.resource-reset { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.resource-reset__button {
+  display: inline-flex; min-height: 44px; padding: 0 15px; align-items: center; justify-content: center; gap: 8px;
+  border: 1px solid rgba(168,198,255,.2); border-radius: 999px; color: #dce5f5;
+  background: linear-gradient(145deg, rgba(255,255,255,.09), rgba(255,255,255,.03));
+  box-shadow: inset 0 1px rgba(255,255,255,.08), 0 8px 26px rgba(0,0,0,.2);
+  font: 650 11px/1 Inter, ui-sans-serif, sans-serif; cursor: pointer; touch-action: manipulation;
+  transition: transform 160ms ease-out, border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
+}
+.resource-reset__button:hover:not(:disabled) { border-color: rgba(168,198,255,.46); background: rgba(168,198,255,.1); box-shadow: inset 0 1px rgba(255,255,255,.12), 0 10px 30px rgba(0,0,0,.25); }
+.resource-reset__button:active:not(:disabled) { transform: scale(.97); }
+.resource-reset__button:disabled { cursor: wait; opacity: .48; }
+.resource-reset__spinner { animation: resource-reset-spin .8s linear infinite; }
+.resource-reset__phase { color: #acb8ca; font: 650 10px/1.3 ui-monospace, monospace; }
+.resource-reset__phase::before { display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 50%; background: #91a4c2; box-shadow: 0 0 10px rgba(145,164,194,.45); content: ""; }
+.resource-reset__phase.phase-ready::before { background: #a8c6ff; box-shadow: 0 0 14px rgba(168,198,255,.78); }
+.resource-reset__phase.phase-failed::before, .resource-reset__phase.phase-rolled_back::before, .resource-reset__phase.phase-cancelled::before { background: #ff8b9d; box-shadow: 0 0 12px rgba(255,139,157,.55); }
+.resource-reset__error { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 5px 10px; color: #ffbdc8; font-size: 11px; line-height: 1.45; }
+.resource-reset__error code { color: #d8a8b2; overflow-wrap: anywhere; }
+@keyframes resource-reset-spin { to { transform: rotate(360deg); } }
+
 @media (max-width: 1024px) {
   .runtime-gate__grid { grid-template-columns: repeat(3, 1fr); }
   .runtime-signal:nth-child(3) { border-right: 0; }
