@@ -33,6 +33,8 @@ from .pipeline import Pipeline, ProviderSet
 from .realtime import RealtimeCoordinator, RealtimeTextAdapter
 from .realtime_audio import EnergyFrameVAD
 from .realtime_routes import register_realtime_routes
+from .resource_control import ResourceControlClient
+from .resource_routes import ResourceControl, build_resource_routers
 from .schemas import (
     CapabilitiesResponse,
     EndDetectOutput,
@@ -98,6 +100,7 @@ OPENAPI_TAGS = [
     {"name": "說話者", "description": "管理本機便利識別資料；不是生物辨識身分驗證。"},
     {"name": "音訊成品", "description": "讀取 TTS 產生的本機 WAV 音訊。"},
     {"name": "TTS 克隆", "description": "檢查 VoxCPM2 就緒狀態、驗證暫時參考錄音並產生不落地保存的 WAV。"},
+    {"name": "資源", "description": "查看並協調 ASR、校正與 TTS 推論資源。"},
 ]
 
 
@@ -169,6 +172,7 @@ def create_app(
     realtime: RealtimeCoordinator | None = None,
     model_control: ModelCatalogService | None = None,
     tts_clone: TTSCloneProvider | None = None,
+    resource_control: ResourceControl | None = None,
 ) -> FastAPI:
     active = settings or Settings.from_env()
     active.prepare_directories()
@@ -247,6 +251,15 @@ def create_app(
     app.include_router(
         build_tts_clone_router(active, app.state.tts_clone, logger=diagnostic_logger)
     )
+    app.state.resource_control = resource_control or ResourceControlClient(
+        active.resource_socket_path,
+        timeout=min(5.0, active.resource_operation_timeout_seconds),
+    )
+    resource_router, resource_operations_router = build_resource_routers(
+        app.state.resource_control
+    )
+    app.include_router(resource_router)
+    app.include_router(resource_operations_router)
     app.state.speakers = SpeakerStore(
         active.data_dir / "speakers.sqlite3",
         active.data_dir / "speaker_samples",

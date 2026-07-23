@@ -15,6 +15,13 @@ from .model_ids import (
 )
 from .speech_languages import DEFAULT_SPEECH_LANGUAGE, SpeechLanguage
 from .tts_clone import ReferenceQuality
+from .resource_types import (
+    OperationPhase,
+    ResourcePolicy,
+    ResourceProfile,
+    Workload,
+    WorkloadLifecycle,
+)
 
 
 class StrictModel(BaseModel):
@@ -52,6 +59,42 @@ class HealthResponse(StrictModel):
     status: Literal["ok"] = Field(default="ok", description="服務健康狀態", examples=["ok"])
     version: str = Field(description="Agent Speak 版本", examples=["0.1.1"])
     storage_ready: bool = Field(description="本機資料目錄是否就緒", examples=[True])
+
+
+class ResourceWorkloadStatusResponse(StrictModel):
+    workload: Workload
+    desired: bool
+    lifecycle: WorkloadLifecycle
+    ready: bool
+    model: str | None = None
+    device: str = "unavailable"
+    error_code: str | None = None
+    operator_hint: str | None = None
+
+
+class ResourceOperationResponse(StrictModel):
+    id: str = Field(pattern=r"^op_[0-9a-f]{16,32}$")
+    action: Literal["reconcile", "reset"]
+    target: str
+    phase: OperationPhase
+    created_at: datetime
+    updated_at: datetime
+    error_code: str | None = None
+    operator_hint: str | None = None
+
+
+class ResourceSnapshotResponse(StrictModel):
+    requested_policy: ResourcePolicy
+    resolved_policy: ResourcePolicy
+    profile: ResourceProfile | None
+    desired_workloads: list[Workload]
+    workloads: dict[Workload, ResourceWorkloadStatusResponse]
+    operation: ResourceOperationResponse | None
+    last_ready_profile: ResourceProfile | None
+
+
+class ResourceReconcileInput(StrictModel):
+    profile: ResourceProfile
 
 
 ModelLoadState = Literal[
