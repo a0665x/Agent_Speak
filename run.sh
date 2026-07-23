@@ -313,16 +313,26 @@ print(next(item["device"] for item in payload["providers"] if item["stage"] == "
     if [[ -z "$correction_device" ]]; then
       correction_device=unknown
     fi
-    gpu_mode=$(compose exec -T gateway python -c '
+    resource_status=$(compose exec -T gateway python -c '
 import json
 import urllib.request
-payload = json.load(urllib.request.urlopen("http://127.0.0.1:8765/api/v1/tts-clone/status", timeout=3))
-print(payload["gpu_mode"])
-' 2>/dev/null || printf '%s' "${AGENT_SPEAK_GPU_MODE:-asr}")
-    if [[ -z "$gpu_mode" ]]; then
-      gpu_mode=${AGENT_SPEAK_GPU_MODE:-asr}
+payload = json.load(urllib.request.urlopen("http://127.0.0.1:8765/api/v1/resources", timeout=3))
+workloads = payload.get("workloads", {})
+print("|".join((
+    str(payload.get("resolved_policy", "unavailable")),
+    str(payload.get("profile") or "none"),
+    str(workloads.get("asr", {}).get("lifecycle", "unavailable")),
+    str(workloads.get("tts", {}).get("lifecycle", "unavailable")),
+)))
+' 2>/dev/null || printf 'unavailable|none|unavailable|unavailable')
+    IFS='|' read -r resource_policy resource_profile asr_state tts_state <<<"$resource_status"
+    if [[ -z "$resource_policy" ]]; then
+      resource_policy=unavailable
+      resource_profile=none
+      asr_state=unavailable
+      tts_state=unavailable
     fi
-    echo "STATUS_${health^^} web=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765} realtime=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/asr_realtime tts_clone=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/tts_clone_test docs=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/docs capture=$capture playback=$playback accelerator=$ACCELERATOR_SELECTED gpu_mode=$gpu_mode asr_device=$asr_device correction_device=$correction_device"
+    echo "STATUS_${health^^} web=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765} realtime=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/asr_realtime tts_clone=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/tts_clone_test docs=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/docs capture=$capture playback=$playback accelerator=$ACCELERATOR_SELECTED resource_policy=$resource_policy profile=$resource_profile asr_state=$asr_state tts_state=$tts_state asr_device=$asr_device correction_device=$correction_device"
     [[ "$health" == "healthy" ]]
     ;;
   --logs)

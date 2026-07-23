@@ -466,3 +466,48 @@ async def test_openapi_fully_localizes_model_control_contract(
     assert field_phrase in field["description"]
     for schema_name in ("ASRModelOption", "CorrectionModelOption", "ActiveModelSelection", "ModelCatalog", "ModelActivationInput"):
         assert all(item.get("description") for item in schema["components"]["schemas"][schema_name]["properties"].values())
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("locale", "snapshot_summary", "reset_summary", "policy_phrase"),
+    [
+        ("en", "View inference resource status", "Reset an inference workload", "requested resource policy"),
+        ("zh-TW", "查看推論資源狀態", "重置單一推論工作負載", "要求的資源策略"),
+        ("ja", "推論リソース状態を表示", "推論ワークロードをリセット", "要求されたリソースポリシー"),
+        ("ko", "추론 리소스 상태 보기", "추론 워크로드 재설정", "요청된 리소스 정책"),
+    ],
+)
+async def test_openapi_fully_localizes_resource_orchestrator_contract(
+    tmp_path: Path,
+    locale: str,
+    snapshot_summary: str,
+    reset_summary: str,
+    policy_phrase: str,
+) -> None:
+    async with make_client(tmp_path) as client:
+        schema = (await client.get(f"/openapi.json?lang={locale}")).json()
+
+    assert schema["paths"]["/api/v1/resources"]["get"]["summary"] == snapshot_summary
+    assert schema["paths"]["/api/v1/resources/reconcile"]["post"]["description"]
+    reset = schema["paths"]["/api/v1/resources/{workload}/reset"]["post"]
+    assert reset["summary"] == reset_summary
+    assert reset["parameters"][0]["description"]
+    operation = schema["paths"]["/api/v1/resource-operations/{operation_id}"]["get"]
+    assert operation["description"]
+    assert operation["parameters"][0]["description"]
+
+    components = schema["components"]["schemas"]
+    policy = components["ResourceSnapshotResponse"]["properties"]["requested_policy"]
+    assert policy_phrase in policy["description"]
+    for schema_name in (
+        "ResourceWorkloadStatusResponse",
+        "ResourceOperationResponse",
+        "ResourceSnapshotResponse",
+        "ResourceReconcileInput",
+    ):
+        assert all(
+            item.get("description")
+            for item in components[schema_name]["properties"].values()
+        )
+    assert components["TTSCloneStatus"]["properties"]["resource_policy"]["description"]

@@ -36,7 +36,16 @@ DOCS_UI_TEXT = {
 }
 
 
-TAG_KEYS = ("system", "conversation", "audio", "text", "speakers", "artifacts", "tts_clone")
+TAG_KEYS = (
+    "system",
+    "resources",
+    "conversation",
+    "audio",
+    "text",
+    "speakers",
+    "artifacts",
+    "tts_clone",
+)
 TAG_TEXT = {
     "system": {
         "name": _text("System", "系統", "システム", "시스템"),
@@ -45,6 +54,15 @@ TAG_TEXT = {
             "確認服務健康狀態與目前實際啟用的處理能力。",
             "サービスの稼働状態と現在有効な処理能力を確認します。",
             "서비스 상태와 현재 활성화된 처리 기능을 확인합니다.",
+        ),
+    },
+    "resources": {
+        "name": _text("Inference Resources", "推論資源", "推論リソース", "추론 리소스"),
+        "description": _text(
+            "Inspect, reconcile, and reset host-managed ASR and TTS workloads.",
+            "查看、協調與重置由宿主管理的 ASR 與 TTS 工作負載。",
+            "ホスト管理の ASR・TTS ワークロードを確認、調整、リセットします。",
+            "호스트가 관리하는 ASR 및 TTS 워크로드를 확인, 조정, 재설정합니다.",
         ),
     },
     "conversation": {
@@ -109,6 +127,10 @@ OPERATION_TAGS = {
     "GET /api/v1/capabilities": "system",
     "GET /api/v1/models": "system",
     "PUT /api/v1/models/active": "system",
+    "GET /api/v1/resources": "resources",
+    "POST /api/v1/resources/reconcile": "resources",
+    "POST /api/v1/resources/{workload}/reset": "resources",
+    "GET /api/v1/resource-operations/{operation_id}": "resources",
     "POST /api/v1/sessions": "conversation",
     "GET /api/v1/sessions/{session_id}": "conversation",
     "POST /api/v1/sessions/{session_id}/turns": "conversation",
@@ -156,6 +178,30 @@ OPERATION_TEXT = {
         "切換啟用中的推論模型|輸入：ASR 模型與校正策略。輸出：切換後或載入中的完整模型狀態；client 不需額外 submit。",
         "有効な推論モデルを切り替え|入力：ASR model と補正 policy。出力：切り替え後または読み込み中の完全な model state。client 側の追加 submit は不要です。",
         "활성 추론 모델 전환|입력: ASR model과 교정 policy. 출력: 전환 후 또는 로드 중인 전체 model state. client의 별도 submit은 필요 없습니다.",
+    ),
+    "GET /api/v1/resources": _text(
+        "View inference resource status|Input: none. Output: requested and resolved policy, target profile, workload lifecycle states, and the current operation.",
+        "查看推論資源狀態|輸入：無。輸出：要求與解析後的策略、目標 profile、工作負載生命週期及目前操作。",
+        "推論リソース状態を表示|入力：なし。出力：要求・解決済み policy、対象 profile、workload lifecycle、現在の operation。",
+        "추론 리소스 상태 보기|입력: 없음. 출력: 요청 및 확정 policy, 대상 profile, workload lifecycle과 현재 operation.",
+    ),
+    "POST /api/v1/resources/reconcile": _text(
+        "Reconcile an inference resource profile|Input: a bounded resource profile. Output: an asynchronous operation that can be polled.",
+        "協調推論資源 profile|輸入：有限集合的資源 profile。輸出：可輪詢的非同步操作。",
+        "推論リソース profile を調整|入力：定義済み resource profile。出力：polling 可能な非同期 operation。",
+        "추론 리소스 profile 조정|입력: 정의된 resource profile. 출력: polling 가능한 비동기 operation.",
+    ),
+    "POST /api/v1/resources/{workload}/reset": _text(
+        "Reset an inference workload|Input: a bounded workload identifier. Output: a policy-aware asynchronous reset operation.",
+        "重置單一推論工作負載|輸入：有限集合的工作負載識別碼。輸出：依資源策略執行的非同步重置操作。",
+        "推論ワークロードをリセット|入力：定義済み workload ID。出力：resource policy に従う非同期 reset operation。",
+        "추론 워크로드 재설정|입력: 정의된 workload ID. 출력: resource policy에 따른 비동기 reset operation.",
+    ),
+    "GET /api/v1/resource-operations/{operation_id}": _text(
+        "View resource operation progress|Input: resource operation identifier. Output: current phase and bounded recovery details.",
+        "查看資源操作進度|輸入：資源操作識別碼。輸出：目前階段與有限集合的復原資訊。",
+        "リソース操作の進行状況を表示|入力：resource operation ID。出力：現在の phase と定義済み recovery detail。",
+        "리소스 작업 진행 상태 보기|입력: resource operation ID. 출력: 현재 phase와 정의된 복구 정보.",
     ),
     "POST /api/v1/sessions": _text(
         "Create a conversation session|Input: optional speech language, ASR model, and correction policy. Output: a new session identifier, state, frozen inference choices, and event list. Every selected value is frozen for the session and cannot change while realtime listening is active.",
@@ -281,6 +327,30 @@ OPERATION_TEXT = {
 
 
 FIELD_TEXT = {
+    "ResourceWorkloadStatusResponse.workload": _text("Stable workload identifier.", "穩定的工作負載識別碼。", "安定した workload ID。", "안정적인 workload ID."),
+    "ResourceWorkloadStatusResponse.desired": _text("Whether the active profile requires this workload.", "目前 profile 是否需要此工作負載。", "現在の profile がこの workload を必要とするか。", "현재 profile에 이 workload가 필요한지 여부."),
+    "ResourceWorkloadStatusResponse.lifecycle": _text("Current workload lifecycle state.", "工作負載目前的生命週期狀態。", "現在の workload lifecycle state。", "현재 workload lifecycle 상태."),
+    "ResourceWorkloadStatusResponse.ready": _text("Whether the workload can accept inference requests.", "工作負載目前是否可接受推論請求。", "workload が推論 request を受け付けられるか。", "workload가 추론 요청을 받을 수 있는지 여부."),
+    "ResourceWorkloadStatusResponse.model": _text("Loaded model identifier, or null when unavailable.", "已載入的模型識別碼；無法使用時為 null。", "読み込み済み model ID。利用不可の場合は null。", "로드된 model ID이며 사용할 수 없으면 null."),
+    "ResourceWorkloadStatusResponse.device": _text("Inference device reported by the workload.", "工作負載回報的推論裝置。", "workload が報告した推論 device。", "workload가 보고한 추론 device."),
+    "ResourceWorkloadStatusResponse.error_code": _text("Bounded workload error code, if any.", "有限集合的工作負載錯誤代碼；沒有時為 null。", "定義済み workload error code。ない場合は null。", "정의된 workload 오류 코드이며 없으면 null."),
+    "ResourceWorkloadStatusResponse.operator_hint": _text("Operator recovery guidance, if needed.", "需要時供操作者採取的復原指引。", "必要な場合の operator recovery guidance。", "필요한 경우 operator 복구 안내."),
+    "ResourceOperationResponse.id": _text("Stable resource operation identifier.", "穩定的資源操作識別碼。", "安定した resource operation ID。", "안정적인 resource operation ID."),
+    "ResourceOperationResponse.action": _text("Resource operation action.", "資源操作動作。", "resource operation の action。", "resource operation 작업 유형."),
+    "ResourceOperationResponse.target": _text("Profile or workload targeted by the operation.", "操作目標的 profile 或工作負載。", "operation の対象 profile または workload。", "작업 대상 profile 또는 workload."),
+    "ResourceOperationResponse.phase": _text("Current bounded operation phase.", "目前有限集合的操作階段。", "現在の定義済み operation phase。", "현재 정의된 operation phase."),
+    "ResourceOperationResponse.created_at": _text("Operation creation time in UTC.", "UTC 操作建立時間。", "UTC の operation 作成時刻。", "UTC operation 생성 시간."),
+    "ResourceOperationResponse.updated_at": _text("Most recent operation update time in UTC.", "UTC 操作最近更新時間。", "UTC の operation 最終更新時刻。", "UTC operation 최근 업데이트 시간."),
+    "ResourceOperationResponse.error_code": _text("Bounded operation error code, if any.", "有限集合的操作錯誤代碼；沒有時為 null。", "定義済み operation error code。ない場合は null。", "정의된 operation 오류 코드이며 없으면 null."),
+    "ResourceOperationResponse.operator_hint": _text("Operator recovery guidance, if needed.", "需要時供操作者採取的復原指引。", "必要な場合の operator recovery guidance。", "필요한 경우 operator 복구 안내."),
+    "ResourceSnapshotResponse.requested_policy": _text("The requested resource policy before automatic resolution.", "自動解析前所要求的資源策略。", "自動解決前に要求されたリソースポリシー。", "자동 확정 전 요청된 리소스 정책."),
+    "ResourceSnapshotResponse.resolved_policy": _text("The effective resource policy selected for this host.", "此宿主實際採用的資源策略。", "このホストで有効な resource policy。", "이 호스트에서 적용된 resource policy."),
+    "ResourceSnapshotResponse.profile": _text("Current target resource profile, or null before reconciliation.", "目前目標資源 profile；協調前為 null。", "現在の対象 resource profile。調整前は null。", "현재 대상 resource profile이며 조정 전에는 null."),
+    "ResourceSnapshotResponse.desired_workloads": _text("Workloads required by the current profile.", "目前 profile 所需的工作負載。", "現在の profile が必要とする workload。", "현재 profile에 필요한 workload."),
+    "ResourceSnapshotResponse.workloads": _text("Lifecycle status keyed by workload identifier.", "依工作負載識別碼索引的生命週期狀態。", "workload ID ごとの lifecycle status。", "workload ID별 lifecycle 상태."),
+    "ResourceSnapshotResponse.operation": _text("Most recent resource operation, or null when none exists.", "最近一次資源操作；尚無操作時為 null。", "最新の resource operation。存在しない場合は null。", "최근 resource operation이며 없으면 null."),
+    "ResourceSnapshotResponse.last_ready_profile": _text("Most recent profile that reached ready, if any.", "最近一次達到 ready 的 profile；沒有時為 null。", "最後に ready へ到達した profile。ない場合は null。", "최근 ready에 도달한 profile이며 없으면 null."),
+    "ResourceReconcileInput.profile": _text("Bounded resource profile to make active.", "要啟用的有限集合資源 profile。", "有効にする定義済み resource profile。", "활성화할 정의된 resource profile."),
     "HTTPValidationError.detail": _text("Request validation errors.", "請求驗證錯誤清單。", "request validation error の一覧。", "요청 validation 오류 목록."),
     "ValidationError.loc": _text("Location of the invalid value in the request.", "請求中無效值的位置。", "request 内の無効な値の位置。", "요청에서 잘못된 값의 위치."),
     "ValidationError.msg": _text("Human-readable validation error message.", "便於閱讀的驗證錯誤訊息。", "読みやすい validation error message。", "사람이 읽을 수 있는 validation 오류 메시지."),
@@ -382,6 +452,7 @@ FIELD_TEXT = {
     "ModelActivationInput.correction_model": _text("Correction policy to select.", "要選用的校正策略。", "選択する補正 policy。", "선택할 교정 policy."),
     "TTSCloneStatus.gpu_mode": _text("Exclusive GPU workload mode.", "目前互斥的 GPU 工作模式。", "排他的な GPU workload mode。", "배타적 GPU workload mode."),
     "TTSCloneStatus.accelerator": _text("Effective inference accelerator.", "目前有效的推論加速器。", "有効な推論 accelerator。", "현재 유효한 추론 accelerator."),
+    "TTSCloneStatus.resource_policy": _text("Effective inference resource policy.", "目前有效的推論資源策略。", "有効な推論 resource policy。", "현재 적용된 추론 resource policy."),
     "TTSCloneStatus.state": _text("VoxCPM2 worker and model lifecycle state.", "VoxCPM2 worker 與模型生命週期狀態。", "VoxCPM2 worker と model lifecycle state。", "VoxCPM2 worker 및 model lifecycle 상태."),
     "TTSCloneStatus.model": _text("TTS clone model identifier.", "TTS 克隆模型識別碼。", "TTS clone model ID。", "TTS 클론 model ID."),
     "TTSCloneStatus.device": _text("Model inference device.", "模型推論裝置。", "モデル推論 device。", "모델 추론 device."),
@@ -406,6 +477,8 @@ FORM_FIELD_TEXT = {
 
 PARAMETER_TEXT = {
     "verbose": _text("Include extended health detail when supported.", "在支援時包含延伸健康資訊。", "対応している場合に詳細な health 情報を含めます。", "지원되는 경우 확장 health 정보를 포함합니다."),
+    "workload": _text("Inference workload to reset: asr or tts.", "要重置的推論工作負載：asr 或 tts。", "リセットする推論 workload：asr または tts。", "재설정할 추론 workload: asr 또는 tts."),
+    "operation_id": _text("Resource operation identifier returned by reconcile or reset.", "reconcile 或 reset 回傳的資源操作識別碼。", "reconcile または reset が返す resource operation ID。", "reconcile 또는 reset에서 반환된 resource operation ID."),
     "session_id": _text("Conversation session identifier.", "對話工作階段識別碼。", "会話 session ID。", "대화 session ID."),
     "speech_language": _text(
         "Speech language frozen for the session: auto, en, zh-TW, ja, or ko. Defaults to zh-TW.",

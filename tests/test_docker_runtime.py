@@ -178,6 +178,7 @@ def _accelerator_env(
         "if [[ \"$*\" == 'compose config --environment' ]]; then exit 0; fi\n"
         "if [[ \"$*\" == 'info --format {{json .Runtimes}}' ]]; then "
         f"printf '%s\\n' '{runtimes}'; exit 0; fi\n"
+        "if [[ \"$*\" == *'/api/v1/resources'* ]]; then echo 'concurrent|both|ready|ready'; exit 0; fi\n"
         "if [[ \"$*\" == *'/api/v1/capabilities'* ]]; then echo \"${FAKE_ASR_DEVICE:-unknown}\"; exit 0; fi\n"
         "if [[ \"$*\" == *'ps --all -q gateway'* ]]; then echo fake-container; exit 0; fi\n"
         "if [[ \"$1\" == inspect ]]; then echo healthy; exit 0; fi\n"
@@ -399,6 +400,10 @@ def test_status_reports_host_selection_and_actual_provider_device(tmp_path: Path
     assert result.returncode == 0, result.stderr
     assert "accelerator=nvidia" in result.stdout
     assert "asr_device=cuda" in result.stdout
+    assert "resource_policy=concurrent" in result.stdout
+    assert "profile=both" in result.stdout
+    assert "asr_state=ready" in result.stdout
+    assert "tts_state=ready" in result.stdout
 
 
 def test_run_script_dispatches_expected_compose_commands(tmp_path: Path) -> None:

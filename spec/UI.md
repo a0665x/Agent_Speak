@@ -22,6 +22,8 @@ The ASR surface reuses the portal particle engine with similarly cinematic densi
 
 The Active Models card uses immediate ASR and correction selects with no Submit button. Its lifecycle label exposes loading, warming, ready, rollback, failure, and device state. Switching while listening closes the current stream, discards its unfinished partial, activates one resident ASR provider, creates a new frozen session, and resumes only while the generic system-audio gate remains ready. Completed transcript rows and graph nodes remain visible. Live Audio renders three smooth, symmetric gradient signal ribbons from the real envelope instead of a single polygonal line; reduced motion removes pulse animation without hiding amplitude.
 
+**Reset ASR resources** is a separate explicit lifecycle action. During an active stream it confirms first, closes capture, preserves completed transcript/graph nodes, discards only the unfinished partial, and displays `releasing → starting → warming → ready|failed`. It refreshes model/capability truth after reconnect but never resumes listening or reopens a device automatically.
+
 This page stops at corrected transcription. It never invokes an Agent, TTS, Codex injection, or speaker output, and it does not reconnect or restart capture automatically.
 
 ## TTS Clone Test
@@ -29,6 +31,8 @@ This page stops at corrected transcription. It never invokes an Agent, TTS, Code
 `/tts_clone_test` is the four-language VoxCPM2 surface. It polls runtime status but does not request microphone permission on load. The explicit device check must see both a generic microphone and speaker before capture/generation controls open. CPU, wrong-mode, loading, and worker-failure states remain browsable and show operator recovery hints.
 
 Voice Clone and TTS Play are freely switchable tabs. Voice Clone keeps at most one valid 5–30 second PCM reference in browser memory; a valid new recording replaces it, while invalid capture leaves the old valid reference intact. This is zero-shot conditioning rather than training or LoRA. TTS Play can skip cloning, preserves text after failure, converts friendly cue identifiers into best-effort natural-language delivery instructions, and separates **Generate** from **Play** so synthesis never causes autoplay.
+
+**Reset TTS resources** remains available while the page is browsable. It confirms before stopping an active recording, generation, or playback, preserves the current text, style cues, and valid in-memory reference, then displays the bounded resource operation phases. Readiness never triggers a device check, generation, or playback; every audio action still requires its own user click.
 
 The central 2D gradient Voice Orb reacts to real recording amplitude/VAD, deterministic validation/queue/generation phases, and real playback amplitude. Text/live regions duplicate every visual state. Completed playback settles into Complete; reduced motion removes continuous geometry movement. Reference/generated Blob URLs are revoked on replacement or page unload. Neither audio nor text is persisted by the page or Gateway.
 

@@ -64,7 +64,7 @@ VAD produces rolling partial text, so the current words may change. Qwen correct
 
 The `/tts_clone_test` page provides two freely switchable modes: one transient 5–30 second zero-shot voice reference, and TTS generation with or without that reference. This is conditioning, not LoRA training. Friendly delivery cues are converted to best-effort natural-language instructions. The browser owns one reference Blob and one generated Blob; replacement or page unload revokes them, while the Gateway streams the WAV response without creating an artifact. Device access begins only after **Check devices**, recording only after **Start recording**, and physical playback only after **Play**.
 
-VoxCPM2 requires the exclusive NVIDIA TTS mode on the current 11 GB-class target. `./run.sh --tts-up` stops ASR/correction workers before loading VoxCPM2; `./run.sh --asr-up` stops VoxCPM2 and restores realtime transcription. CPU-only hosts can inspect the page and recovery status but cannot run this TTS feature.
+Inference workers are managed by a host-owned Resource Orchestrator while the Gateway stays available. `AGENT_SPEAK_RESOURCE_POLICY=auto` conservatively resolves to `exclusive` unless the configured VRAM budgets fit one GPU; larger hosts can resolve to `concurrent`, while `multi_gpu` uses the configured per-service device mapping. `./run.sh --asr-up` and `--tts-up` reconcile fixed profiles instead of recreating the Gateway. Both studios provide a policy-aware **Reset resources** control that never starts capture, generation, or playback automatically. CPU-only hosts can inspect TTS status and recovery guidance but cannot run VoxCPM2.
 
 ## Verify the installation
 
@@ -84,8 +84,8 @@ Expected success markers include `STATUS_HEALTHY`, `HEALTH_SMOKE_OK mode=docker`
 ```text
 ./run.sh --build      Build and start
 ./run.sh --up         Start ASR mode (alias for --asr-up)
-./run.sh --asr-up     Stop VoxCPM2; start ASR/correction and Gateway
-./run.sh --tts-up     Stop ASR/correction; start VoxCPM2 and Gateway (NVIDIA)
+./run.sh --asr-up     Keep Gateway; reconcile the ASR-only profile
+./run.sh --tts-up     Keep Gateway; reconcile the TTS-only profile (NVIDIA)
 ./run.sh --down       Stop; preserve data and models
 ./run.sh --down_up    Recreate the stack
 ./run.sh --restart    Same as --down_up
@@ -105,7 +105,7 @@ Optional settings can be placed in an untracked `.env`; see [.env.example](.env.
 
 For troubleshooting, run `./run.sh --status`, then `./run.sh --logs asr-worker` for recognition failures or `./run.sh --logs gateway` for API/realtime failures. Agent Speak also writes rotating JSON Lines diagnostics under `runtime/logs/` and `runtime/asr-worker/logs/`. `INFO` records lifecycle, `WARNING` records recoverable failures and retries, `ERROR` records failed activation or unexpected service errors, and opt-in `DEBUG` adds timing and queue details. Logs include correlation IDs, anonymized session references, stage, model, device, latency, and error type; they never include audio, transcripts, device labels, credentials, request bodies, or raw session IDs. Configure `AGENT_SPEAK_LOG_LEVEL`, `AGENT_SPEAK_LOG_MAX_BYTES`, and `AGENT_SPEAK_LOG_BACKUP_COUNT` in `.env`.
 
-`AGENT_SPEAK_ACCELERATOR=auto` is the default. It selects the separate NVIDIA image only when `nvidia-smi` and Docker's NVIDIA runtime are both ready; otherwise it prints the reason and starts the CPU image. Use `cpu` to force the portable CPU/INT8 path or `nvidia` to require CUDA and fail instead of falling back. NVIDIA mode requires the NVIDIA Container Toolkit and builds `agent-speak:gpu-local` with CUDA 12 and cuDNN 9. `./run.sh --status` reports both the selected Compose accelerator and the ASR provider's actual device.
+`AGENT_SPEAK_ACCELERATOR=auto` is the default. It selects the separate NVIDIA image only when `nvidia-smi` and Docker's NVIDIA runtime are both ready; otherwise it prints the reason and starts the CPU image. Use `cpu` to force the portable CPU/INT8 path or `nvidia` to require CUDA and fail instead of falling back. NVIDIA mode requires the NVIDIA Container Toolkit and builds `agent-speak:gpu-local` with CUDA 12 and cuDNN 9. `./run.sh --status` reports the selected accelerator, resolved resource policy/profile, ASR/TTS lifecycle states, and actual provider devices.
 
 ## Connect an external Agent through MCP
 

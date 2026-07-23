@@ -15,6 +15,8 @@ docker compose -f compose.yaml -f compose.gpu.yaml exec -T gateway nvidia-smi -L
 
 Forced CPU must report `accelerator=cpu asr_device=cpu`. Automatic NVIDIA selection requires a working driver and NVIDIA Container Toolkit, must report `accelerator=nvidia asr_device=cuda`, and must expose the GPU inside the Gateway. A GPU mapping alone is insufficient: a bounded real ASR request must also complete without CUDA library errors.
 
+Resource orchestration regressions cover pure policy planning, atomic state replacement, Unix-socket framing and permissions, serialized fixed Compose actions, bounded Gateway errors, four-language OpenAPI metadata, dynamic ASR/TTS readiness, and both UI reset controls. Hardware acceptance must additionally record the Gateway container ID, reconcile/reset ASR and TTS, poll each operation to a terminal phase, and prove the Gateway ID did not change. `exclusive` must restore the prior ready profile after a target reset; `concurrent`/`multi_gpu` must leave the other workload running. No smoke may request microphone permission, capture audio, synthesize, or play unless that action has separate explicit user consent.
+
 OpenAPI docs regression: `/docs` depends on Swagger UI assets from jsDelivr and FastAPI's inline initializer. The security middleware must apply the docs-specific CSP only to `/docs` and `/redoc`, while `/` retains the stricter self-only WebUI CSP. `test_openapi_docs_csp_allows_swagger_assets_without_weakening_webui` guards both sides of this contract. Runtime verification must confirm `/openapi.json` returns JSON and the real `/docs` browser renders `.swagger-ui` without a visible fetch error.
 
 
