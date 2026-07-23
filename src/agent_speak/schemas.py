@@ -14,6 +14,7 @@ from .model_ids import (
     DEFAULT_CORRECTION_MODEL,
 )
 from .speech_languages import DEFAULT_SPEECH_LANGUAGE, SpeechLanguage
+from .tts_clone import ReferenceQuality
 
 
 class StrictModel(BaseModel):
@@ -146,6 +147,27 @@ class VadOutput(StrictModel):
 class TtsOutput(StrictModel):
     audio_url: str = Field(description="可取得合成 WAV 的站內網址", examples=["/api/v1/artifacts/response-abc.wav"])
     content_type: Literal["audio/wav"] = Field(default="audio/wav", description="音訊 MIME 類型", examples=["audio/wav"])
+
+
+class TTSCloneStatus(StrictModel):
+    gpu_mode: Literal["asr", "tts"] = Field(description="目前互斥的 GPU 工作模式")
+    accelerator: Literal["cpu", "nvidia"] = Field(description="目前有效的推論加速器")
+    state: Literal["stopped", "starting", "loading", "ready", "failed"] = Field(
+        description="VoxCPM2 worker 與模型生命週期狀態"
+    )
+    model: Literal["voxcpm2"] = Field(default="voxcpm2", description="TTS 克隆模型識別碼")
+    device: str = Field(description="模型推論裝置", examples=["cuda"])
+    ready: bool = Field(description="目前是否可產生語音")
+    error_code: str | None = Field(default=None, description="有限集合的就緒錯誤代碼")
+    operator_hint: str | None = Field(default=None, description="供操作者採取的復原指令")
+
+
+class TTSReferenceAssessment(StrictModel):
+    duration_seconds: float = Field(ge=0, description="參考錄音長度（秒）")
+    rms: float = Field(ge=0, description="參考錄音的均方根能量")
+    peak: float = Field(ge=0, description="參考錄音的峰值振幅")
+    voiced_ratio: float = Field(ge=0, le=1, description="20 ms 音框中偵測到聲音的比例")
+    quality: ReferenceQuality = Field(description="有限集合的參考錄音品質結果")
 
 
 class TurnResponse(StrictModel):

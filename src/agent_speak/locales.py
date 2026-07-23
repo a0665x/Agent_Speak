@@ -36,7 +36,7 @@ DOCS_UI_TEXT = {
 }
 
 
-TAG_KEYS = ("system", "conversation", "audio", "text", "speakers", "artifacts")
+TAG_KEYS = ("system", "conversation", "audio", "text", "speakers", "artifacts", "tts_clone")
 TAG_TEXT = {
     "system": {
         "name": _text("System", "系統", "システム", "시스템"),
@@ -92,6 +92,15 @@ TAG_TEXT = {
             "TTS가 생성한 로컬 WAV 오디오를 가져옵니다.",
         ),
     },
+    "tts_clone": {
+        "name": _text("TTS Clone", "TTS 克隆", "TTS クローン", "TTS 클론"),
+        "description": _text(
+            "Check VoxCPM2 readiness, validate a transient voice reference, and generate non-persistent WAV audio.",
+            "檢查 VoxCPM2 就緒狀態、驗證暫時參考錄音並產生不落地保存的 WAV。",
+            "VoxCPM2 の準備状態を確認し、一時的な音声参照を検証して、保存しない WAV 音声を生成します。",
+            "VoxCPM2 준비 상태를 확인하고 임시 음성 참조를 검증하며 저장하지 않는 WAV 오디오를 생성합니다.",
+        ),
+    },
 }
 
 
@@ -110,6 +119,9 @@ OPERATION_TAGS = {
     "POST /api/v1/agent/respond": "text",
     "POST /api/v1/tts/synthesize": "text",
     "GET /api/v1/artifacts/{name}": "artifacts",
+    "GET /api/v1/tts-clone/status": "tts_clone",
+    "POST /api/v1/tts-clone/reference/validate": "tts_clone",
+    "POST /api/v1/tts-clone/synthesize": "tts_clone",
     "POST /api/v1/speakers": "speakers",
     "GET /api/v1/speakers": "speakers",
     "GET /api/v1/speakers/{speaker_id}": "speakers",
@@ -198,6 +210,24 @@ OPERATION_TEXT = {
         "將文字合成語音|輸入：要朗讀的文字。輸出：可下載或播放的 WAV 站內網址。",
         "テキストを音声合成|入力：読み上げるテキスト。出力：生成 WAV を取得または再生するローカル URL。",
         "텍스트를 음성으로 합성|입력: 읽을 텍스트. 출력: 생성된 WAV를 내려받거나 재생할 로컬 URL.",
+    ),
+    "GET /api/v1/tts-clone/status": _text(
+        "Check TTS clone readiness|Input: none. Output: GPU mode, accelerator, worker, and VoxCPM2 readiness.",
+        "檢查 TTS 克隆就緒狀態|輸入：無。輸出：GPU 模式、加速器、worker 與 VoxCPM2 就緒狀態。",
+        "TTS クローンの準備状態を確認|入力：なし。出力：GPU mode、accelerator、worker、VoxCPM2 の準備状態。",
+        "TTS 클론 준비 상태 확인|입력: 없음. 출력: GPU mode, accelerator, worker 및 VoxCPM2 준비 상태.",
+    ),
+    "POST /api/v1/tts-clone/reference/validate": _text(
+        "Validate a clone reference|Input: transient PCM WAV. Output: duration, level, voiced ratio, and bounded quality result; audio is not stored.",
+        "驗證克隆參考錄音|輸入：暫時性的 PCM WAV。輸出：長度、音量、人聲比例與有限集合的品質結果；音訊不會保存。",
+        "クローン参照音声を検証|入力：一時的な PCM WAV。出力：長さ、音量、発話比率、定義済みの品質結果。音声は保存されません。",
+        "클론 참조 음성 검증|입력: 임시 PCM WAV. 출력: 길이, 음량, 음성 비율 및 제한된 품질 결과. 오디오는 저장되지 않습니다.",
+    ),
+    "POST /api/v1/tts-clone/synthesize": _text(
+        "Generate cloned or default TTS|Input: text, style cues, clone toggle, and optional reference. Output: a non-persistent 48 kHz WAV.",
+        "產生克隆或預設 TTS|輸入：文字、語氣提示、克隆開關與選填參考錄音。輸出：不落地保存的 48 kHz WAV。",
+        "クローンまたは既定音声の TTS を生成|入力：テキスト、style cue、clone 切替、任意の参照音声。出力：保存しない 48 kHz WAV。",
+        "클론 또는 기본 TTS 생성|입력: 텍스트, style cue, 클론 전환 및 선택적 참조 음성. 출력: 저장하지 않는 48 kHz WAV.",
     ),
     "GET /api/v1/artifacts/{name}": _text(
         "Get generated WAV audio|Input: WAV filename returned by TTS. Output: binary audio/wav content.",
@@ -350,6 +380,27 @@ FIELD_TEXT = {
     "ModelCatalog.active": _text("Active selections and model lifecycle state.", "啟用中的選項與模型生命週期狀態。", "有効な選択と model lifecycle state。", "활성 선택과 model lifecycle 상태."),
     "ModelActivationInput.asr_model": _text("ASR model to activate.", "要啟用的 ASR 模型。", "有効にする ASR モデル。", "활성화할 ASR 모델."),
     "ModelActivationInput.correction_model": _text("Correction policy to select.", "要選用的校正策略。", "選択する補正 policy。", "선택할 교정 policy."),
+    "TTSCloneStatus.gpu_mode": _text("Exclusive GPU workload mode.", "目前互斥的 GPU 工作模式。", "排他的な GPU workload mode。", "배타적 GPU workload mode."),
+    "TTSCloneStatus.accelerator": _text("Effective inference accelerator.", "目前有效的推論加速器。", "有効な推論 accelerator。", "현재 유효한 추론 accelerator."),
+    "TTSCloneStatus.state": _text("VoxCPM2 worker and model lifecycle state.", "VoxCPM2 worker 與模型生命週期狀態。", "VoxCPM2 worker と model lifecycle state。", "VoxCPM2 worker 및 model lifecycle 상태."),
+    "TTSCloneStatus.model": _text("TTS clone model identifier.", "TTS 克隆模型識別碼。", "TTS clone model ID。", "TTS 클론 model ID."),
+    "TTSCloneStatus.device": _text("Model inference device.", "模型推論裝置。", "モデル推論 device。", "모델 추론 device."),
+    "TTSCloneStatus.ready": _text("Whether speech can be generated now.", "目前是否可產生語音。", "現在音声を生成できるか。", "현재 음성 생성 가능 여부."),
+    "TTSCloneStatus.error_code": _text("Bounded readiness error code, if any.", "有限集合的就緒錯誤代碼；沒有時為 null。", "定義済みの readiness error code。ない場合は null。", "정의된 readiness error code이며 없으면 null."),
+    "TTSCloneStatus.operator_hint": _text("Operator recovery command, if needed.", "需要時供操作者採取的復原指令。", "必要な場合の operator recovery command。", "필요한 경우 operator 복구 명령."),
+    "TTSReferenceAssessment.duration_seconds": _text("Reference duration in seconds.", "參考錄音長度（秒）。", "参照音声の長さ（秒）。", "참조 음성 길이(초)."),
+    "TTSReferenceAssessment.rms": _text("Reference root mean square level.", "參考錄音的均方根能量。", "参照音声の RMS level。", "참조 음성 RMS level."),
+    "TTSReferenceAssessment.peak": _text("Reference peak amplitude.", "參考錄音的峰值振幅。", "参照音声の peak amplitude。", "참조 음성 peak amplitude."),
+    "TTSReferenceAssessment.voiced_ratio": _text("Ratio of voiced 20 ms frames.", "20 ms 音框中偵測到聲音的比例。", "発話が検出された 20 ms frame の比率。", "음성이 감지된 20 ms frame 비율."),
+    "TTSReferenceAssessment.quality": _text("Bounded reference quality result.", "有限集合的參考錄音品質結果。", "定義済みの参照音声 quality result。", "정의된 참조 음성 quality result."),
+}
+
+
+FORM_FIELD_TEXT = {
+    "text": _text("UTF-8 text to synthesize, up to 20,000 characters.", "要合成的 UTF-8 文字，最多 20,000 個字元。", "合成する UTF-8 テキスト。最大 20,000 文字。", "합성할 UTF-8 텍스트, 최대 20,000자."),
+    "style_cues": _text("Allowlisted best-effort style cue identifiers.", "allowlist 內的 best-effort 語氣提示識別碼。", "allowlist 内の best-effort style cue ID。", "allowlist 내 best-effort style cue ID."),
+    "use_clone": _text("Use the supplied transient voice reference.", "是否使用隨請求提供的暫時參考錄音。", "request に含まれる一時的な参照音声を使用するか。", "요청에 포함된 임시 참조 음성을 사용할지 여부."),
+    "reference": _text("Optional transient 5–30 second PCM WAV reference.", "選填的暫時性 5–30 秒 PCM WAV 參考錄音。", "任意の一時的な 5～30 秒 PCM WAV 参照音声。", "선택적 임시 5~30초 PCM WAV 참조 음성."),
 }
 
 
@@ -424,6 +475,14 @@ def localize_openapi(schema: dict[str, Any], locale: str | None) -> dict[str, An
         if wav_content:
             request_body["description"] = WAV_TEXT["request"][language]
             wav_content["schema"]["description"] = WAV_TEXT["binary"][language]
+        schema_reference = request_body.get("content", {}).get("multipart/form-data", {}).get("schema", {}).get("$ref")
+        if schema_reference:
+            schema_name = schema_reference.rsplit("/", 1)[-1]
+            component = localized.get("components", {}).get("schemas", {}).get(schema_name, {})
+            for field_name, field in component.get("properties", {}).items():
+                translated = FORM_FIELD_TEXT.get(field_name)
+                if translated:
+                    field["description"] = translated[language]
 
     for field_key, translations in FIELD_TEXT.items():
         schema_name, field_name = field_key.split(".", 1)

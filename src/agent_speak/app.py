@@ -56,6 +56,8 @@ from .schemas import (
 from .speech_languages import DEFAULT_SPEECH_LANGUAGE, SpeechLanguage
 from .sessions import SessionBroker
 from .speakers import SPEAKER_NOTICE, SpeakerStore
+from .tts_clone import VoxCPMClient
+from .tts_clone_routes import TTSCloneProvider, build_tts_clone_router
 
 
 SECURITY_HEADERS = (
@@ -95,6 +97,7 @@ OPENAPI_TAGS = [
     {"name": "文字階段", "description": "單獨測試文字校正、結束判斷、Agent 與 TTS。"},
     {"name": "說話者", "description": "管理本機便利識別資料；不是生物辨識身分驗證。"},
     {"name": "音訊成品", "description": "讀取 TTS 產生的本機 WAV 音訊。"},
+    {"name": "TTS 克隆", "description": "檢查 VoxCPM2 就緒狀態、驗證暫時參考錄音並產生不落地保存的 WAV。"},
 ]
 
 
@@ -165,6 +168,7 @@ def create_app(
     providers: ProviderSet | None = None,
     realtime: RealtimeCoordinator | None = None,
     model_control: ModelCatalogService | None = None,
+    tts_clone: TTSCloneProvider | None = None,
 ) -> FastAPI:
     active = settings or Settings.from_env()
     active.prepare_directories()
@@ -235,6 +239,12 @@ def create_app(
     if app.state.realtime.broker is None:
         app.state.realtime.broker = app.state.broker
     register_realtime_routes(app)
+    app.state.tts_clone = tts_clone or VoxCPMClient(
+        active.tts_clone_worker_url,
+        max_output_bytes=active.tts_clone_max_output_bytes,
+        max_output_seconds=active.tts_clone_max_output_seconds,
+    )
+    app.include_router(build_tts_clone_router(active, app.state.tts_clone))
     app.state.speakers = SpeakerStore(
         active.data_dir / "speakers.sqlite3",
         active.data_dir / "speaker_samples",
