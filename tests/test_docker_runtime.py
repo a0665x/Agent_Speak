@@ -90,14 +90,29 @@ def test_tts_worker_is_private_python312_vllm_omni() -> None:
     assert worker["environment"]["VLLM_LOGGING_LEVEL"] == "WARNING"
 
 
-def test_run_script_exposes_mutually_exclusive_gpu_modes() -> None:
+def test_run_script_delegates_profiles_to_host_resource_supervisor() -> None:
     script = (ROOT / "run.sh").read_text(encoding="utf-8")
 
     assert "--asr-up" in script
     assert "--tts-up" in script
-    assert "stop tts-worker" in script
-    assert "stop asr-worker correction-worker" in script
+    assert "resource_cli reconcile asr_only --wait" in script
+    assert "resource_cli reconcile tts_only --wait" in script
+    assert "compose up -d gateway" in script
+    assert "compose up -d gateway asr-worker correction-worker" not in script
+    assert "compose up -d gateway tts-worker" not in script
     assert "/var/run/docker.sock" not in script
+
+
+def test_gateway_uses_private_resource_socket_without_mode_recreation() -> None:
+    compose = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))
+    gateway = compose["services"]["gateway"]
+
+    assert "/var/run/docker.sock" not in "\n".join(gateway["volumes"])
+    assert "AGENT_SPEAK_GPU_MODE" not in gateway["environment"]
+    assert (
+        gateway["environment"]["AGENT_SPEAK_RESOURCE_SOCKET_PATH"]
+        == "/app/runtime/resource-control/control.sock"
+    )
 
 
 def test_test_services_have_no_audio_gpu_models_or_network() -> None:
@@ -152,7 +167,9 @@ def _accelerator_env(
     fake_bin.mkdir()
     docker_log = tmp_path / "docker.log"
     nvidia_log = tmp_path / "nvidia.log"
+    resource_log = tmp_path / "resource.log"
     nvidia_log.write_text("", encoding="utf-8")
+    resource_log.write_text("", encoding="utf-8")
     docker = fake_bin / "docker"
     runtimes = '{"io.containerd.runc.v2":{},"nvidia":{}}' if runtime else '{"runc":{}}'
     docker.write_text(
@@ -176,10 +193,22 @@ def _accelerator_env(
         encoding="utf-8",
     )
     nvidia_smi.chmod(0o755)
+    python3 = fake_bin / "python3"
+    python3.write_text(
+        "#!/usr/bin/env bash\n"
+        "printf '%s\\n' \"$*\" >> \"$FAKE_RESOURCE_LOG\"\n"
+        "if [[ \"$*\" == *' client '* ]]; then\n"
+        "  printf '%s\\n' '{\"ok\":true,\"result\":{\"id\":\"op_fake\",\"phase\":\"ready\"}}'\n"
+        "fi\n"
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    python3.chmod(0o755)
     env = os.environ | {
         "PATH": f"{fake_bin}:{os.environ['PATH']}",
         "FAKE_DOCKER_LOG": str(docker_log),
         "FAKE_NVIDIA_LOG": str(nvidia_log),
+        "FAKE_RESOURCE_LOG": str(resource_log),
         "AGENT_SPEAK_ACCELERATOR": "auto",
     }
     return env, docker_log, nvidia_log
@@ -247,8 +276,11 @@ def test_cpu_tts_mode_fails_before_compose_start(tmp_path: Path) -> None:
     assert " up -d" not in log.read_text(encoding="utf-8")
 
 
-def test_asr_and_tts_modes_start_only_their_inference_workers(tmp_path: Path) -> None:
+def test_asr_and_tts_modes_keep_gateway_stable_and_reconcile_profiles(
+    tmp_path: Path,
+) -> None:
     env, log, _ = _accelerator_env(tmp_path, gpu=True, runtime=True)
+    resource_log = Path(env["FAKE_RESOURCE_LOG"])
 
     asr = subprocess.run(
         [str(ROOT / "run.sh"), "--asr-up"],
@@ -259,11 +291,15 @@ def test_asr_and_tts_modes_start_only_their_inference_workers(tmp_path: Path) ->
     )
     assert asr.returncode == 0, asr.stderr
     calls = log.read_text(encoding="utf-8")
-    assert "stop tts-worker" in calls
-    assert "up -d gateway asr-worker correction-worker" in calls
-    assert "tts-worker" not in calls.split("up -d", 1)[1]
+    assert "up -d gateway" in calls
+    assert "up -d gateway asr-worker correction-worker" not in calls
+    assert "stop tts-worker" not in calls
+    assert "client reconcile asr_only --wait" in resource_log.read_text(
+        encoding="utf-8"
+    )
 
     log.write_text("", encoding="utf-8")
+    resource_log.write_text("", encoding="utf-8")
     tts = subprocess.run(
         [str(ROOT / "run.sh"), "--tts-up"],
         cwd=ROOT,
@@ -273,8 +309,74 @@ def test_asr_and_tts_modes_start_only_their_inference_workers(tmp_path: Path) ->
     )
     assert tts.returncode == 0, tts.stderr
     calls = log.read_text(encoding="utf-8")
-    assert "stop asr-worker correction-worker" in calls
-    assert "up -d gateway tts-worker" in calls
+    assert "up -d gateway" in calls
+    assert "up -d gateway tts-worker" not in calls
+    assert "stop asr-worker correction-worker" not in calls
+    assert "client reconcile tts_only --wait" in resource_log.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_down_requests_supervisor_shutdown_before_compose_down(
+    tmp_path: Path,
+) -> None:
+    env, docker_log, _ = _accelerator_env(
+        tmp_path, gpu=True, runtime=True
+    )
+
+    result = subprocess.run(
+        [str(ROOT / "run.sh"), "--down"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "client shutdown" in Path(env["FAKE_RESOURCE_LOG"]).read_text(
+        encoding="utf-8"
+    )
+    assert "compose -f compose.yaml -f compose.gpu.yaml down" in (
+        docker_log.read_text(encoding="utf-8")
+    )
+
+
+def test_test_command_does_not_start_or_contact_resource_supervisor(
+    tmp_path: Path,
+) -> None:
+    env, _, _ = _accelerator_env(tmp_path, gpu=True, runtime=True)
+
+    result = subprocess.run(
+        [str(ROOT / "run.sh"), "--test"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert Path(env["FAKE_RESOURCE_LOG"]).read_text(encoding="utf-8") == ""
+
+
+def test_resource_environment_whitelist_excludes_command_injection() -> None:
+    script = (ROOT / "run.sh").read_text(encoding="utf-8")
+
+    for key in (
+        "AGENT_SPEAK_RESOURCE_POLICY",
+        "AGENT_SPEAK_RESOURCE_RESERVE_MB",
+        "AGENT_SPEAK_RESOURCE_ASR_BUDGET_MB",
+        "AGENT_SPEAK_RESOURCE_CORRECTION_BUDGET_MB",
+        "AGENT_SPEAK_RESOURCE_TTS_BUDGET_MB",
+        "AGENT_SPEAK_RESOURCE_DRAIN_TIMEOUT_SECONDS",
+        "AGENT_SPEAK_RESOURCE_START_TIMEOUT_SECONDS",
+        "AGENT_SPEAK_RESOURCE_OPERATION_TIMEOUT_SECONDS",
+        "AGENT_SPEAK_ASR_GPU_DEVICES",
+        "AGENT_SPEAK_CORRECTION_GPU_DEVICES",
+        "AGENT_SPEAK_TTS_GPU_DEVICES",
+    ):
+        assert key in script
+    assert "AGENT_SPEAK_RESOURCE_CLIENT_COMMAND" not in script
+    assert "AGENT_SPEAK_RESOURCE_SERVER_COMMAND" not in script
 
 
 def test_invalid_accelerator_mode_fails_before_compose_start(tmp_path: Path) -> None:
@@ -300,19 +402,8 @@ def test_status_reports_host_selection_and_actual_provider_device(tmp_path: Path
 
 
 def test_run_script_dispatches_expected_compose_commands(tmp_path: Path) -> None:
-    fake_bin = tmp_path / "bin"
-    fake_bin.mkdir()
-    log = tmp_path / "docker.log"
-    docker = fake_bin / "docker"
-    docker.write_text(
-        "#!/usr/bin/env bash\n"
-        "printf '%s\\n' \"$*\" >> \"$FAKE_DOCKER_LOG\"\n"
-        "if [[ \"$*\" == *'ps --all -q gateway'* ]]; then echo 'fake-container'; fi\n"
-        "if [[ \"$1\" == 'inspect' ]]; then echo 'healthy'; fi\n",
-        encoding="utf-8",
-    )
-    docker.chmod(0o755)
-    env = os.environ | {"PATH": f"{fake_bin}:{os.environ['PATH']}", "FAKE_DOCKER_LOG": str(log)}
+    env, log, _ = _accelerator_env(tmp_path, gpu=False, runtime=False)
+    env["AGENT_SPEAK_ACCELERATOR"] = "cpu"
 
     expectations = {
         "--build": ("compose -f compose.yaml build", "compose -f compose.yaml up -d"),

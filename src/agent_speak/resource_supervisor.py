@@ -727,6 +727,17 @@ class ComposeLifecycleAdapter:
         return sum(totals[index] for index in self.gpu_devices)
 
 
+def resolve_usable_memory_mb(
+    lifecycle: LifecycleAdapter,
+    effective_accelerator: str,
+) -> int:
+    if effective_accelerator == "cpu":
+        return 1
+    if effective_accelerator == "nvidia":
+        return lifecycle.usable_gpu_memory_mb()
+    raise ResourceSupervisorError("invalid_effective_accelerator")
+
+
 class ResourceUnixServer:
     socket_mode = 0o600
 
@@ -935,6 +946,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--compose-file", action="append", default=[])
     parser.add_argument(
+        "--effective-accelerator",
+        choices=["cpu", "nvidia"],
+        default="cpu",
+    )
+    parser.add_argument(
         "--policy",
         choices=[item.value for item in ResourcePolicy],
         default=ResourcePolicy.AUTO.value,
@@ -1005,7 +1021,10 @@ def main() -> None:
         compose_prefix.extend(["-f", compose_file])
     adapter = ComposeLifecycleAdapter(compose_prefix=compose_prefix)
     requested = ResourcePolicy(args.policy)
-    usable_mb = adapter.usable_gpu_memory_mb()
+    usable_mb = resolve_usable_memory_mb(
+        adapter,
+        args.effective_accelerator,
+    )
     budget = MemoryBudget(
         usable_mb=usable_mb,
         reserve_mb=int(os.getenv("AGENT_SPEAK_RESOURCE_RESERVE_MB", "1500")),

@@ -17,8 +17,8 @@ Usage: ./run.sh OPTION
   --build       Build the image, then start the gateway
   --models      Explicitly download and verify all pinned speech models
   --up          Start the ASR stack (alias for --asr-up)
-  --asr-up      Stop TTS inference, then start ASR/correction and the gateway
-  --tts-up      Stop ASR/correction, then start VoxCPM2 and the gateway (NVIDIA only)
+  --asr-up      Keep the gateway running and reconcile the ASR-only profile
+  --tts-up      Keep the gateway running and reconcile the TTS-only profile (NVIDIA only)
   --down        Stop and remove containers; preserve data, runtime, and models
   --down_up     Recreate the running stack (same behavior as --restart)
   --restart     Recreate the running stack (same behavior as --down_up)
@@ -54,7 +54,12 @@ load_compose_environment() {
       AGENT_SPEAK_PUBLISH_HOST|AGENT_SPEAK_PORT|AGENT_SPEAK_UID|AGENT_SPEAK_GID|\
       AGENT_SPEAK_AUDIO_GID|AGENT_SPEAK_ACCELERATOR|AGENT_SPEAK_ASR_CUDA_COMPUTE_TYPE|\
       AGENT_SPEAK_LOG_LEVEL|AGENT_SPEAK_LOG_MAX_BYTES|AGENT_SPEAK_LOG_BACKUP_COUNT|\
-      AGENT_SPEAK_GPU_MODE)
+      AGENT_SPEAK_RESOURCE_POLICY|AGENT_SPEAK_RESOURCE_RESERVE_MB|\
+      AGENT_SPEAK_RESOURCE_ASR_BUDGET_MB|AGENT_SPEAK_RESOURCE_CORRECTION_BUDGET_MB|\
+      AGENT_SPEAK_RESOURCE_TTS_BUDGET_MB|AGENT_SPEAK_RESOURCE_DRAIN_TIMEOUT_SECONDS|\
+      AGENT_SPEAK_RESOURCE_START_TIMEOUT_SECONDS|AGENT_SPEAK_RESOURCE_OPERATION_TIMEOUT_SECONDS|\
+      AGENT_SPEAK_ASR_GPU_DEVICES|AGENT_SPEAK_CORRECTION_GPU_DEVICES|\
+      AGENT_SPEAK_TTS_GPU_DEVICES)
         # Explicit process environment wins. Otherwise import only this strict
         # operational whitelist from Compose's safely parsed .env output.
         if [[ ! -v "$key" ]]; then
@@ -112,7 +117,9 @@ prepare_runtime() {
     "${AGENT_SPEAK_DATA_PATH:-./data}" \
     "${AGENT_SPEAK_RUNTIME_PATH:-./runtime}" \
     "${AGENT_SPEAK_RUNTIME_PATH:-./runtime}/asr-worker" \
+    "${AGENT_SPEAK_RUNTIME_PATH:-./runtime}/resource-control" \
     "${AGENT_SPEAK_MODELS_PATH:-./models}"
+  chmod 0700 "${AGENT_SPEAK_RUNTIME_PATH:-./runtime}/resource-control"
   export AGENT_SPEAK_UID=${AGENT_SPEAK_UID:-$(id -u)}
   export AGENT_SPEAK_GID=${AGENT_SPEAK_GID:-$(id -g)}
   if compgen -G '/dev/snd/controlC*' >/dev/null; then
@@ -151,12 +158,67 @@ wait_for_health() {
   return 1
 }
 
-start_asr_mode() {
-  export AGENT_SPEAK_GPU_MODE=asr
-  export COMPOSE_PROFILES=asr
-  compose --profile tts stop tts-worker
-  compose up -d gateway asr-worker correction-worker
+resource_runtime_dir() {
+  printf '%s/resource-control' "${AGENT_SPEAK_RUNTIME_PATH:-./runtime}"
+}
+
+resource_cli() {
+  PYTHONPATH="$ROOT_DIR/src" python3 -m agent_speak.resource_supervisor \
+    --socket "$(resource_runtime_dir)/control.sock" client "$@"
+}
+
+start_resource_supervisor() {
+  local control_dir pid_file log_file
+  local -a command
+  control_dir=$(resource_runtime_dir)
+  pid_file="$control_dir/supervisor.pid"
+  log_file="$control_dir/supervisor.log"
+  mkdir -p -- "$control_dir"
+  chmod 0700 "$control_dir"
+  if resource_cli ping >/dev/null 2>&1; then
+    return 0
+  fi
+
+  command=(
+    python3 -m agent_speak.resource_supervisor
+    --root "$ROOT_DIR"
+    --socket "$control_dir/control.sock"
+    --state "$control_dir/state.json"
+    --policy "${AGENT_SPEAK_RESOURCE_POLICY:-auto}"
+    --effective-accelerator "$ACCELERATOR_SELECTED"
+    --compose-file "$ROOT_DIR/compose.yaml"
+  )
+  if [[ "$ACCELERATOR_SELECTED" == nvidia ]]; then
+    command+=(--compose-file "$ROOT_DIR/compose.gpu.yaml")
+  fi
+  PYTHONPATH="$ROOT_DIR/src" nohup "${command[@]}" \
+    >>"$log_file" 2>&1 &
+  printf '%s\n' "$!" >"$pid_file"
+  chmod 0600 "$pid_file"
+
+  for ((attempt=1; attempt<=50; attempt++)); do
+    if resource_cli ping >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.1
+  done
+  echo "ERROR: resource supervisor failed to start; inspect $log_file" >&2
+  return 1
+}
+
+stop_resource_supervisor() {
+  resource_cli shutdown >/dev/null 2>&1 || true
+}
+
+start_control_plane() {
+  start_resource_supervisor
+  compose up -d gateway
   wait_for_health
+}
+
+start_asr_mode() {
+  start_control_plane
+  resource_cli reconcile asr_only --wait
 }
 
 start_tts_mode() {
@@ -164,11 +226,8 @@ start_tts_mode() {
     echo "ERROR: TTS GPU mode requires NVIDIA acceleration and the NVIDIA Docker runtime." >&2
     return 1
   fi
-  export AGENT_SPEAK_GPU_MODE=tts
-  export COMPOSE_PROFILES=tts
-  compose --profile asr stop asr-worker correction-worker
-  compose up -d gateway tts-worker
-  wait_for_health
+  start_control_plane
+  resource_cli reconcile tts_only --wait
 }
 
 if [[ "${1:---help}" == "--help" || "${1:---help}" == "-h" || "${1:---help}" == "help" ]]; then
@@ -193,8 +252,6 @@ case "$1" in
     compose --profile models run --rm --no-deps model-downloader --download-all
     ;;
   --build)
-    export AGENT_SPEAK_GPU_MODE=asr
-    export COMPOSE_PROFILES=asr
     compose build
     start_asr_mode
     ;;
@@ -205,17 +262,18 @@ case "$1" in
     start_tts_mode
     ;;
   --down)
+    stop_resource_supervisor
     compose down
     echo "GATEWAY_DOWN persistent_data_preserved=true"
     ;;
   --down_up|--restart)
+    stop_resource_supervisor
     compose down
     start_asr_mode
     ;;
   --rebuild)
+    stop_resource_supervisor
     compose down
-    export AGENT_SPEAK_GPU_MODE=asr
-    export COMPOSE_PROFILES=asr
     compose build --no-cache
     start_asr_mode
     ;;

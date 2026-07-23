@@ -12,6 +12,7 @@ from agent_speak.resource_supervisor import (
     ResourceSupervisor,
     ResourceSupervisorError,
     ResourceUnixServer,
+    resolve_usable_memory_mb,
 )
 from agent_speak.resource_types import (
     OperationPhase,
@@ -258,3 +259,10 @@ def test_compose_adapter_uses_fixed_argument_arrays_and_parses_gpu_memory() -> N
 
     with pytest.raises(ResourceSupervisorError, match="unsupported_workload"):
         adapter.start(Workload.AGENT)
+
+
+def test_cpu_supervisor_does_not_probe_nvidia_inventory() -> None:
+    lifecycle = FakeLifecycle(set())
+
+    assert resolve_usable_memory_mb(lifecycle, "cpu") == 1
+    assert lifecycle.calls == []

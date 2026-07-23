@@ -9,6 +9,7 @@ services:
     environment:
       AGENT_SPEAK_ACCELERATOR: nvidia
       AGENT_SPEAK_EFFECTIVE_ACCELERATOR: nvidia
+      NVIDIA_VISIBLE_DEVICES: "${AGENT_SPEAK_ASR_GPU_DEVICES:-all}"
     deploy:
       resources:
         reservations:
@@ -20,6 +21,8 @@ services:
   correction-worker:
     image: "${AGENT_SPEAK_LLAMA_CUDA_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-cuda}"
     runtime: nvidia
+    environment:
+      NVIDIA_VISIBLE_DEVICES: "${AGENT_SPEAK_CORRECTION_GPU_DEVICES:-all}"
     deploy:
       resources:
         reservations:
@@ -30,6 +33,8 @@ services:
 
   tts-worker:
     runtime: nvidia
+    environment:
+      NVIDIA_VISIBLE_DEVICES: "${AGENT_SPEAK_TTS_GPU_DEVICES:-all}"
     deploy:
       resources:
         reservations:
