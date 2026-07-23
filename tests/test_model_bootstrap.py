@@ -35,6 +35,7 @@ def test_manifest_pins_all_models_and_excludes_breeze_training_artifacts() -> No
         "qwen3-asr-1.7b",
         "qwen2.5-correction",
         "piper-zh-cn-huayan-medium",
+        "voxcpm2",
     }
     assert manifest["faster-whisper-small"].revision == "536b0662742c02347bc0e980a01041f333bce120"
     assert manifest["breeze-asr-25"].revision == "cffe7ccb404d025296a00758d0a33468bec3a9d0"
@@ -45,6 +46,24 @@ def test_manifest_pins_all_models_and_excludes_breeze_training_artifacts() -> No
     assert "optimizer.bin" not in breeze.allow_patterns
     assert "scheduler.bin" not in breeze.allow_patterns
     assert not any(pattern.endswith(".pt") for pattern in breeze.allow_patterns)
+
+
+def test_manifest_pins_voxcpm2_runtime_files() -> None:
+    entry = model_manifest()["voxcpm2"]
+
+    assert entry.repo_id == "openbmb/VoxCPM2"
+    assert entry.revision == "bffb3df5a29440629464e5e839f4d214c8714c3d"
+    assert entry.target == Path("tts/voxcpm2")
+    assert entry.estimated_bytes == 9_600_000_000
+    assert set(entry.required_files) == {
+        "audiovae.pth",
+        "config.json",
+        "model.safetensors",
+        "special_tokens_map.json",
+        "tokenization_voxcpm2.py",
+        "tokenizer.json",
+        "tokenizer_config.json",
+    }
 
 
 def test_cached_verified_models_perform_no_downloads(tmp_path: Path) -> None:
