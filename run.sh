@@ -16,7 +16,9 @@ Usage: ./run.sh OPTION
 
   --build       Build the image, then start the gateway
   --models      Explicitly download and verify all pinned speech models
-  --up          Start the gateway in the background
+  --up          Start the ASR stack (alias for --asr-up)
+  --asr-up      Stop TTS inference, then start ASR/correction and the gateway
+  --tts-up      Stop ASR/correction, then start VoxCPM2 and the gateway (NVIDIA only)
   --down        Stop and remove containers; preserve data, runtime, and models
   --down_up     Recreate the running stack (same behavior as --restart)
   --restart     Recreate the running stack (same behavior as --down_up)
@@ -24,7 +26,7 @@ Usage: ./run.sh OPTION
   --status      Show container and gateway health
   --logs [SERVICE]
                 Show the latest 100 log lines for all, gateway, asr-worker,
-                or correction-worker (default: all)
+                correction-worker, or tts-worker (default: all)
   --test        Run the complete test suite in an isolated container
   --help        Show this help
 
@@ -51,7 +53,8 @@ load_compose_environment() {
       AGENT_SPEAK_DATA_PATH|AGENT_SPEAK_RUNTIME_PATH|AGENT_SPEAK_MODELS_PATH|\
       AGENT_SPEAK_PUBLISH_HOST|AGENT_SPEAK_PORT|AGENT_SPEAK_UID|AGENT_SPEAK_GID|\
       AGENT_SPEAK_AUDIO_GID|AGENT_SPEAK_ACCELERATOR|AGENT_SPEAK_ASR_CUDA_COMPUTE_TYPE|\
-      AGENT_SPEAK_LOG_LEVEL|AGENT_SPEAK_LOG_MAX_BYTES|AGENT_SPEAK_LOG_BACKUP_COUNT)
+      AGENT_SPEAK_LOG_LEVEL|AGENT_SPEAK_LOG_MAX_BYTES|AGENT_SPEAK_LOG_BACKUP_COUNT|\
+      AGENT_SPEAK_GPU_MODE)
         # Explicit process environment wins. Otherwise import only this strict
         # operational whitelist from Compose's safely parsed .env output.
         if [[ ! -v "$key" ]]; then
@@ -132,7 +135,7 @@ wait_for_health() {
     if [[ -n "$container_id" ]]; then
       health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container_id" 2>/dev/null || true)
       if [[ "$health" == "healthy" ]]; then
-        echo "GATEWAY_READY web=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765} realtime=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/asr_realtime docs=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/docs"
+        echo "GATEWAY_READY web=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765} realtime=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/asr_realtime tts_clone=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/tts_clone_test docs=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/docs"
         return 0
       fi
       if [[ "$health" == "unhealthy" || "$health" == "exited" ]]; then
@@ -146,6 +149,26 @@ wait_for_health() {
   compose logs --tail 80 gateway >&2 || true
   echo "ERROR: gateway health timeout" >&2
   return 1
+}
+
+start_asr_mode() {
+  export AGENT_SPEAK_GPU_MODE=asr
+  export COMPOSE_PROFILES=asr
+  compose --profile tts stop tts-worker
+  compose up -d gateway asr-worker correction-worker
+  wait_for_health
+}
+
+start_tts_mode() {
+  if [[ "$ACCELERATOR_SELECTED" != nvidia ]]; then
+    echo "ERROR: TTS GPU mode requires NVIDIA acceleration and the NVIDIA Docker runtime." >&2
+    return 1
+  fi
+  export AGENT_SPEAK_GPU_MODE=tts
+  export COMPOSE_PROFILES=tts
+  compose --profile asr stop asr-worker correction-worker
+  compose up -d gateway tts-worker
+  wait_for_health
 }
 
 if [[ "${1:---help}" == "--help" || "${1:---help}" == "-h" || "${1:---help}" == "help" ]]; then
@@ -170,13 +193,16 @@ case "$1" in
     compose --profile models run --rm --no-deps model-downloader --download-all
     ;;
   --build)
+    export AGENT_SPEAK_GPU_MODE=asr
+    export COMPOSE_PROFILES=asr
     compose build
-    compose up -d
-    wait_for_health
+    start_asr_mode
     ;;
-  --up)
-    compose up -d
-    wait_for_health
+  --up|--asr-up)
+    start_asr_mode
+    ;;
+  --tts-up)
+    start_tts_mode
     ;;
   --down)
     compose down
@@ -184,14 +210,14 @@ case "$1" in
     ;;
   --down_up|--restart)
     compose down
-    compose up -d
-    wait_for_health
+    start_asr_mode
     ;;
   --rebuild)
     compose down
+    export AGENT_SPEAK_GPU_MODE=asr
+    export COMPOSE_PROFILES=asr
     compose build --no-cache
-    compose up -d
-    wait_for_health
+    start_asr_mode
     ;;
   --status)
     compose ps
@@ -229,20 +255,30 @@ print(next(item["device"] for item in payload["providers"] if item["stage"] == "
     if [[ -z "$correction_device" ]]; then
       correction_device=unknown
     fi
-    echo "STATUS_${health^^} web=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765} realtime=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/asr_realtime docs=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/docs capture=$capture playback=$playback accelerator=$ACCELERATOR_SELECTED asr_device=$asr_device correction_device=$correction_device"
+    gpu_mode=$(compose exec -T gateway python -c '
+import json
+import urllib.request
+payload = json.load(urllib.request.urlopen("http://127.0.0.1:8765/api/v1/tts-clone/status", timeout=3))
+print(payload["gpu_mode"])
+' 2>/dev/null || printf '%s' "${AGENT_SPEAK_GPU_MODE:-asr}")
+    if [[ -z "$gpu_mode" ]]; then
+      gpu_mode=${AGENT_SPEAK_GPU_MODE:-asr}
+    fi
+    echo "STATUS_${health^^} web=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765} realtime=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/asr_realtime tts_clone=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/tts_clone_test docs=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/docs capture=$capture playback=$playback accelerator=$ACCELERATOR_SELECTED gpu_mode=$gpu_mode asr_device=$asr_device correction_device=$correction_device"
     [[ "$health" == "healthy" ]]
     ;;
   --logs)
     logs_target=${2:-all}
+    export COMPOSE_PROFILES=asr,tts
     case "$logs_target" in
       all)
-        compose logs --tail 100 gateway asr-worker correction-worker
+        compose logs --tail 100 gateway asr-worker correction-worker tts-worker
         ;;
-      gateway|asr-worker|correction-worker)
+      gateway|asr-worker|correction-worker|tts-worker)
         compose logs --tail 100 "$logs_target"
         ;;
       *)
-        echo "ERROR: logs target must be all, gateway, asr-worker, or correction-worker" >&2
+        echo "ERROR: logs target must be all, gateway, asr-worker, correction-worker, or tts-worker" >&2
         exit 2
         ;;
     esac

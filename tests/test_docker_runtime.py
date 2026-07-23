@@ -66,6 +66,31 @@ def test_realtime_workers_are_internal_and_gpu_override_targets_inference_only()
     assert '"torch>=2.6,<2.8"' in pyproject
 
 
+def test_tts_worker_is_private_python312_vllm_omni() -> None:
+    compose = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    worker = compose["services"]["tts-worker"]
+
+    assert worker["profiles"] == ["tts"]
+    assert worker["build"]["target"] == "tts-runtime"
+    assert "ports" not in worker
+    assert "devices" not in worker
+    assert "/var/run/docker.sock" not in (ROOT / "compose.yaml").read_text(encoding="utf-8")
+    assert "FROM python:3.12-slim-bookworm AS tts-runtime" in dockerfile
+    assert "vllm==0.24.0" in dockerfile
+    assert "b9e9d236c3f78afd405119a5b686ebebeeb53984" in dockerfile
+
+
+def test_run_script_exposes_mutually_exclusive_gpu_modes() -> None:
+    script = (ROOT / "run.sh").read_text(encoding="utf-8")
+
+    assert "--asr-up" in script
+    assert "--tts-up" in script
+    assert "stop tts-worker" in script
+    assert "stop asr-worker correction-worker" in script
+    assert "/var/run/docker.sock" not in script
+
+
 def test_test_services_have_no_audio_gpu_models_or_network() -> None:
     config = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))
     for name in ("gateway-test", "frontend-test"):
@@ -94,7 +119,7 @@ def test_root_run_script_exposes_single_docker_operator_interface() -> None:
     subprocess.run(["bash", "-n", str(script)], check=True)
 
     help_result = subprocess.run([str(script), "--help"], cwd=ROOT, capture_output=True, text=True, check=True)
-    for option in ("--models", "--build", "--up", "--down", "--down_up", "--restart", "--rebuild", "--status", "--logs", "--test", "--help"):
+    for option in ("--models", "--build", "--up", "--asr-up", "--tts-up", "--down", "--down_up", "--restart", "--rebuild", "--status", "--logs", "--test", "--help"):
         assert option in help_result.stdout
     assert "docker compose" in source
     assert "/dev/snd/controlC*" in source
@@ -196,6 +221,53 @@ def test_strict_nvidia_mode_fails_before_compose_start(tmp_path: Path) -> None:
     assert " up -d" not in log.read_text(encoding="utf-8")
 
 
+def test_cpu_tts_mode_fails_before_compose_start(tmp_path: Path) -> None:
+    env, log, _ = _accelerator_env(tmp_path, gpu=True, runtime=True)
+    env["AGENT_SPEAK_ACCELERATOR"] = "cpu"
+
+    result = subprocess.run(
+        [str(ROOT / "run.sh"), "--tts-up"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "requires NVIDIA" in result.stderr
+    assert " up -d" not in log.read_text(encoding="utf-8")
+
+
+def test_asr_and_tts_modes_start_only_their_inference_workers(tmp_path: Path) -> None:
+    env, log, _ = _accelerator_env(tmp_path, gpu=True, runtime=True)
+
+    asr = subprocess.run(
+        [str(ROOT / "run.sh"), "--asr-up"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert asr.returncode == 0, asr.stderr
+    calls = log.read_text(encoding="utf-8")
+    assert "stop tts-worker" in calls
+    assert "up -d gateway asr-worker correction-worker" in calls
+    assert "tts-worker" not in calls.split("up -d", 1)[1]
+
+    log.write_text("", encoding="utf-8")
+    tts = subprocess.run(
+        [str(ROOT / "run.sh"), "--tts-up"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert tts.returncode == 0, tts.stderr
+    calls = log.read_text(encoding="utf-8")
+    assert "stop asr-worker correction-worker" in calls
+    assert "up -d gateway tts-worker" in calls
+
+
 def test_invalid_accelerator_mode_fails_before_compose_start(tmp_path: Path) -> None:
     env, log, _ = _accelerator_env(tmp_path, gpu=True, runtime=True)
     env["AGENT_SPEAK_ACCELERATOR"] = "rocm"
@@ -264,6 +336,17 @@ def test_run_script_dispatches_expected_compose_commands(tmp_path: Path) -> None
     assert selected.returncode == 0
     assert "logs --tail 100 asr-worker" in log.read_text(encoding="utf-8")
 
+    log.write_text("", encoding="utf-8")
+    tts_logs = subprocess.run(
+        [str(ROOT / "run.sh"), "--logs", "tts-worker"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert tts_logs.returncode == 0
+    assert "logs --tail 100 tts-worker" in log.read_text(encoding="utf-8")
+
     invalid = subprocess.run(
         [str(ROOT / "run.sh"), "--logs", "database"],
         cwd=ROOT,
@@ -272,7 +355,7 @@ def test_run_script_dispatches_expected_compose_commands(tmp_path: Path) -> None
         text=True,
     )
     assert invalid.returncode == 2
-    assert "logs target must be all, gateway, asr-worker, or correction-worker" in invalid.stderr
+    assert "tts-worker" in invalid.stderr
 
 
 def test_model_download_is_explicit_and_normal_start_is_verify_only() -> None:

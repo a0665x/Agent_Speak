@@ -68,3 +68,25 @@ RUN if [ "$AGENT_SPEAK_IMAGE_VARIANT" = "nvidia" ]; then \
     else \
       python -m pip install -e '.[asr]'; \
     fi
+
+FROM python:3.12-slim-bookworm AS tts-runtime
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    HOME=/app/models/home \
+    HF_HOME=/app/models/huggingface \
+    XDG_CACHE_HOME=/app/models/cache
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl git libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m pip install --upgrade pip setuptools wheel \
+    && python -m pip install "uv>=0.8,<1" \
+    && uv pip install --system "vllm==0.24.0" --torch-backend=auto \
+    && uv pip install --system \
+      "vllm-omni @ git+https://github.com/vllm-project/vllm-omni.git@b9e9d236c3f78afd405119a5b686ebebeeb53984"
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=300s --retries=30 \
+  CMD ["curl", "-fsS", "http://127.0.0.1:8000/health"]
