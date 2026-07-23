@@ -20,6 +20,13 @@ import {
 import { deriveModelPresentation, type ModelLifecycle } from './modelPresentation';
 import { SUPPORTED_LOCALES, useI18n, type Locale } from './i18n';
 import { ParticleField } from './components/ParticleField';
+import { ResourceReset } from './components/ResourceReset';
+import {
+  ResourceApiError,
+  resetResource,
+  waitForResourceOperation,
+  type ResourcePhase,
+} from './resources';
 import {
   defaultSpeechLanguage,
   readSpeechLanguage,
@@ -54,6 +61,10 @@ export function App({ forceReducedMotion = false }: AppProps) {
   const [asrModel, setAsrModel] = useState<ASRModelId>('qwen3-asr-1.7b');
   const [correctionModel, setCorrectionModel] = useState<CorrectionModelId>('qwen2.5-correction');
   const [switchingModels, setSwitchingModels] = useState(false);
+  const [resourceBusy, setResourceBusy] = useState(false);
+  const [resourcePhase, setResourcePhase] = useState<ResourcePhase | null>(null);
+  const [resourceError, setResourceError] = useState('');
+  const [resourceHint, setResourceHint] = useState<string | null>(null);
   const [inference, setInference] = useState<InferenceDetails>({
     vad: 'unknown', asr: 'unknown', asrDevice: 'unknown', correction: 'unknown', correctionDevice: 'unknown'
   });
@@ -74,6 +85,32 @@ export function App({ forceReducedMotion = false }: AppProps) {
   const modelStatusText = modelPresentation
     ? (modelPresentation.switching ? t('models.switching') : modelStateLabels[modelPresentation.lifecycle])
     : '';
+  const resourcePhaseLabels: Record<ResourcePhase, string> = {
+    queued: t('resources.phase.queued'),
+    draining: t('resources.phase.draining'),
+    releasing: t('resources.phase.releasing'),
+    starting: t('resources.phase.starting'),
+    warming: t('resources.phase.warming'),
+    ready: t('resources.success'),
+    failed: t('resources.phase.failed'),
+    rolled_back: t('resources.phase.rolledBack'),
+    cancelled: t('resources.phase.cancelled'),
+  };
+
+  const refreshCapabilities = async () => {
+    const response = await fetch('/api/v1/capabilities');
+    if (!response.ok) throw new Error(t('resources.failed'));
+    const payload = await response.json();
+    const providers = payload.providers as Array<{ stage: string; name: string; device: string }>;
+    const provider = (stage: string) => providers.find(item => item.stage === stage);
+    setInference({
+      vad: provider('vad')?.name ?? 'unknown',
+      asr: provider('asr')?.name ?? 'unknown',
+      asrDevice: provider('asr')?.device ?? 'unknown',
+      correction: provider('correction')?.name ?? 'unknown',
+      correctionDevice: provider('correction')?.device ?? 'unknown'
+    });
+  };
 
   useEffect(() => {
     const client = new RealtimeClient({ onEvent: event => {
@@ -86,17 +123,7 @@ export function App({ forceReducedMotion = false }: AppProps) {
       if (event.type === 'pipeline.error') setError(String(event.data.message ?? 'Realtime pipeline error'));
     } });
     clientRef.current = client;
-    void fetch('/api/v1/capabilities').then(response => response.json()).then(payload => {
-      const providers = payload.providers as Array<{ stage: string; name: string; device: string }>;
-      const provider = (stage: string) => providers.find(item => item.stage === stage);
-      setInference({
-        vad: provider('vad')?.name ?? 'unknown',
-        asr: provider('asr')?.name ?? 'unknown',
-        asrDevice: provider('asr')?.device ?? 'unknown',
-        correction: provider('correction')?.name ?? 'unknown',
-        correctionDevice: provider('correction')?.device ?? 'unknown'
-      });
-    }).catch(() => undefined);
+    void refreshCapabilities().catch(() => undefined);
     void fetchModelCatalog().then(catalog => {
       setModelCatalog(catalog);
       setAsrModel(catalog.active.requested_asr_model ?? catalog.active.asr_model ?? 'qwen3-asr-1.7b');
@@ -173,7 +200,7 @@ export function App({ forceReducedMotion = false }: AppProps) {
   };
 
   const changeModels = async (nextAsr: ASRModelId, nextCorrection: CorrectionModelId) => {
-    if (switchingModels || (nextAsr === asrModel && nextCorrection === correctionModel)) return;
+    if (switchingModels || resourceBusy || (nextAsr === asrModel && nextCorrection === correctionModel)) return;
     const resume = active && gate.ready;
     const previousAsr = asrModel;
     const previousCorrection = correctionModel;
@@ -224,6 +251,51 @@ export function App({ forceReducedMotion = false }: AppProps) {
     }
   };
 
+  const resetResources = async () => {
+    if (resourceBusy) return;
+    setResourceBusy(true);
+    setResourceError('');
+    setResourceHint(null);
+    try {
+      if (active) {
+        await clientRef.current?.stop('resource-reset');
+        setActive(false);
+      }
+      dispatch({ type: 'client.model_switched' });
+      const accepted = await resetResource('asr');
+      setResourcePhase(accepted.phase);
+      const result = await waitForResourceOperation(accepted.id, {
+        onPhase: phase => {
+          setResourcePhase(phase);
+          setResourceError('');
+        },
+        onReconnect: () => setResourceError(t('resources.reconnecting')),
+      });
+      if (result.phase !== 'ready') {
+        setResourceHint(result.operator_hint);
+        throw new ResourceApiError(
+          result.error_code ?? 'resource_operation_failed',
+          503,
+          t('resources.failed'),
+          true,
+          result.operator_hint,
+        );
+      }
+      const catalog = await fetchModelCatalog();
+      setModelCatalog(catalog);
+      setAsrModel(catalog.active.requested_asr_model ?? catalog.active.asr_model ?? 'qwen3-asr-1.7b');
+      setCorrectionModel(catalog.active.correction_model);
+      await refreshCapabilities();
+    } catch (cause) {
+      if (cause instanceof ResourceApiError) {
+        setResourceHint(cause.operatorHint);
+      }
+      setResourceError(t('resources.failed'));
+    } finally {
+      setResourceBusy(false);
+    }
+  };
+
   return (
     <>
       <a className="skip-link" href="#studio-main">{t('skip')}</a>
@@ -270,11 +342,11 @@ export function App({ forceReducedMotion = false }: AppProps) {
             onChange={changeSpeechLanguage}
           />
           <div className="actions">
-            <button className="secondary-button" type="button" onClick={checkDevices} disabled={busy || active}>
+            <button className="secondary-button" type="button" onClick={checkDevices} disabled={busy || resourceBusy || active}>
               <ShieldCheck aria-hidden="true" /> {busy && !active ? t('controls.checking') : t('controls.checkDevices')}
             </button>
             {!active ? (
-              <button className="primary-button" type="button" onClick={start} disabled={!gate.ready || busy} aria-label={t('controls.startAria')}>
+              <button className="primary-button" type="button" onClick={start} disabled={!gate.ready || busy || resourceBusy} aria-label={t('controls.startAria')}>
                 <Headphones aria-hidden="true" /> {t('controls.start')}
               </button>
             ) : (
@@ -291,12 +363,24 @@ export function App({ forceReducedMotion = false }: AppProps) {
           <AudioStage samples={envelope} state={state.stream} />
           <section className="worker-card" aria-label={t('models.aria')}>
             <div><p className="eyebrow">{t('models.eyebrow')}</p><span className={`worker-state${active ? ' live' : ''}`}>{active ? t('models.streaming') : t('models.standby')}</span></div>
+            <ResourceReset
+              label={t('resources.reset')}
+              phase={resourcePhase}
+              busy={resourceBusy}
+              confirmReset={() => !active || window.confirm(t('resources.confirmActive'))}
+              onReset={resetResources}
+              phaseLabel={phase => resourcePhaseLabels[phase]}
+              error={resourceError}
+              recoveryHint={resourceHint}
+              reducedMotion={reducedMotion}
+            />
             {modelCatalog && modelPresentation && (
               <ActiveModels
                 catalog={modelCatalog}
                 asrModel={asrModel}
                 correctionModel={correctionModel}
                 switching={switchingModels}
+                disabled={resourceBusy}
                 presentation={modelPresentation}
                 statusText={modelStatusText}
                 onChange={changeModels}

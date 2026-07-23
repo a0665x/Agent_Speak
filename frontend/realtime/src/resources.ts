@@ -32,6 +32,7 @@ type PollOptions = {
   intervalMs?: number;
   timeoutMs?: number;
   onPhase?: (phase: ResourcePhase) => void;
+  onReconnect?: () => void;
 };
 
 const PHASES = new Set<ResourcePhase>([
@@ -186,6 +187,7 @@ export async function waitForResourceOperation(
     intervalMs = 500,
     timeoutMs = 420_000,
     onPhase = () => undefined,
+    onReconnect = () => undefined,
   } = options;
   const deadline = Date.now() + timeoutMs;
   let delayMs = intervalMs;
@@ -203,6 +205,7 @@ export async function waitForResourceOperation(
       ) {
         throw cause;
       }
+      onReconnect();
       delayMs = Math.min(
         2_000,
         Math.max(intervalMs, delayMs * 2),

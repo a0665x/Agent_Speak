@@ -34,6 +34,17 @@ test('provides localized ASR demo purpose in all four languages', () => {
   }
 });
 
+test('localizes every resource reset state in all four languages', () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    expect(messages[locale]['resources.reset']).toBeTruthy();
+    expect(messages[locale]['resources.confirmActive']).toBeTruthy();
+    expect(messages[locale]['resources.phase.warming']).toBeTruthy();
+    expect(messages[locale]['resources.reconnecting']).toBeTruthy();
+    expect(messages[locale]['resources.failed']).toBeTruthy();
+    expect(messages[locale]['resources.recovery']).toBeTruthy();
+  }
+});
+
 test('localizes internal navigation links', () => {
   expect(localizedHref('/', 'ko')).toBe('/?lang=ko');
   expect(localizedHref('/docs?view=full', 'ja')).toBe('/docs?view=full&lang=ja');

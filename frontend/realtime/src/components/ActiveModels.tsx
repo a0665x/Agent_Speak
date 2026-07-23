@@ -7,13 +7,15 @@ type Props = {
   asrModel: ASRModelId;
   correctionModel: CorrectionModelId;
   switching: boolean;
+  disabled?: boolean;
   presentation: ModelPresentation;
   statusText: string;
   onChange: (asrModel: ASRModelId, correctionModel: CorrectionModelId) => void;
 };
 
-export function ActiveModels({ catalog, asrModel, correctionModel, switching, presentation, statusText, onChange }: Props) {
+export function ActiveModels({ catalog, asrModel, correctionModel, switching, disabled = false, presentation, statusText, onChange }: Props) {
   const { t } = useI18n();
+  const controlsDisabled = switching || disabled || presentation.lifecycle === 'unavailable';
 
   return (
     <div className="model-selectors">
@@ -22,7 +24,7 @@ export function ActiveModels({ catalog, asrModel, correctionModel, switching, pr
         <select
           aria-label={t('models.asrLabel')}
           value={asrModel}
-          disabled={switching}
+          disabled={controlsDisabled}
           onChange={event => onChange(event.target.value as ASRModelId, correctionModel)}
         >
           {catalog.asr.map(model => (
@@ -35,7 +37,7 @@ export function ActiveModels({ catalog, asrModel, correctionModel, switching, pr
         <select
           aria-label={t('models.correctionLabel')}
           value={correctionModel}
-          disabled={switching}
+          disabled={controlsDisabled}
           onChange={event => onChange(asrModel, event.target.value as CorrectionModelId)}
         >
           {catalog.correction.map(model => (

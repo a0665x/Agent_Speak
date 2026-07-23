@@ -10,6 +10,10 @@ const realtime = vi.hoisted(() => ({
   stop: vi.fn(),
   dispose: vi.fn(),
 }));
+const resources = vi.hoisted(() => ({
+  reset: vi.fn(),
+  wait: vi.fn(),
+}));
 
 vi.mock('./audio/realtimeClient', () => ({
   RealtimeClient: class {
@@ -19,6 +23,15 @@ vi.mock('./audio/realtimeClient', () => ({
     dispose = realtime.dispose;
   },
 }));
+
+vi.mock('./resources', async importOriginal => {
+  const actual = await importOriginal<typeof import('./resources')>();
+  return {
+    ...actual,
+    resetResource: resources.reset,
+    waitForResourceOperation: resources.wait,
+  };
+});
 
 beforeEach(() => {
   localStorage.clear();
@@ -31,6 +44,34 @@ beforeEach(() => {
   });
   realtime.start.mockResolvedValue(undefined);
   realtime.stop.mockResolvedValue(undefined);
+  resources.reset.mockResolvedValue({
+    id: 'op_0123456789abcdef',
+    action: 'reset',
+    target: 'asr',
+    phase: 'queued',
+    created_at: '2026-07-23T00:00:00Z',
+    updated_at: '2026-07-23T00:00:00Z',
+    error_code: null,
+    operator_hint: null,
+  });
+  resources.wait.mockImplementation(async (
+    _id: string,
+    options?: { onPhase?: (phase: string) => void },
+  ) => {
+    for (const phase of ['draining', 'starting', 'warming', 'ready']) {
+      options?.onPhase?.(phase);
+    }
+    return {
+      id: 'op_0123456789abcdef',
+      action: 'reset',
+      target: 'asr',
+      phase: 'ready',
+      created_at: '2026-07-23T00:00:00Z',
+      updated_at: '2026-07-23T00:00:01Z',
+      error_code: null,
+      operator_hint: null,
+    };
+  });
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     if (url === '/api/v1/capabilities') {
@@ -90,6 +131,83 @@ test('renders the disabled realtime start control', () => {
   expect(screen.getByRole('heading', { name: 'Realtime processing' })).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'ASR text relationships' })).toBeInTheDocument();
   expect(screen.getAllByRole('listitem')).toHaveLength(5);
+});
+
+test('resets ASR resources and restores the pinned model catalog', async () => {
+  renderApp();
+  const selector = await screen.findByRole('combobox', {
+    name: 'ASR model',
+  });
+
+  fireEvent.click(screen.getByRole('button', {
+    name: 'Reset ASR resources',
+  }));
+
+  await waitFor(() => expect(resources.reset).toHaveBeenCalledWith('asr'));
+  expect(resources.wait).toHaveBeenCalledWith(
+    'op_0123456789abcdef',
+    expect.objectContaining({ onPhase: expect.any(Function) }),
+  );
+  await waitFor(() => expect(selector).toBeEnabled());
+  expect(selector).toHaveValue('qwen3-asr-1.7b');
+  expect(within(selector).getAllByRole('option')).toHaveLength(3);
+  expect(realtime.checkDevices).not.toHaveBeenCalled();
+  expect(realtime.start).not.toHaveBeenCalled();
+});
+
+test('confirms and stops an active stream before resetting resources', async () => {
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  renderApp();
+  fireEvent.click(screen.getByRole('button', { name: 'Check devices' }));
+  await waitFor(() => expect(screen.getByRole('button', {
+    name: 'Start realtime listening',
+  })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', {
+    name: 'Start realtime listening',
+  }));
+  await waitFor(() => expect(realtime.start).toHaveBeenCalledTimes(1));
+
+  fireEvent.click(screen.getByRole('button', {
+    name: 'Reset ASR resources',
+  }));
+
+  await waitFor(() => expect(realtime.stop).toHaveBeenCalledWith(
+    'resource-reset',
+  ));
+  expect(confirm).toHaveBeenCalledWith(
+    'Listening is active. Stop it and reset ASR resources?',
+  );
+  expect(realtime.stop.mock.invocationCallOrder[0]).toBeLessThan(
+    resources.reset.mock.invocationCallOrder[0],
+  );
+  expect(realtime.start).toHaveBeenCalledTimes(1);
+  confirm.mockRestore();
+});
+
+test('keeps pinned choices visible and disabled when the worker is unavailable', async () => {
+  const unavailable = modelCatalog(null);
+  unavailable.active.state = 'unavailable';
+  unavailable.active.device = 'unavailable';
+  unavailable.active.error_code = 'asr_worker_unavailable';
+  unavailable.asr = unavailable.asr.map(item => ({ ...item, ready: false }));
+  vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url === '/api/v1/capabilities') {
+      return { ok: true, json: async () => ({ providers: [] }) } as Response;
+    }
+    if (url === '/api/v1/models') {
+      return { ok: true, json: async () => unavailable } as Response;
+    }
+    return { ok: true, json: async () => ({}) } as Response;
+  });
+
+  renderApp();
+
+  const selector = await screen.findByRole('combobox', {
+    name: 'ASR model',
+  });
+  expect(within(selector).getAllByRole('option')).toHaveLength(3);
+  expect(selector).toBeDisabled();
 });
 
 test('switches active models immediately without a submit button', async () => {
