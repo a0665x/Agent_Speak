@@ -8,10 +8,14 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { checkAudioDevices, watchDeviceChanges } from '../audio/deviceGate';
 import type { DeviceGateResult } from '../types';
+import { ResourceReset } from '../components/ResourceReset';
+import type { ResourceOperation, ResourcePhase } from '../resources';
 import {
   getCloneStatus,
+  resetResource,
   synthesizeSpeech,
   validateReference,
+  waitForResourceOperation,
 } from './api';
 import {
   createEphemeralAudioStore,
@@ -46,6 +50,12 @@ export type CloneStudioDependencies = {
   checkDevices(): Promise<DeviceGateResult>;
   validate(reference: Blob): Promise<ReferenceAssessment>;
   synthesize(request: SynthesisRequest): Promise<Blob>;
+  resetResource(workload: 'tts'): Promise<ResourceOperation>;
+  waitForResourceOperation(
+    id: string,
+    onPhase: (phase: ResourcePhase) => void,
+    onReconnect?: () => void,
+  ): Promise<ResourceOperation>;
   recorder: ReferenceRecorder;
   audioStore: EphemeralAudioStore;
   playback: PlaybackAnalyser;
@@ -59,6 +69,11 @@ function defaultDependencies(): CloneStudioDependencies {
     checkDevices: () => checkAudioDevices(mediaDevices),
     validate: reference => validateReference(reference),
     synthesize: request => synthesizeSpeech(request),
+    resetResource: workload => resetResource(workload),
+    waitForResourceOperation: (id, onPhase, onReconnect) => waitForResourceOperation(
+      id,
+      { onPhase, onReconnect },
+    ),
     recorder: createReferenceRecorder(),
     audioStore: createEphemeralAudioStore(),
     playback: createPlaybackAnalyser(),
@@ -114,11 +129,16 @@ export function App({ dependencies }: { dependencies?: CloneStudioDependencies }
   const [error, setError] = useState('');
   const [activity, setActivity] = useState(t.activityIdle);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [resourceBusy, setResourceBusy] = useState(false);
+  const [resourcePhase, setResourcePhase] = useState<ResourcePhase | null>(null);
+  const [resourceError, setResourceError] = useState('');
+  const [resourceHint, setResourceHint] = useState<string | null>(null);
   const recordingStarted = useRef(0);
+  const generationToken = useRef(0);
 
   const runtimeReady = Boolean(status?.ready);
   const devicesReady = microphone === 'ready' && speaker === 'ready';
-  const controlsReady = runtimeReady && devicesReady;
+  const controlsReady = runtimeReady && devicesReady && !resourceBusy;
 
   useEffect(() => {
     const media = window.matchMedia?.('(prefers-reduced-motion: reduce)');
@@ -287,6 +307,7 @@ export function App({ dependencies }: { dependencies?: CloneStudioDependencies }
     deps.audioStore.clearGenerated();
     setStudioState('queued');
     setActivity(t.activityGenerating);
+    const token = ++generationToken.current;
     await Promise.resolve();
     setStudioState('generating');
     try {
@@ -296,6 +317,7 @@ export function App({ dependencies }: { dependencies?: CloneStudioDependencies }
         useClone,
         reference: useClone ? deps.audioStore.reference : undefined,
       });
+      if (token !== generationToken.current) return;
       deps.audioStore.setGenerated(audio);
       deps.playback.setSource(deps.audioStore.generatedUrl ?? '');
       setGenerated(true);
@@ -328,6 +350,63 @@ export function App({ dependencies }: { dependencies?: CloneStudioDependencies }
     setActivity(t.activityAudioReady);
   };
 
+  const resetResources = async () => {
+    if (resourceBusy) return;
+    setResourceBusy(true);
+    setResourceError('');
+    setResourceHint(null);
+    generationToken.current += 1;
+    try {
+      if (recording) {
+        await deps.recorder.discard();
+        setRecording(false);
+      }
+      if (playing) {
+        deps.playback.stop();
+        setPlaying(false);
+      }
+      setAmplitude(0);
+      setVoiced(false);
+      setStudioState('unavailable');
+      const accepted = await deps.resetResource('tts');
+      setResourcePhase(accepted.phase);
+      const result = await deps.waitForResourceOperation(
+        accepted.id,
+        phase => {
+          setResourcePhase(phase);
+          setResourceError('');
+        },
+        () => setResourceError(t.resourceReconnecting),
+      );
+      if (result.phase !== 'ready') {
+        setResourceHint(result.operator_hint);
+        throw new Error(t.resourceFailed);
+      }
+      let next: CloneStatus | undefined;
+      for (let attempt = 0; attempt < 120; attempt += 1) {
+        next = await deps.getStatus();
+        setStatus(next);
+        if (next.ready) break;
+        await new Promise(resolve => globalThis.setTimeout(resolve, 500));
+      }
+      if (!next?.ready) throw new Error(t.resourceFailed);
+      setResourcePhase('ready');
+      setStudioState('idle');
+      setActivity(t.resourceReady);
+    } catch (cause) {
+      const hint = cause && typeof cause === 'object'
+        && 'operatorHint' in cause
+        && typeof cause.operatorHint === 'string'
+        ? cause.operatorHint
+        : null;
+      setResourceHint(hint);
+      setResourceError(t.resourceFailed);
+      setStudioState('error');
+    } finally {
+      setResourceBusy(false);
+    }
+  };
+
   const orbLabel = t[ORB_LABELS[studioState]];
   const cueNames: Record<StyleCue, string> = {
     light_laugh: t.cueLightLaugh,
@@ -339,6 +418,21 @@ export function App({ dependencies }: { dependencies?: CloneStudioDependencies }
     soft: t.cueSoft,
     faster: t.cueFaster,
   };
+  const resourcePhaseLabels: Record<ResourcePhase, string> = {
+    queued: t.resourcePhaseQueued,
+    draining: t.resourcePhaseDraining,
+    releasing: t.resourcePhaseReleasing,
+    starting: t.resourcePhaseStarting,
+    warming: t.resourcePhaseWarming,
+    ready: t.resourceReady,
+    failed: t.resourcePhaseFailed,
+    rolled_back: t.resourcePhaseRolledBack,
+    cancelled: t.resourcePhaseCancelled,
+  };
+  const resourceActionActive = recording
+    || playing
+    || studioState === 'queued'
+    || studioState === 'generating';
 
   return (
     <LocaleContext.Provider value={{ locale, catalog: t }}>
@@ -370,13 +464,26 @@ export function App({ dependencies }: { dependencies?: CloneStudioDependencies }
             </div>
             <button
               className="button button--device"
-              disabled={microphone === 'checking'}
+              disabled={microphone === 'checking' || resourceBusy}
               onClick={checkDevices}
             >
               {microphone === 'checking' ? <RefreshCw className="spin" size={17} /> : <CheckCircle2 size={17} />}
               {microphone === 'checking' ? t.checkingDevices : t.checkDevices}
             </button>
           </section>
+          <ResourceReset
+            label={t.resourceReset}
+            phase={resourcePhase}
+            busy={resourceBusy}
+            confirmReset={() => !resourceActionActive || window.confirm(
+              t.resourceConfirmActive,
+            )}
+            onReset={resetResources}
+            phaseLabel={phase => resourcePhaseLabels[phase]}
+            error={resourceError}
+            recoveryHint={resourceHint}
+            reducedMotion={reducedMotion}
+          />
 
           <DeviceRuntimeGate
             microphone={microphone}

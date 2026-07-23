@@ -22,6 +22,7 @@ export type CloneStudioState =
 export type CloneStatus = {
   gpuMode: 'asr' | 'tts';
   accelerator: 'cpu' | 'nvidia';
+  resourcePolicy?: 'auto' | 'exclusive' | 'concurrent' | 'multi_gpu';
   state: CloneRuntimeState;
   model: 'voxcpm2';
   device: string;

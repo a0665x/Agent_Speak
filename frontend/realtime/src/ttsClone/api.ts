@@ -3,6 +3,10 @@ import type {
   ReferenceAssessment,
   SynthesisRequest,
 } from './types';
+export {
+  resetResource,
+  waitForResourceOperation,
+} from '../resources';
 
 type Fetcher = typeof fetch;
 
@@ -50,6 +54,7 @@ export async function getCloneStatus(
   const value = await response.json() as {
     gpu_mode: 'asr' | 'tts';
     accelerator: 'cpu' | 'nvidia';
+    resource_policy?: CloneStatus['resourcePolicy'];
     state: CloneStatus['state'];
     model: 'voxcpm2';
     device: string;
@@ -60,6 +65,7 @@ export async function getCloneStatus(
   return {
     gpuMode: value.gpu_mode,
     accelerator: value.accelerator,
+    resourcePolicy: value.resource_policy,
     state: value.state,
     model: value.model,
     device: value.device,

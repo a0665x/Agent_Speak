@@ -15,4 +15,15 @@ describe('TTS clone localization', () => {
     expect(resolveLocale('', 'ja')).toBe('ja');
     expect(resolveLocale('?lang=invalid', 'ko')).toBe('ko');
   });
+
+  it('localizes every TTS resource reset state', () => {
+    for (const locale of ['en', 'zh-TW', 'ja', 'ko'] as const) {
+      expect(CATALOGS[locale].resourceReset).toBeTruthy();
+      expect(CATALOGS[locale].resourceConfirmActive).toBeTruthy();
+      expect(CATALOGS[locale].resourcePhaseWarming).toBeTruthy();
+      expect(CATALOGS[locale].resourceReconnecting).toBeTruthy();
+      expect(CATALOGS[locale].resourceFailed).toBeTruthy();
+      expect(CATALOGS[locale].resourceRecovery).toBeTruthy();
+    }
+  });
 });

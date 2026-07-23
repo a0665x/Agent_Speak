@@ -1,6 +1,22 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { App, type CloneStudioDependencies } from './App';
+import type { ResourceOperation } from '../resources';
+
+function resourceOperation(
+  phase: ResourceOperation['phase'],
+): ResourceOperation {
+  return {
+    id: 'op_0123456789abcdef',
+    action: 'reset',
+    target: 'tts',
+    phase,
+    created_at: '2026-07-23T00:00:00Z',
+    updated_at: '2026-07-23T00:00:01Z',
+    error_code: null,
+    operator_hint: null,
+  };
+}
 
 function readyDependencies(overrides: Partial<CloneStudioDependencies> = {}): CloneStudioDependencies {
   let generated: Blob | undefined;
@@ -28,6 +44,16 @@ function readyDependencies(overrides: Partial<CloneStudioDependencies> = {}): Cl
       quality: 'good',
     }),
     synthesize: vi.fn().mockResolvedValue(new Blob(['wav'], { type: 'audio/wav' })),
+    resetResource: vi.fn().mockResolvedValue(resourceOperation('queued')),
+    waitForResourceOperation: vi.fn().mockImplementation(async (
+      _id: string,
+      onPhase: (phase: ResourceOperation['phase']) => void,
+    ) => {
+      for (const phase of ['releasing', 'starting', 'warming', 'ready'] as const) {
+        onPhase(phase);
+      }
+      return resourceOperation('ready');
+    }),
     recorder: {
       state: 'idle',
       start: vi.fn().mockResolvedValue(undefined),
@@ -64,6 +90,71 @@ function readyDependencies(overrides: Partial<CloneStudioDependencies> = {}): Cl
 }
 
 describe('TTS Clone Studio', () => {
+  it('resets TTS and leaves audio actions explicit after readiness', async () => {
+    const loading = {
+      gpuMode: 'tts' as const,
+      accelerator: 'nvidia' as const,
+      state: 'loading' as const,
+      model: 'voxcpm2' as const,
+      device: 'cuda',
+      ready: false,
+    };
+    const ready = { ...loading, state: 'ready' as const, ready: true };
+    const getStatus = vi.fn()
+      .mockResolvedValueOnce(loading)
+      .mockResolvedValue(ready);
+    const deps = readyDependencies({ getStatus });
+    render(<App dependencies={deps} />);
+
+    fireEvent.click(screen.getByRole('button', {
+      name: 'Reset TTS resources',
+    }));
+
+    await waitFor(() => expect(deps.resetResource).toHaveBeenCalledWith(
+      'tts',
+    ));
+    await waitFor(() => expect(screen.getAllByText(
+      'TTS resources ready',
+    ).length).toBeGreaterThan(0));
+    expect(deps.checkDevices).not.toHaveBeenCalled();
+    expect(deps.synthesize).not.toHaveBeenCalled();
+    expect(deps.playback.play).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', {
+      name: 'Start recording',
+    })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Check devices' }));
+    await waitFor(() => expect(screen.getByRole('button', {
+      name: 'Start recording',
+    })).toBeEnabled());
+  });
+
+  it('confirms and discards active capture before resetting TTS', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const deps = readyDependencies();
+    render(<App dependencies={deps} />);
+    await waitFor(() => expect(deps.getStatus).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole('button', { name: 'Check devices' }));
+    await waitFor(() => expect(screen.getByRole('button', {
+      name: 'Start recording',
+    })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Start recording' }));
+    await waitFor(() => expect(deps.recorder.start).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole('button', {
+      name: 'Reset TTS resources',
+    }));
+
+    await waitFor(() => expect(deps.recorder.discard).toHaveBeenCalled());
+    expect(confirm).toHaveBeenCalledWith(
+      'An audio action is active. Stop it and reset TTS resources?',
+    );
+    expect(vi.mocked(deps.recorder.discard).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(deps.resetResource).mock.invocationCallOrder[0],
+    );
+    confirm.mockRestore();
+  });
+
   it('keeps Voice Clone and TTS Play freely switchable', async () => {
     render(<App dependencies={readyDependencies()} />);
 
