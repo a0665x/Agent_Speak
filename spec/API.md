@@ -12,13 +12,15 @@ The endpoint `complete` decision is informational metadata in this MVP. A full-t
 
 Stages: `POST /audio/vad`, `/audio/asr`, `/text/correct`, `/text/end-detect`, `/agent/respond`, `/tts/synthesize`.
 
+TTS Clone: `GET /tts-clone/status`, `POST /tts-clone/reference/validate`, and `POST /tts-clone/synthesize`. Status reports GPU mode, accelerator, worker/model state, and a bounded recovery hint. Validation accepts one raw PCM WAV and returns duration, RMS, peak, voiced ratio, and a bounded quality result without persistence. Synthesis is multipart with `text`, repeated allowlisted `style_cues`, `use_clone`, and an optional `reference`; success is a direct no-store 48 kHz PCM WAV with `X-Agent-Speak-Model: voxcpm2`, not an artifact URL. Clone mode requires a valid 5–30 second reference. Stable failures include `wrong_gpu_mode`, `gpu_unavailable`, `model_loading`, `reference_required`, `invalid_reference`, `invalid_style_cue`, `tts_worker_timeout`, `gpu_out_of_memory`, and `invalid_tts_audio`.
+
 Speakers: `POST/GET /speakers`, `GET/PATCH/DELETE /speakers/{id}`, `POST /speakers/{id}/samples`, `POST /speakers/match`.
 
 Speaker creates and updates use `{name,notes}` JSON. Enrollment/match use raw WAV. Every speaker response repeats that matching is convenience identification, not biometric authentication. Match scores are deterministic local acoustic similarity, not identity proof.
 
 Artifacts: `GET /artifacts/{name}`. Failures use `{error:{code,message,stage,retryable,details}}`. `/docs` is field-level truth.
 
-OpenAPI is also a beginner-facing multilingual contract. `/docs?lang=` selects complete Swagger presentation metadata for `en`, `zh-TW`, `ja`, or `ko`, and `/openapi.json?lang=` returns the corresponding machine-readable document; English is the default and invalid locale values fall back to English. The selector localizes the API title and description, six tag groups, every endpoint summary and description, parameters, request fields, response fields, examples, and WAV-format guidance. API paths, operation IDs, schema names, property names, and payloads do not change, so language selection is a documentation overlay rather than an API version.
+OpenAPI is also a beginner-facing multilingual contract. `/docs?lang=` selects complete Swagger presentation metadata for `en`, `zh-TW`, `ja`, or `ko`, and `/openapi.json?lang=` returns the corresponding machine-readable document; English is the default and invalid locale values fall back to English. The selector localizes the API title and description, tag groups including TTS Clone, every endpoint summary and description, parameters, request fields, response fields, examples, and WAV-format guidance. API paths, operation IDs, schema names, property names, and payloads do not change, so language selection is a documentation overlay rather than an API version.
 
 User-facing examples and the recommended beginner call order are maintained in [`../docs/OPENAPI_QUICKSTART_ZH_TW.md`](../docs/OPENAPI_QUICKSTART_ZH_TW.md). Keep its paths, payloads, response fields, Tailscale URL, and error table synchronized whenever the public API contract changes.
 

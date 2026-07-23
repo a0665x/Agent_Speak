@@ -28,6 +28,8 @@ _ALLOWED_FIELDS = {
     "method",
     "route",
     "state",
+    "worker_state",
+    "output_bytes",
 }
 
 

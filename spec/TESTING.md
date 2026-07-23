@@ -40,6 +40,12 @@ Localization regressions require English as the first paint and complete `en`, `
 
 Realtime speech-language regressions additionally cover the five public policies (`auto`, `en`, `zh-TW`, `ja`, `ko`), the compatible `zh-TW` default, immutable session/event serialization, propagation through realtime queues, `zh-TW → zh` and `auto → None` Whisper mappings, reuse of one loaded ASR model, language-specific endpoint/correction prompts and fallbacks, and next-session-only UI changes while listening. The durable contract and the 2026-07-21 verification baseline are recorded in [`references/lesson-20260721-session-language-routing.md`](references/lesson-20260721-session-language-routing.md).
 
-OpenAPI usability tests require all four localized API descriptions, six tag groups, endpoint input/output descriptions, parameter and response-field descriptions, text examples, and WAV request constraints while proving identical structural identifiers. Remote `/docs?lang=en` verification must still prove rendered Swagger operations, zero browser errors, and a valid non-empty `/openapi.json?lang=en`.
+OpenAPI usability tests require all four localized API descriptions, every tag group, endpoint input/output descriptions, parameter and response-field descriptions, text examples, and WAV request constraints while proving identical structural identifiers. Remote `/docs?lang=en` verification must still prove rendered Swagger operations, zero browser errors, and a valid non-empty `/openapi.json?lang=en`.
 
 When a sandbox prohibits all socket binding, ASGI HTTP/WebSocket integration remains executable but live Uvicorn, API smoke, and browser-daemon checks must be rerun on an unrestricted host; they must not be reported as passing from static checks alone.
+
+## VoxCPM2 clone acceptance
+
+Hardware-free tests cover pinned model files, byte/duration bounds, 20 ms reference assessment, allowlisted style cues, worker request/error normalization, direct-WAV API privacy, four-language Swagger, Compose isolation, GPU-mode switching, transient Blob cleanup, explicit Generate/Play separation, device gating, Orb semantics, reduced motion, and responsive routes.
+
+The GPU smoke uses a deterministic synthetic PCM WAV and validates a 48 kHz response without calling `getUserMedia`, `arecord`, `aplay`, or a physical speaker. Real-device acceptance is separate and requires the user to click **Check devices**, **Start recording**, **Stop & check**, and **Play**. Test screenshots must not grant microphone permission or start playback. After GPU smoke, restore ASR with `./run.sh --asr-up`.

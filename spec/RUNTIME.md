@@ -51,3 +51,9 @@ Troubleshooting order is:
 2. `./run.sh --logs asr-worker` for recognition/model failures, or `./run.sh --logs gateway` for API/WebSocket failures
 3. `curl -fsS http://127.0.0.1:8765/api/v1/models` to compare requested, active, and ready state
 4. `./run.sh --test` before changing behavior
+
+## Exclusive ASR and VoxCPM2 modes
+
+`./run.sh --up` is an alias for `./run.sh --asr-up`. ASR mode runs Gateway, ASR worker, and correction worker. `./run.sh --tts-up` requires a working NVIDIA Docker runtime, stops ASR/correction, then starts Gateway and the private VoxCPM2/vLLM-Omni worker. Restore the normal transcription stack with `./run.sh --asr-up`; neither transition deletes `data/`, `runtime/`, or `models/`.
+
+`./run.sh --models` prepares every pinned artifact, including roughly 9.6 GB for VoxCPM2, only after the shared preflight preserves an 8 GiB safety reserve. The 40 GB free-space observation made during design was a point-in-time preflight, not a promise of future capacity. Use `./run.sh --status` to see `gpu_mode`, and `./run.sh --logs tts-worker` for private worker startup/model failures. CPU-only systems report TTS unavailable rather than silently attempting a slow fallback.

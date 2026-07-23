@@ -244,7 +244,9 @@ def create_app(
         max_output_bytes=active.tts_clone_max_output_bytes,
         max_output_seconds=active.tts_clone_max_output_seconds,
     )
-    app.include_router(build_tts_clone_router(active, app.state.tts_clone))
+    app.include_router(
+        build_tts_clone_router(active, app.state.tts_clone, logger=diagnostic_logger)
+    )
     app.state.speakers = SpeakerStore(
         active.data_dir / "speakers.sqlite3",
         active.data_dir / "speaker_samples",
@@ -272,6 +274,7 @@ def create_app(
     @app.middleware("http")
     async def diagnostic_request_log(request: Request, call_next: Callable[[Request], Any]) -> Response:
         request_id = uuid.uuid4().hex
+        request.state.request_id = request_id
         started = time.perf_counter()
         response = await call_next(request)
         route = getattr(request.scope.get("route"), "path", "<unmatched>")

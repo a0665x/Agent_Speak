@@ -2,7 +2,7 @@
 
 ## Project guide
 
-`/` is a concise multilingual project guide. English is the default, with complete presentation catalogs for `en`, `zh-TW`, `ja`, and `ko`. Locale resolution is `query parameter → localStorage → English`; the top-right selector persists the choice and propagates it into links for API Explorer (`/docs`), ASR Realtime (`/asr_realtime`), and live System Status populated from `/api/v1/health` plus `/api/v1/capabilities`. The landing page uses only local assets and never asks for microphone permission, opens a WebSocket, invokes an Agent, or runs TTS.
+`/` is a concise multilingual project guide. English is the default, with complete presentation catalogs for `en`, `zh-TW`, `ja`, and `ko`. Locale resolution is `query parameter → localStorage → English`; the top-right selector persists the choice and propagates it into links for API Explorer (`/docs`), ASR Realtime (`/asr_realtime`), TTS Clone Test (`/tts_clone_test`), and live System Status populated from `/api/v1/health` plus `/api/v1/capabilities`. The landing page uses only local assets and never asks for microphone permission, opens a WebSocket, invokes an Agent, or runs TTS.
 
 The visual system uses graphite surfaces, restrained ice-blue/violet gradients, generated speech-core artwork, system typography, and immediate press feedback. Its hero message presents the product as a local voice layer that lets any Agent listen freely and naturally join a conversation. A full-viewport Canvas 2D particle field adds spatial depth while remaining near black at rest. Actual pointer movement injects energy along the interpolated path, making larger particles brighten and repel before springing back and fading over approximately four seconds; a stationary pointer does not refresh the trail. The canvas is decorative, ignores pointer events, and becomes a static low-luminance composition when reduced motion is requested. Controls and links have visible keyboard focus, minimum 44 px targets, reduced-motion/transparency and increased-contrast fallbacks, and responsive layouts without horizontal page scrolling.
 
@@ -23,6 +23,14 @@ The ASR surface reuses the portal particle engine with similarly cinematic densi
 The Active Models card uses immediate ASR and correction selects with no Submit button. Its lifecycle label exposes loading, warming, ready, rollback, failure, and device state. Switching while listening closes the current stream, discards its unfinished partial, activates one resident ASR provider, creates a new frozen session, and resumes only while the generic system-audio gate remains ready. Completed transcript rows and graph nodes remain visible. Live Audio renders three smooth, symmetric gradient signal ribbons from the real envelope instead of a single polygonal line; reduced motion removes pulse animation without hiding amplitude.
 
 This page stops at corrected transcription. It never invokes an Agent, TTS, Codex injection, or speaker output, and it does not reconnect or restart capture automatically.
+
+## TTS Clone Test
+
+`/tts_clone_test` is the four-language VoxCPM2 surface. It polls runtime status but does not request microphone permission on load. The explicit device check must see both a generic microphone and speaker before capture/generation controls open. CPU, wrong-mode, loading, and worker-failure states remain browsable and show operator recovery hints.
+
+Voice Clone and TTS Play are freely switchable tabs. Voice Clone keeps at most one valid 5–30 second PCM reference in browser memory; a valid new recording replaces it, while invalid capture leaves the old valid reference intact. This is zero-shot conditioning rather than training or LoRA. TTS Play can skip cloning, preserves text after failure, converts friendly cue identifiers into best-effort natural-language delivery instructions, and separates **Generate** from **Play** so synthesis never causes autoplay.
+
+The central 2D gradient Voice Orb reacts to real recording amplitude/VAD, deterministic validation/queue/generation phases, and real playback amplitude. Text/live regions duplicate every visual state. Completed playback settles into Complete; reduced motion removes continuous geometry movement. Reference/generated Blob URLs are revoked on replacement or page unload. Neither audio nor text is persisted by the page or Gateway.
 
 ## Codex CLI voice recorder
 

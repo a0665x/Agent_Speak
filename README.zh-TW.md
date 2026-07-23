@@ -25,13 +25,19 @@ OpenAPI：http://127.0.0.1:8765/docs?lang=zh-TW
 
 Realtime Studio：http://127.0.0.1:8765/asr_realtime?lang=zh-TW
 
+TTS Clone Test：http://127.0.0.1:8765/tts_clone_test?lang=zh-TW
+
 `/asr_realtime` 只做持續轉錄，不呼叫 Agent、TTS、Codex session injection 或喇叭播放；舊 `/realtime` 會相容轉址到新路徑。瀏覽器必須先取得明確操作並同時看見目前系統預設的輸入與輸出端點（找不到 `default` 時退回第一個有標籤的裝置），才會開放開始按鈕；看見 output 不代表已完成 physical playback。Raw PCM16 走 realtime WebSocket，MCP 維持低頻控制平面。
 
 Realtime Studio 的**語音語言**、**ASR 模型**與**校正模型**互相獨立。ASR 可選預設的 Qwen3-ASR 1.7B、Breeze-ASR-25 或 Faster Whisper Small；校正可選 Qwen2.5 Correction 或 Disabled / Raw ASR。下拉選單不需要 Submit：若正在聆聽，UI 會先安全停止、切換唯一常駐的 ASR 模型、建立選項已固定的新 session，並只在裝置閘門仍 Ready 時恢復。已完成的 transcript 與 graph 會保留，未完成 partial 會丟棄。
 
 VAD 期間會持續產生 partial 文字，因此當前文字可能更新。Qwen 校正只可一起修訂 previous sentence（前一句）與當前句，更早的句子會鎖定。靜音 900 ms 形成候選句尾，必要時延長到 1,800 ms hard endpoint；Qwen timeout、格式錯誤或改寫過度時保留 final ASR。前端不會自動重連。CPU 模式可用，但 realtime latency 與 GPU 效益依主機而異。
 
-`./run.sh --models` 會在保留至少 8 GiB 空間的前提下，明確且可重複地下載所有固定 revision 的推論檔案。下載採 atomic partial 目錄、驗證必要檔案、排除訓練 checkpoint，既有完整 cache 不會重抓。模型約需 10 GiB，另需暫存下載空間；一般 `--build` 與 `--up` 只驗證模型，不會自行開始數 GB 下載。Compose 預設映射 `/dev/snd`，私有狀態持久化於已排除版控的 `data/`、`runtime/`、`models/`。
+`./run.sh --models` 會在保留至少 8 GiB 空間的前提下，明確且可重複地下載所有固定 revision 的推論檔案。下載採 atomic partial 目錄、驗證必要檔案、排除訓練 checkpoint，既有完整 cache 不會重抓。VoxCPM2 會在既有 ASR／校正／語音檔案之外增加約 9.6 GB，還需預留暫存下載與 image layer 空間；一般 `--build` 與 `--up` 只驗證模型，不會自行開始數 GB 下載。Compose 預設映射 `/dev/snd`，私有狀態持久化於已排除版控的 `data/`、`runtime/`、`models/`。
+
+`/tts_clone_test` 有可自由切換的「語音克隆」與「TTS 播放」兩種模式。它只使用一段 5–30 秒、瀏覽器記憶體內的 zero-shot 參考，不是 LoRA 訓練。友善的語氣按鈕會轉成 best-effort 自然語言提示。瀏覽器只持有一份參考 Blob 與一份生成 Blob，替換或離頁即 revoke；Gateway 直接串流 WAV，不建立 artifact。只有按下「檢查裝置」才存取裝置、按下「開始錄音」才錄音、按下「播放」才會實體播放。
+
+目前 11 GB 級目標需要使用互斥的 NVIDIA TTS mode。`./run.sh --tts-up` 會先停掉 ASR／校正 workers 再載入 VoxCPM2；`./run.sh --asr-up` 會停掉 VoxCPM2 並恢復即時轉錄。只有 CPU 的主機可查看頁面與復原提示，但無法執行此 TTS 功能。
 
 ## 驗證安裝
 
@@ -50,16 +56,20 @@ VAD 期間會持續產生 partial 文字，因此當前文字可能更新。Qwen
 
 ```text
 ./run.sh --build      建置並啟動
-./run.sh --up         啟動
+./run.sh --up         啟動 ASR mode（等同 --asr-up）
+./run.sh --asr-up     停止 VoxCPM2；啟動 ASR／校正與 Gateway
+./run.sh --tts-up     停止 ASR／校正；啟動 VoxCPM2 與 Gateway（NVIDIA）
 ./run.sh --down       停止；保留資料與模型
 ./run.sh --down_up    重建執行狀態
 ./run.sh --restart    與 --down_up 相同
 ./run.sh --rebuild    不用快取重建並啟動
 ./run.sh --models     下載並驗證所有固定版本推論模型
 ./run.sh --status     顯示容器、API 與音訊狀態
-./run.sh --logs       顯示最新 Gateway、ASR 與校正 worker logs
+./run.sh --logs       顯示最新 Gateway、ASR、校正與 TTS worker logs
 ./run.sh --logs asr-worker
                       只顯示最新 ASR worker logs
+./run.sh --logs tts-worker
+                      只顯示私有 vLLM-Omni worker logs
 ./run.sh --test       在 Docker 執行完整測試
 ./run.sh --help       顯示指令說明
 ```

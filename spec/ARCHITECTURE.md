@@ -17,3 +17,9 @@ Realtime endpoint detection and correction can use the shared Qwen2.5 worker wit
 
 ## Audio and speakers
 The API bounds bytes before WAV parsing, validates PCM structure/rate/duration, normalizes mono/stereo samples with NumPy, and computes real RMS energy. Speaker enrollment stores private WAV samples under `data/speaker_samples/` and metadata/features in SQLite. The deterministic vector uses normalized spectral bands, zero-crossing rate, and spectral centroid. Cosine similarity is for local convenience only and is not authentication.
+
+## VoxCPM2 TTS clone boundary
+
+The Gateway remains the only public HTTP boundary. `/api/v1/tts-clone/*` calls a private `tts-worker` over the Compose network; that worker exposes no host port, Docker socket, `/dev/snd`, or persistent voice store. The worker runs pinned VoxCPM2 through pinned vLLM-Omni on Python 3.12 and receives one optional request-scoped WAV as a data URL.
+
+ASR/correction and VoxCPM2 are mutually exclusive GPU workloads. Operator commands stop the old inference workers before starting the new mode; the browser cannot control Docker. A clone reference is zero-shot conditioning, not LoRA or model training. Reference and generated audio remain bounded in process/browser memory and are never written as Gateway artifacts.

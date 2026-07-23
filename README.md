@@ -50,6 +50,8 @@ OpenAPI: http://127.0.0.1:8765/docs?lang=en
 
 Realtime Studio: http://127.0.0.1:8765/asr_realtime?lang=en
 
+TTS Clone Test: http://127.0.0.1:8765/tts_clone_test?lang=en
+
 `/asr_realtime` is continuous transcription only: it does not call the Agent stage, TTS, Codex injection, or speaker playback. The legacy `/realtime` path redirects there for compatibility. The browser enables Start only after an explicit check can see the current system-default input and output endpoints (with a first-labeled-device fallback); output visibility is not proof of physical playback. Raw PCM16 travels over the realtime WebSocket, while MCP remains a low-frequency control plane.
 
 Choose English, Traditional Chinese, Japanese, or Korean from any top-right presentation-language selector. The selection persists and follows navigation links. Swagger localizes endpoint titles, descriptions, parameters, request fields, and response fields while keeping paths and payload identifiers unchanged.
@@ -58,7 +60,11 @@ Realtime Studio has independent **Speech language**, **ASR model**, and **Correc
 
 VAD produces rolling partial text, so the current words may change. Qwen correction may revise the previous sentence together with the current sentence; older sentences lock. A silence candidate starts at 900 ms and may extend to the 1,800 ms hard endpoint. Invalid, late, or excessive Qwen edits fall back to final ASR text. The client does not reconnect automatically. CPU mode is functional, while realtime latency and GPU gains depend on the host.
 
-`./run.sh --models` explicitly and idempotently downloads all pinned inference artifacts after an 8 GiB free-space reserve check. The download is atomic, verifies exact revisions and required files, excludes training checkpoints, and leaves cached models untouched. Expect roughly 10 GiB of model data plus temporary download overhead. Normal `--build` and `--up` are verify-only and never begin a multi-gigabyte download. Compose maps `/dev/snd` by default and persists private state in ignored `data/`, `runtime/`, and `models/` directories.
+`./run.sh --models` explicitly and idempotently downloads all pinned inference artifacts after an 8 GiB free-space reserve check. The download is atomic, verifies exact revisions and required files, excludes training checkpoints, and leaves cached models untouched. VoxCPM2 adds about 9.6 GB to the existing ASR/correction/voice artifacts; allow temporary download and image-layer overhead in addition to the final model footprint. Normal `--build` and `--up` are verify-only and never begin a multi-gigabyte download. Compose maps `/dev/snd` by default and persists private state in ignored `data/`, `runtime/`, and `models/` directories.
+
+The `/tts_clone_test` page provides two freely switchable modes: one transient 5–30 second zero-shot voice reference, and TTS generation with or without that reference. This is conditioning, not LoRA training. Friendly delivery cues are converted to best-effort natural-language instructions. The browser owns one reference Blob and one generated Blob; replacement or page unload revokes them, while the Gateway streams the WAV response without creating an artifact. Device access begins only after **Check devices**, recording only after **Start recording**, and physical playback only after **Play**.
+
+VoxCPM2 requires the exclusive NVIDIA TTS mode on the current 11 GB-class target. `./run.sh --tts-up` stops ASR/correction workers before loading VoxCPM2; `./run.sh --asr-up` stops VoxCPM2 and restores realtime transcription. CPU-only hosts can inspect the page and recovery status but cannot run this TTS feature.
 
 ## Verify the installation
 
@@ -77,16 +83,20 @@ Expected success markers include `STATUS_HEALTHY`, `HEALTH_SMOKE_OK mode=docker`
 
 ```text
 ./run.sh --build      Build and start
-./run.sh --up         Start
+./run.sh --up         Start ASR mode (alias for --asr-up)
+./run.sh --asr-up     Stop VoxCPM2; start ASR/correction and Gateway
+./run.sh --tts-up     Stop ASR/correction; start VoxCPM2 and Gateway (NVIDIA)
 ./run.sh --down       Stop; preserve data and models
 ./run.sh --down_up    Recreate the stack
 ./run.sh --restart    Same as --down_up
 ./run.sh --rebuild    No-cache rebuild and start
 ./run.sh --models     Download and verify all pinned inference models
 ./run.sh --status     Container, API, and audio status
-./run.sh --logs       Latest Gateway, ASR, and correction logs
+./run.sh --logs       Latest Gateway, ASR, correction, and TTS logs
 ./run.sh --logs asr-worker
                       Latest ASR worker logs only
+./run.sh --logs tts-worker
+                      Latest private vLLM-Omni worker logs only
 ./run.sh --test       Full test suite in Docker
 ./run.sh --help       Command reference
 ```

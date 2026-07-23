@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import time
 from typing import Protocol
 
 from fastapi import APIRouter, Form, Request, Response, UploadFile
@@ -9,6 +11,7 @@ from fastapi import APIRouter, Form, Request, Response, UploadFile
 from .concurrency import run_sync
 from .config import Settings
 from .errors import PlatformError
+from .diagnostic_logging import log_event
 from .schemas import TTSCloneStatus, TTSReferenceAssessment
 from .tts_clone import ReferenceAssessment, assess_reference, compile_style_cues
 
@@ -136,6 +139,8 @@ def _assessment_model(result: ReferenceAssessment) -> TTSReferenceAssessment:
 def build_tts_clone_router(
     settings: Settings,
     provider: TTSCloneProvider,
+    *,
+    logger: logging.Logger | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/v1/tts-clone", tags=["TTS 克隆"])
 
@@ -211,40 +216,90 @@ def build_tts_clone_router(
         description="輸入：文字、語氣提示、是否使用克隆，以及選填參考錄音。輸出：不落地保存的 48 kHz WAV。",
     )
     async def synthesize(
+        request: Request,
         text: str = Form(min_length=1, max_length=20_000),
         style_cues: list[str] = Form(default=[]),
         use_clone: bool = Form(default=False),
         reference: UploadFile | None = None,
     ) -> Response:
-        await run_sync(_require_runtime, settings, provider)
-        reference_wav: bytes | None = None
-        if use_clone:
-            if reference is None:
-                raise PlatformError(
-                    "reference_required",
-                    "A valid voice reference is required when cloning is enabled",
-                    stage="tts_clone",
-                )
-            reference_wav = await _read_upload(reference, settings)
-            assessment = await run_sync(
-                assess_reference,
-                reference_wav,
-                max_bytes=settings.max_audio_bytes,
-                rms_threshold=settings.vad_rms_threshold,
+        started = time.perf_counter()
+        request_id = getattr(request.state, "request_id", None)
+        if logger is not None:
+            log_event(
+                logger,
+                logging.INFO,
+                "tts.clone.started",
+                request_id=request_id,
+                stage="tts",
+                model="voxcpm2",
+                mode=settings.gpu_mode,
+                worker_state="requested",
             )
-            if assessment.quality != "good":
-                raise PlatformError(
-                    "invalid_reference",
-                    "Voice reference does not meet the quality requirements",
-                    stage="tts_clone",
-                    details={"quality": assessment.quality},
+        try:
+            await run_sync(_require_runtime, settings, provider)
+            reference_wav: bytes | None = None
+            if use_clone:
+                if reference is None:
+                    raise PlatformError(
+                        "reference_required",
+                        "A valid voice reference is required when cloning is enabled",
+                        stage="tts_clone",
+                    )
+                reference_wav = await _read_upload(reference, settings)
+                assessment = await run_sync(
+                    assess_reference,
+                    reference_wav,
+                    max_bytes=settings.max_audio_bytes,
+                    rms_threshold=settings.vad_rms_threshold,
                 )
-        compiled = compile_style_cues(style_cues, text)
-        audio = await run_sync(
-            provider.synthesize,
-            text=compiled,
-            reference_wav=reference_wav,
-        )
+                if assessment.quality != "good":
+                    raise PlatformError(
+                        "invalid_reference",
+                        "Voice reference does not meet the quality requirements",
+                        stage="tts_clone",
+                        details={"quality": assessment.quality},
+                    )
+            compiled = compile_style_cues(style_cues, text)
+            audio = await run_sync(
+                provider.synthesize,
+                text=compiled,
+                reference_wav=reference_wav,
+            )
+        except PlatformError as exc:
+            if logger is not None:
+                severe = exc.code in {
+                    "gpu_out_of_memory",
+                    "tts_worker_error",
+                    "invalid_tts_audio",
+                    "tts_output_too_large",
+                }
+                log_event(
+                    logger,
+                    logging.ERROR if severe else logging.WARNING,
+                    "tts.clone.failed",
+                    request_id=request_id,
+                    stage="tts",
+                    model="voxcpm2",
+                    mode=settings.gpu_mode,
+                    worker_state="failed",
+                    duration_ms=round((time.perf_counter() - started) * 1_000, 3),
+                    error_code=exc.code,
+                    error=exc,
+                )
+            raise
+        if logger is not None:
+            log_event(
+                logger,
+                logging.INFO,
+                "tts.clone.completed",
+                request_id=request_id,
+                stage="tts",
+                model="voxcpm2",
+                mode=settings.gpu_mode,
+                worker_state="ready",
+                duration_ms=round((time.perf_counter() - started) * 1_000, 3),
+                output_bytes=len(audio),
+            )
         return Response(
             content=audio,
             media_type="audio/wav",

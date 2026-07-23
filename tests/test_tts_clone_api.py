@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 
 import httpx
 import pytest
@@ -175,3 +176,43 @@ async def test_clone_openapi_is_localized_in_all_four_languages(tmp_path: Path) 
             assert operation["summary"] == summary
             assert operation["tags"]
             assert "TTSCloneStatus" in schema["components"]["schemas"]
+
+
+@pytest.mark.anyio
+async def test_clone_lifecycle_logs_are_bounded_and_hide_text_audio(tmp_path: Path) -> None:
+    app = clone_app(tmp_path)
+    private_text = "identifiable private phrase 7c31"
+    private_audio = wav_bytes(seconds=10.0)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post(
+            "/api/v1/tts-clone/synthesize",
+            data={"text": private_text, "style_cues": "warm", "use_clone": "true"},
+            files={"reference": ("private.wav", private_audio, "audio/wav")},
+        )
+    assert response.status_code == 200
+    for handler in app.state.diagnostic_logger.handlers:
+        handler.flush()
+
+    events = [
+        json.loads(line)
+        for line in (tmp_path / "runtime" / "logs" / "gateway.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+        if '"tts.clone.' in line
+    ]
+    assert [event["event"] for event in events] == [
+        "tts.clone.started",
+        "tts.clone.completed",
+    ]
+    for event in events:
+        assert event["stage"] == "tts"
+        assert event["model"] == "voxcpm2"
+        assert "text" not in event
+        assert "audio" not in event
+        assert "device_label" not in event
+        assert "exception_message" not in event
+        rendered = json.dumps(event)
+        assert private_text not in rendered
+        assert private_audio[:32].hex() not in rendered
