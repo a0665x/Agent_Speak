@@ -41,6 +41,14 @@ test("provides localized live status wording", () => {
   assert.equal(translate("ko", "status.ready"), "Gateway와 모델 기능이 연결되었습니다");
 });
 
+test("provides localized TTS clone destination wording", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    assert.ok(translate(locale, "card.ttsClone.description").length > 8);
+  }
+  assert.match(translate("en", "card.ttsClone.description"), /VoxCPM2/);
+  assert.match(withLocale("/tts_clone_test", "zh-TW"), /lang=zh-TW/);
+});
+
 test("localizes the Agent listening hero message", () => {
   assert.equal(translate("en", "hero.title"), "Let your Agent listen freely,");
   assert.equal(translate("en", "hero.titleAccent"), "and join the conversation.");

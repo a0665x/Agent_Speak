@@ -63,17 +63,22 @@ h1 span { color: transparent; background: linear-gradient(115deg, #fff 6%, var(-
 .hero-visual figcaption strong { font-size: 13px; }
 .hero-visual figcaption small { margin-top: 3px; color: #8490a0; font-size: 10px; }
 .live-glyph { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.14); border-radius: 13px; background: rgba(12,15,22,.65); backdrop-filter: blur(14px); color: var(--ice); font-size: 24px; }
-.product-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
 .product-card { position: relative; min-height: 280px; padding: 24px; overflow: hidden; border: 1px solid var(--line); border-radius: 27px; background: var(--surface); backdrop-filter: blur(22px) saturate(145%); transition: transform 240ms cubic-bezier(.2,.8,.2,1), border-color 220ms ease, background 220ms ease; }
 a.product-card:hover { transform: translateY(-6px); border-color: rgba(189,211,255,.28); background: rgba(28,33,46,.72); }
 a.product-card:active { transform: scale(.98); transition-duration: 90ms; }
 .card-index { position: absolute; top: 22px; right: 22px; color: #667180; font: 11px ui-monospace, monospace; }
 .product-card strong { position: absolute; left: 24px; bottom: 62px; font-size: 24px; letter-spacing: -.035em; }
-.product-card > span:not(.card-index):not(.card-icon):not(.status-orbit) { position: absolute; left: 24px; bottom: 35px; color: #8b96a5; font-size: 12px; }
+.product-card > span:not(.card-index):not(.card-icon):not(.status-orbit):not(.clone-card-orb) { position: absolute; left: 24px; bottom: 35px; color: #8b96a5; font-size: 12px; }
 .product-card > i { position: absolute; right: 24px; bottom: 30px; color: var(--ice); font-style: normal; font-size: 18px; }
 .card-icon { width: 58px; height: 58px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.12); border-radius: 18px; color: var(--ice); background: rgba(255,255,255,.04); font: 600 18px ui-monospace, monospace; }
 .mini-wave { width: 118px; height: 52px; margin-top: 12px; overflow: visible; }
 .mini-wave path { fill: none; stroke: url(#none); stroke: var(--violet); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 8px rgba(199,173,255,.55)); }
+.clone-card-orb { position: absolute; top: 23px; left: 50%; width: 132px; height: 132px; translate: -50% 0; }
+.clone-card-orb::before { position: absolute; inset: 22%; content: ""; border-radius: 50%; background: radial-gradient(circle, rgba(146,181,255,.32), transparent 68%); filter: blur(14px); }
+.clone-card-orb svg { position: relative; width: 100%; height: 100%; overflow: visible; fill: none; stroke: rgba(188,211,255,.42); stroke-width: 1; filter: drop-shadow(0 0 10px rgba(130,164,240,.28)); }
+.clone-card-orb svg circle:first-child { stroke: rgba(203,219,255,.72); }
+.clone-card-orb svg path { stroke: #d7e4ff; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .status-orbit { width: 62px; height: 62px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.11); border-radius: 50%; }
 .status-orbit::before { content: ""; width: 32px; height: 32px; border: 1px solid rgba(188,212,255,.23); border-radius: 50%; }
 .status-orbit i { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: #7d8793; }
@@ -99,7 +104,6 @@ footer { min-height: 84px; display: flex; justify-content: space-between; align-
   .hero { grid-template-columns: 1fr; padding-top: 70px; }
   .hero-visual { min-height: 360px; }
   .product-grid { grid-template-columns: 1fr 1fr; }
-  .status-card { grid-column: 1 / -1; }
   .pipeline-preview { grid-template-columns: 1fr; }
 }
 

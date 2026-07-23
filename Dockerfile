@@ -48,6 +48,7 @@ FROM python-base AS runtime
 # .dockerignore excludes private state, models, credentials, caches, and local Agent data.
 COPY . .
 COPY --from=realtime-frontend-build /workspace/web/asr_realtime /app/web/asr_realtime
+COPY --from=realtime-frontend-build /workspace/web/tts_clone_test /app/web/tts_clone_test
 COPY docker/entrypoint.sh /usr/local/bin/agent-speak-entrypoint
 RUN chmod 0755 /usr/local/bin/agent-speak-entrypoint
 

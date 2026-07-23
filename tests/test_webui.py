@@ -26,6 +26,24 @@ async def test_asr_realtime_is_canonical_and_old_route_redirects(tmp_path: Path)
 
 
 @pytest.mark.anyio
+async def test_tts_clone_test_route_and_home_card_are_localized(tmp_path: Path) -> None:
+    app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        home = await client.get("/")
+        studio = await client.get("/tts_clone_test?lang=zh-TW")
+        worklet = await client.get("/tts_clone_test/pcm-capture.worklet.js")
+
+    assert 'data-route="/tts_clone_test"' in home.text
+    assert "TTS Clone Test" in home.text
+    assert studio.status_code == 200
+    assert '<div id="root"></div>' in studio.text
+    assert worklet.status_code == 200
+    assert worklet.headers["content-type"].startswith(("text/javascript", "application/javascript"))
+
+
+@pytest.mark.anyio
 async def test_legacy_realtime_worklet_redirects_to_canonical_path(tmp_path: Path) -> None:
     app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
     async with httpx.AsyncClient(
@@ -49,8 +67,8 @@ async def test_root_is_project_guide_without_capture_controls(tmp_path: Path) ->
     assert 'id="language-select"' in page
     assert "Make every step of speech visible." in page
     assert 'href="#main"' in page
-    assert all(target in page for target in ('data-route="/docs"', 'data-route="/asr_realtime"', 'id="system-status"'))
-    assert all(label in page for label in ("API Explorer", "ASR Realtime", "System Status"))
+    assert all(target in page for target in ('data-route="/docs"', 'data-route="/asr_realtime"', 'data-route="/tts_clone_test"', 'id="system-status"'))
+    assert all(label in page for label in ("API Explorer", "ASR Realtime", "TTS Clone Test", "System Status"))
     assert all(stage in page for stage in ("VAD", "Endpoint", "ASR", "Correction"))
     assert "getUserMedia" not in javascript
     assert "MediaRecorder" not in javascript

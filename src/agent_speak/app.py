@@ -260,6 +260,14 @@ def create_app(
             StaticFiles(directory=asr_realtime_assets),
             name="asr-realtime-assets",
         )
+    tts_clone_web_dir = web_dir / "tts_clone_test"
+    tts_clone_assets = tts_clone_web_dir / "assets"
+    if tts_clone_assets.is_dir():
+        app.mount(
+            "/tts_clone_test/assets",
+            StaticFiles(directory=tts_clone_assets),
+            name="tts-clone-assets",
+        )
 
     @app.middleware("http")
     async def diagnostic_request_log(request: Request, call_next: Callable[[Request], Any]) -> Response:
@@ -414,6 +422,31 @@ def create_app(
             content=(asr_realtime_web_dir / "pcm-capture.worklet.js").read_text(encoding="utf-8"),
             media_type="text/javascript",
         )
+
+    @app.get("/tts_clone_test", include_in_schema=False)
+    @app.get("/tts_clone_test/", include_in_schema=False)
+    async def tts_clone_studio() -> Response:
+        index = tts_clone_web_dir / "tts-clone.html"
+        if not index.is_file():
+            index = tts_clone_web_dir / "index.html"
+        if not index.is_file():
+            raise PlatformError(
+                "tts_clone_ui_unavailable",
+                "TTS Clone Studio has not been built",
+                status_code=503,
+            )
+        return Response(content=index.read_text(encoding="utf-8"), media_type="text/html")
+
+    @app.get("/tts_clone_test/pcm-capture.worklet.js", include_in_schema=False)
+    async def tts_clone_audio_worklet() -> Response:
+        worklet = tts_clone_web_dir / "pcm-capture.worklet.js"
+        if not worklet.is_file():
+            raise PlatformError(
+                "tts_clone_ui_unavailable",
+                "TTS Clone Studio has not been built",
+                status_code=503,
+            )
+        return Response(content=worklet.read_text(encoding="utf-8"), media_type="text/javascript")
 
     @app.get("/realtime", include_in_schema=False)
     async def legacy_realtime_studio() -> RedirectResponse:
