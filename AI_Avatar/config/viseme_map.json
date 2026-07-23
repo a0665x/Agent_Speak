@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "visemes": {
+    "sil": "closed",
+    "PP": "closed",
+    "FF": "teeth_smile",
+    "TH": "small_open",
+    "DD": "medium_open",
+    "kk": "wide_open",
+    "CH": "small_open",
+    "SS": "teeth_smile",
+    "nn": "tiny_mumble",
+    "RR": "small_open",
+    "aa": "wide_open",
+    "E": "narrow_e",
+    "ih": "small_open",
+    "oh": "round_o",
+    "ou": "round_o"
+  }
+}

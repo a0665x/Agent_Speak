@@ -1,0 +1,16 @@
+{
+  "states": [
+    "OFFLINE",
+    "BOOTING",
+    "IDLE",
+    "LISTENING",
+    "RECOGNIZING",
+    "THINKING",
+    "SPEAKING",
+    "SPEAKING_HAPPY",
+    "SLEEPING",
+    "SUCCESS",
+    "CONFUSED",
+    "ERROR"
+  ]
+}

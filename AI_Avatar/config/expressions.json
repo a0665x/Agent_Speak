@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "expressions": [
+    "neutral",
+    "happy",
+    "laughing",
+    "pouty",
+    "confused",
+    "surprised",
+    "shy",
+    "sleepy",
+    "sorry",
+    "error",
+    "success"
+  ]
+}

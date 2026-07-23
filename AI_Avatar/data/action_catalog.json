@@ -1,0 +1,24 @@
+{
+  "actions": [
+    "idle_loop",
+    "listening_loop",
+    "thinking_loop",
+    "speaking_neutral_loop",
+    "speaking_happy_loop",
+    "happy_once",
+    "laugh_once",
+    "pout_once",
+    "surprised_once",
+    "sorry_once",
+    "sleepy_doze_loop",
+    "head_nod_once",
+    "head_shake_once",
+    "ear_sway_loop",
+    "ear_twitch_once",
+    "paw_wave_once",
+    "point_left_once",
+    "point_right_once",
+    "hands_together_once",
+    "thumbs_up_once"
+  ]
+}

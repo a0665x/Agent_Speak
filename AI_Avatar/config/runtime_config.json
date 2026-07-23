@@ -1,0 +1,8 @@
+{
+  "preload_persistent_clips": true,
+  "prefer_format": "png_sequence",
+  "fallback_format": "webp",
+  "max_cached_clips": 12,
+  "crossfade_ms": 80,
+  "fixed_viewport": true
+}

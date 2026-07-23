@@ -1,0 +1,6 @@
+{"type": "avatar.state", "payload": {"state": "IDLE"}}
+{"type": "avatar.state", "payload": {"state": "LISTENING"}}
+{"type": "avatar.state", "payload": {"state": "THINKING"}}
+{"type": "avatar.state", "payload": {"state": "SPEAKING"}}
+{"type": "avatar.action", "payload": {"clip": "happy_once"}}
+{"type": "avatar.state", "payload": {"state": "IDLE"}}

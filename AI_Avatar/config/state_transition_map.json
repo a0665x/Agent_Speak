@@ -1,0 +1,38 @@
+{
+  "OFFLINE": {
+    "static": "error"
+  },
+  "BOOTING": {
+    "clip": "idle_loop"
+  },
+  "IDLE": {
+    "clip": "idle_loop"
+  },
+  "LISTENING": {
+    "clip": "listening_loop"
+  },
+  "RECOGNIZING": {
+    "clip": "thinking_loop"
+  },
+  "THINKING": {
+    "clip": "thinking_loop"
+  },
+  "SPEAKING": {
+    "clip": "speaking_neutral_loop"
+  },
+  "SPEAKING_HAPPY": {
+    "clip": "speaking_happy_loop"
+  },
+  "SLEEPING": {
+    "clip": "sleepy_doze_loop"
+  },
+  "SUCCESS": {
+    "once": "happy_once"
+  },
+  "CONFUSED": {
+    "once": "surprised_once"
+  },
+  "ERROR": {
+    "static": "error"
+  }
+}

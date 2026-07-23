@@ -1,0 +1,45 @@
+{
+  "version": "1.0",
+  "assets": [
+    {
+      "path": "assets/anchors/henry_anchor_turnaround.png",
+      "type": "reference"
+    },
+    {
+      "path": "assets/reference/henry_original_reference.png",
+      "type": "reference"
+    },
+    {
+      "path": "assets/sheets/01_loop_core_idle_listening_thinking.png",
+      "type": "source_sheet"
+    },
+    {
+      "path": "assets/sheets/02_speaking_loops.png",
+      "type": "source_sheet"
+    },
+    {
+      "path": "assets/sheets/03_reaction_happy_laugh.png",
+      "type": "source_sheet"
+    },
+    {
+      "path": "assets/sheets/04_gesture_keyframes.png",
+      "type": "source_sheet"
+    },
+    {
+      "path": "assets/sheets/05_mouth_viseme_assets.png",
+      "type": "source_sheet"
+    },
+    {
+      "path": "assets/sheets/06_main_states_grid.png",
+      "type": "source_sheet"
+    },
+    {
+      "path": "assets/sheets/07_head_ear_motion.png",
+      "type": "source_sheet"
+    },
+    {
+      "path": "assets/sheets/08_reaction_pout_surprised_sorry_sleepy.png",
+      "type": "source_sheet"
+    }
+  ]
+}
