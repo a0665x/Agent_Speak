@@ -57,3 +57,12 @@ Troubleshooting order is:
 `./run.sh --up` is an alias for `./run.sh --asr-up`. ASR mode runs Gateway, ASR worker, and correction worker. `./run.sh --tts-up` requires a working NVIDIA Docker runtime, stops ASR/correction, then starts Gateway and the private VoxCPM2/vLLM-Omni worker. Restore the normal transcription stack with `./run.sh --asr-up`; neither transition deletes `data/`, `runtime/`, or `models/`.
 
 `./run.sh --models` prepares every pinned artifact, including roughly 9.6 GB for VoxCPM2, only after the shared preflight preserves an 8 GiB safety reserve. The 40 GB free-space observation made during design was a point-in-time preflight, not a promise of future capacity. Use `./run.sh --status` to see `gpu_mode`, and `./run.sh --logs tts-worker` for private worker startup/model failures. CPU-only systems report TTS unavailable rather than silently attempting a slow fallback.
+
+The pinned TTS image installs `voxcpm==2.0.3` in addition to vLLM-Omni. On
+Turing-class NVIDIA GPUs such as SM 7.5, the worker uses FP16, a bounded 256 MiB
+KV cache, eager execution, and a writable executable Triton cache outside the
+`noexec` `/tmp` mount. A build-time, exact-source guarded adapter patch aligns
+the native VoxCPM2 and AudioVAE dtype boundaries with FP16; the image build
+fails closed if the pinned upstream source changes. Native vLLM INFO/access
+logging is disabled because it includes synthesis text. Warning and error
+records remain available through `./run.sh --logs tts-worker`.

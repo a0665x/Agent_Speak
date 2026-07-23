@@ -49,3 +49,10 @@ When a sandbox prohibits all socket binding, ASGI HTTP/WebSocket integration rem
 Hardware-free tests cover pinned model files, byte/duration bounds, 20 ms reference assessment, allowlisted style cues, worker request/error normalization, direct-WAV API privacy, four-language Swagger, Compose isolation, GPU-mode switching, transient Blob cleanup, explicit Generate/Play separation, device gating, Orb semantics, reduced motion, and responsive routes.
 
 The GPU smoke uses a deterministic synthetic PCM WAV and validates a 48 kHz response without calling `getUserMedia`, `arecord`, `aplay`, or a physical speaker. Real-device acceptance is separate and requires the user to click **Check devices**, **Start recording**, **Stop & check**, and **Play**. Test screenshots must not grant microphone permission or start playback. After GPU smoke, restore ASR with `./run.sh --asr-up`.
+
+Turing runtime acceptance additionally requires a real cold start to `ready`,
+one default-voice synthesis, one synthetic-reference clone synthesis, and
+48 kHz mono PCM validation for both outputs. Static regressions guard the
+256 MiB KV limit, executable Triton cache location, pinned VoxCPM dependency,
+fail-closed FP16 adapter patch, and suppression of upstream request/access INFO
+logs that would otherwise reveal synthesis text.

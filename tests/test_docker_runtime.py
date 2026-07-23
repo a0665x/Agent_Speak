@@ -77,8 +77,17 @@ def test_tts_worker_is_private_python312_vllm_omni() -> None:
     assert "devices" not in worker
     assert "/var/run/docker.sock" not in (ROOT / "compose.yaml").read_text(encoding="utf-8")
     assert "FROM python:3.12-slim-bookworm AS tts-runtime" in dockerfile
+    assert "build-essential" in dockerfile
     assert "vllm==0.24.0" in dockerfile
     assert "b9e9d236c3f78afd405119a5b686ebebeeb53984" in dockerfile
+    assert "voxcpm==2.0.3" in dockerfile
+    assert "--kv-cache-memory-bytes" in worker["command"]
+    assert "256M" in worker["command"]
+    assert "--disable-uvicorn-access-log" in worker["command"]
+    assert "--uvicorn-log-level" in worker["command"]
+    assert "warning" in worker["command"]
+    assert worker["environment"]["TRITON_CACHE_DIR"] == "/app/.triton-cache"
+    assert worker["environment"]["VLLM_LOGGING_LEVEL"] == "WARNING"
 
 
 def test_run_script_exposes_mutually_exclusive_gpu_modes() -> None:

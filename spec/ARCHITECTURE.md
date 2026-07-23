@@ -23,3 +23,11 @@ The API bounds bytes before WAV parsing, validates PCM structure/rate/duration, 
 The Gateway remains the only public HTTP boundary. `/api/v1/tts-clone/*` calls a private `tts-worker` over the Compose network; that worker exposes no host port, Docker socket, `/dev/snd`, or persistent voice store. The worker runs pinned VoxCPM2 through pinned vLLM-Omni on Python 3.12 and receives one optional request-scoped WAV as a data URL.
 
 ASR/correction and VoxCPM2 are mutually exclusive GPU workloads. Operator commands stop the old inference workers before starting the new mode; the browser cannot control Docker. A clone reference is zero-shot conditioning, not LoRA or model training. Reference and generated audio remain bounded in process/browser memory and are never written as Gateway artifacts.
+
+The TTS runtime owns a narrow compatibility layer for 11 GB Turing GPUs:
+bounded KV allocation, FP16-native and AudioVAE dtype alignment, and an
+executable Triton cache that does not weaken the `noexec` temporary filesystem.
+The adapter patch is guarded against the exact pinned vLLM-Omni source. The
+worker suppresses native request/access INFO logs so input text does not cross
+the provider privacy boundary; lifecycle failures remain visible at warning or
+error level.

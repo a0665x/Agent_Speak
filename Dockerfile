@@ -89,5 +89,15 @@ RUN python -m pip install --upgrade pip setuptools wheel \
     && uv pip install --system \
       "vllm-omni @ git+https://github.com/vllm-project/vllm-omni.git@b9e9d236c3f78afd405119a5b686ebebeeb53984"
 
+RUN uv pip install --system "voxcpm==2.0.3"
+
+COPY scripts/patch_vllm_omni_voxcpm2.py /tmp/patch_vllm_omni_voxcpm2.py
+RUN python /tmp/patch_vllm_omni_voxcpm2.py \
+    && rm /tmp/patch_vllm_omni_voxcpm2.py
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
 HEALTHCHECK --interval=10s --timeout=5s --start-period=300s --retries=30 \
   CMD ["curl", "-fsS", "http://127.0.0.1:8000/health"]

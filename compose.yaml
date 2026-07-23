@@ -118,14 +118,22 @@ services:
       - half
       - --gpu-memory-utilization
       - "0.85"
+      - --kv-cache-memory-bytes
+      - 256M
       - --max-num-seqs
       - "1"
       - --enforce-eager
+      - --disable-uvicorn-access-log
+      - --uvicorn-log-level
+      - warning
     environment:
       HOME: /tmp/home
       HF_HOME: /tmp/huggingface
       XDG_CACHE_HOME: /tmp/cache
       TMPDIR: /tmp
+      TRITON_CACHE_DIR: /app/.triton-cache
+      VLLM_USE_FLASHINFER_SAMPLER: "0"
+      VLLM_LOGGING_LEVEL: WARNING
     volumes:
       - ${AGENT_SPEAK_MODELS_PATH:-./models}:/app/models:ro
     tmpfs:
