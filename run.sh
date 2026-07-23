@@ -191,6 +191,7 @@ start_resource_supervisor() {
   if [[ "$ACCELERATOR_SELECTED" == nvidia ]]; then
     command+=(--compose-file "$ROOT_DIR/compose.gpu.yaml")
   fi
+  command+=(server)
   PYTHONPATH="$ROOT_DIR/src" nohup "${command[@]}" \
     >>"$log_file" 2>&1 &
   printf '%s\n' "$!" >"$pid_file"

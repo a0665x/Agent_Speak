@@ -95,6 +95,7 @@ def test_run_script_delegates_profiles_to_host_resource_supervisor() -> None:
 
     assert "--asr-up" in script
     assert "--tts-up" in script
+    assert "command+=(server)" in script
     assert "resource_cli reconcile asr_only --wait" in script
     assert "resource_cli reconcile tts_only --wait" in script
     assert "compose up -d gateway" in script
