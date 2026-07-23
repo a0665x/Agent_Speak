@@ -51,6 +51,15 @@ class Settings(BaseModel):
     voxcpm2_model_path: Path = Path("/app/models/tts/voxcpm2")
     tts_clone_max_output_bytes: int = Field(default=32 * 1024 * 1024, ge=44)
     tts_clone_max_output_seconds: float = Field(default=120.0, gt=0, le=300)
+    resource_policy: Literal["auto", "exclusive", "concurrent", "multi_gpu"] = "auto"
+    resource_socket_path: Path = Path("/app/runtime/resource-control/control.sock")
+    resource_reserve_mb: int = Field(default=1_500, gt=0, le=1_000_000)
+    resource_asr_budget_mb: int = Field(default=6_500, gt=0, le=1_000_000)
+    resource_correction_budget_mb: int = Field(default=1_000, gt=0, le=1_000_000)
+    resource_tts_budget_mb: int = Field(default=9_500, gt=0, le=1_000_000)
+    resource_drain_timeout_seconds: float = Field(default=10.0, gt=0, le=300)
+    resource_start_timeout_seconds: float = Field(default=300.0, gt=0, le=900)
+    resource_operation_timeout_seconds: float = Field(default=420.0, gt=0, le=1_800)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     log_max_bytes: int = Field(default=5 * 1024 * 1024, ge=1_024, le=100 * 1024 * 1024)
     log_backup_count: int = Field(default=5, ge=1, le=20)

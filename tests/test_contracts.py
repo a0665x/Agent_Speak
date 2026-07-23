@@ -23,6 +23,13 @@ def test_settings_load_typed_agent_speak_environment(monkeypatch: pytest.MonkeyP
     monkeypatch.setenv("AGENT_SPEAK_VOXCPM2_MODEL_PATH", str(tmp_path / "voxcpm2"))
     monkeypatch.setenv("AGENT_SPEAK_TTS_CLONE_MAX_OUTPUT_BYTES", "1048576")
     monkeypatch.setenv("AGENT_SPEAK_TTS_CLONE_MAX_OUTPUT_SECONDS", "60")
+    monkeypatch.setenv("AGENT_SPEAK_RESOURCE_POLICY", "concurrent")
+    monkeypatch.setenv(
+        "AGENT_SPEAK_RESOURCE_SOCKET_PATH",
+        str(tmp_path / "resource-control" / "control.sock"),
+    )
+    monkeypatch.setenv("AGENT_SPEAK_RESOURCE_RESERVE_MB", "2048")
+    monkeypatch.setenv("AGENT_SPEAK_RESOURCE_TTS_BUDGET_MB", "10000")
 
     settings = Settings.from_env()
 
@@ -38,6 +45,10 @@ def test_settings_load_typed_agent_speak_environment(monkeypatch: pytest.MonkeyP
     assert settings.voxcpm2_model_path == tmp_path / "voxcpm2"
     assert settings.tts_clone_max_output_bytes == 1_048_576
     assert settings.tts_clone_max_output_seconds == 60
+    assert settings.resource_policy == "concurrent"
+    assert settings.resource_socket_path == tmp_path / "resource-control" / "control.sock"
+    assert settings.resource_reserve_mb == 2_048
+    assert settings.resource_tts_budget_mb == 10_000
 
 
 def test_settings_reject_invalid_port() -> None:
