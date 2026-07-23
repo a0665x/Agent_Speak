@@ -46,6 +46,11 @@ class Settings(BaseModel):
     correction_worker_url: str = ""
     correction_model: str = "Qwen2.5-1.5B-Instruct-Q4_K_M"
     effective_accelerator: Literal["cpu", "nvidia"] = "cpu"
+    gpu_mode: Literal["asr", "tts"] = "asr"
+    tts_clone_worker_url: str = "http://tts-worker:8000"
+    voxcpm2_model_path: Path = Path("/app/models/tts/voxcpm2")
+    tts_clone_max_output_bytes: int = Field(default=32 * 1024 * 1024, ge=44)
+    tts_clone_max_output_seconds: float = Field(default=120.0, gt=0, le=300)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     log_max_bytes: int = Field(default=5 * 1024 * 1024, ge=1_024, le=100 * 1024 * 1024)
     log_backup_count: int = Field(default=5, ge=1, le=20)
@@ -54,7 +59,7 @@ class Settings(BaseModel):
     def validate_realtime_contract(self) -> "Settings":
         if self.realtime_endpoint_ms >= self.realtime_hard_endpoint_ms:
             raise ValueError("realtime_endpoint_ms must be lower than realtime_hard_endpoint_ms")
-        for name in ("asr_worker_url", "correction_worker_url"):
+        for name in ("asr_worker_url", "correction_worker_url", "tts_clone_worker_url"):
             value = getattr(self, name)
             if value and not value.startswith(("http://", "https://")):
                 raise ValueError(f"{name} must be an HTTP(S) URL")

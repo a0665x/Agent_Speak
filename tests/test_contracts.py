@@ -18,6 +18,11 @@ def test_settings_load_typed_agent_speak_environment(monkeypatch: pytest.MonkeyP
     monkeypatch.setenv("AGENT_SPEAK_LOG_LEVEL", "DEBUG")
     monkeypatch.setenv("AGENT_SPEAK_LOG_MAX_BYTES", "2048")
     monkeypatch.setenv("AGENT_SPEAK_LOG_BACKUP_COUNT", "3")
+    monkeypatch.setenv("AGENT_SPEAK_GPU_MODE", "tts")
+    monkeypatch.setenv("AGENT_SPEAK_TTS_CLONE_WORKER_URL", "http://clone-worker:8000")
+    monkeypatch.setenv("AGENT_SPEAK_VOXCPM2_MODEL_PATH", str(tmp_path / "voxcpm2"))
+    monkeypatch.setenv("AGENT_SPEAK_TTS_CLONE_MAX_OUTPUT_BYTES", "1048576")
+    monkeypatch.setenv("AGENT_SPEAK_TTS_CLONE_MAX_OUTPUT_SECONDS", "60")
 
     settings = Settings.from_env()
 
@@ -28,6 +33,11 @@ def test_settings_load_typed_agent_speak_environment(monkeypatch: pytest.MonkeyP
     assert settings.log_level == "DEBUG"
     assert settings.log_max_bytes == 2048
     assert settings.log_backup_count == 3
+    assert settings.gpu_mode == "tts"
+    assert settings.tts_clone_worker_url == "http://clone-worker:8000"
+    assert settings.voxcpm2_model_path == tmp_path / "voxcpm2"
+    assert settings.tts_clone_max_output_bytes == 1_048_576
+    assert settings.tts_clone_max_output_seconds == 60
 
 
 def test_settings_reject_invalid_port() -> None:
