@@ -134,9 +134,12 @@ state is idempotent and returns the active or completed equivalent operation.
 
 ### `POST /api/v1/resources/{workload}/reset`
 
-Restarts one allowlisted workload within the current desired profile. It is for
-recovery after a worker failure, not for changing profiles. Resetting a workload
-that is not desired returns a stable conflict with a recovery hint.
+Resets or ensures one allowlisted workload using the resolved resource policy.
+If the workload is already desired, it is restarted. If it is not desired,
+`exclusive` replaces its incompatible residency group, while `concurrent` and
+`multi_gpu` add it without evicting healthy peers. This is the endpoint used by
+the ASR and TTS page reset controls. Exact profile changes remain the
+responsibility of `/resources/reconcile`.
 
 ### `GET /api/v1/resource-operations/{operation_id}`
 
@@ -169,8 +172,9 @@ attempts one rollback to the last known ready profile. If rollback also fails,
 the Gateway stays available and reports both workloads unavailable with explicit
 operator recovery commands.
 
-For `concurrent`, reconciliation starts only missing workloads and does not
-evict healthy desired workers. A workload reset affects only that worker unless
+For `concurrent`, exact profile reconciliation stops workloads excluded by that
+profile. A page-level workload reset instead adds a missing target to the
+desired set and does not evict healthy peers. It affects only that worker unless
 its provider dependency requires a bounded dependent restart.
 
 The Gateway and UI tolerate temporary worker connection failures. They do not
@@ -213,7 +217,7 @@ Pressing the control:
 1. shows a confirmation if a session, recording, generation, or playback is
    active;
 2. stops the page-owned activity after confirmation;
-3. requests `asr_only` or `tts_only`;
+3. requests a policy-aware reset/ensure of `asr` or `tts`;
 4. disables repeated reset and model-switch actions;
 5. renders operation stages with an accessible live status;
 6. polls through temporary Gateway/worker failures with bounded backoff;
