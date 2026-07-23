@@ -57,12 +57,16 @@ VAD 期間會持續產生 partial 文字，因此當前文字可能更新。Qwen
 ./run.sh --rebuild    不用快取重建並啟動
 ./run.sh --models     下載並驗證所有固定版本推論模型
 ./run.sh --status     顯示容器、API 與音訊狀態
-./run.sh --logs       顯示最新 Gateway logs
+./run.sh --logs       顯示最新 Gateway、ASR 與校正 worker logs
+./run.sh --logs asr-worker
+                      只顯示最新 ASR worker logs
 ./run.sh --test       在 Docker 執行完整測試
 ./run.sh --help       顯示指令說明
 ```
 
 選用設定可放在不追蹤的 `.env`；公開範例見 [.env.example](.env.example)。主機預設只發布到 `127.0.0.1`，不會直接暴露於公網。持久化目錄可用 `AGENT_SPEAK_DATA_PATH`、`AGENT_SPEAK_RUNTIME_PATH`、`AGENT_SPEAK_MODELS_PATH` 覆寫。
+
+故障排除時先執行 `./run.sh --status`；辨識或模型錯誤查看 `./run.sh --logs asr-worker`，API／realtime 錯誤查看 `./run.sh --logs gateway`。系統也會在 `runtime/logs/` 與 `runtime/asr-worker/logs/` 寫入可輪替的 JSON Lines 診斷紀錄。`INFO` 記錄生命週期、`WARNING` 記錄可恢復錯誤與 retry、`ERROR` 記錄模型啟用或服務錯誤，選用的 `DEBUG` 會增加耗時與 queue 資訊。Log 可含 correlation ID、匿名 session、stage、model、device、latency 與錯誤類型，但不得包含音訊、辨識文字、裝置名稱、credentials、request body 或原始 session ID。可在 `.env` 設定 `AGENT_SPEAK_LOG_LEVEL`、`AGENT_SPEAK_LOG_MAX_BYTES` 與 `AGENT_SPEAK_LOG_BACKUP_COUNT`。
 
 `AGENT_SPEAK_ACCELERATOR=auto` 是預設值。只有在 `nvidia-smi` 與 Docker NVIDIA runtime 都可用時才選擇獨立 NVIDIA 映像；否則會顯示原因並啟動 CPU 映像。`cpu` 會強制使用可攜式 CPU/INT8 路徑；`nvidia` 則要求 CUDA，無法使用時直接失敗而不降級。NVIDIA 模式需要 NVIDIA Container Toolkit，並建置含 CUDA 12 與 cuDNN 9 的 `agent-speak:gpu-local`。`./run.sh --status` 會同時顯示 Compose 選擇的 accelerator 與 ASR Provider 實際使用的 device。
 

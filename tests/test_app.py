@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import httpx
@@ -13,6 +14,23 @@ def make_client(tmp_path: Path) -> httpx.AsyncClient:
     settings = Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime")
     app = create_app(settings)
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
+
+
+@pytest.mark.anyio
+async def test_http_requests_receive_correlation_id_and_privacy_safe_log(tmp_path: Path) -> None:
+    async with make_client(tmp_path) as client:
+        response = await client.get("/api/v1/health?verbose=true")
+
+    records = [
+        json.loads(line)
+        for line in (tmp_path / "runtime" / "logs" / "gateway.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    completed = next(record for record in records if record["event"] == "http.request.completed")
+    assert response.headers["x-request-id"] == completed["request_id"]
+    assert completed["method"] == "GET"
+    assert completed["route"] == "/api/v1/health"
+    assert completed["status_code"] == 200
+    assert "verbose" not in json.dumps(completed)
 
 
 class FakeWorkerModelControl:

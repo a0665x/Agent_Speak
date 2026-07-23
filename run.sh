@@ -22,7 +22,9 @@ Usage: ./run.sh OPTION
   --restart     Recreate the running stack (same behavior as --down_up)
   --rebuild     Stop, rebuild without cache, and start
   --status      Show container and gateway health
-  --logs        Show the latest 100 gateway log lines
+  --logs [SERVICE]
+                Show the latest 100 log lines for all, gateway, asr-worker,
+                or correction-worker (default: all)
   --test        Run the complete test suite in an isolated container
   --help        Show this help
 
@@ -48,7 +50,8 @@ load_compose_environment() {
     case "$key" in
       AGENT_SPEAK_DATA_PATH|AGENT_SPEAK_RUNTIME_PATH|AGENT_SPEAK_MODELS_PATH|\
       AGENT_SPEAK_PUBLISH_HOST|AGENT_SPEAK_PORT|AGENT_SPEAK_UID|AGENT_SPEAK_GID|\
-      AGENT_SPEAK_AUDIO_GID|AGENT_SPEAK_ACCELERATOR|AGENT_SPEAK_ASR_CUDA_COMPUTE_TYPE)
+      AGENT_SPEAK_AUDIO_GID|AGENT_SPEAK_ACCELERATOR|AGENT_SPEAK_ASR_CUDA_COMPUTE_TYPE|\
+      AGENT_SPEAK_LOG_LEVEL|AGENT_SPEAK_LOG_MAX_BYTES|AGENT_SPEAK_LOG_BACKUP_COUNT)
         # Explicit process environment wins. Otherwise import only this strict
         # operational whitelist from Compose's safely parsed .env output.
         if [[ ! -v "$key" ]]; then
@@ -105,6 +108,7 @@ prepare_runtime() {
   mkdir -p -- \
     "${AGENT_SPEAK_DATA_PATH:-./data}" \
     "${AGENT_SPEAK_RUNTIME_PATH:-./runtime}" \
+    "${AGENT_SPEAK_RUNTIME_PATH:-./runtime}/asr-worker" \
     "${AGENT_SPEAK_MODELS_PATH:-./models}"
   export AGENT_SPEAK_UID=${AGENT_SPEAK_UID:-$(id -u)}
   export AGENT_SPEAK_GID=${AGENT_SPEAK_GID:-$(id -g)}
@@ -229,7 +233,19 @@ print(next(item["device"] for item in payload["providers"] if item["stage"] == "
     [[ "$health" == "healthy" ]]
     ;;
   --logs)
-    compose logs --tail 100 gateway asr-worker correction-worker
+    logs_target=${2:-all}
+    case "$logs_target" in
+      all)
+        compose logs --tail 100 gateway asr-worker correction-worker
+        ;;
+      gateway|asr-worker|correction-worker)
+        compose logs --tail 100 "$logs_target"
+        ;;
+      *)
+        echo "ERROR: logs target must be all, gateway, asr-worker, or correction-worker" >&2
+        exit 2
+        ;;
+    esac
     ;;
   --test)
     compose run --rm --no-deps gateway-test bash -lc '

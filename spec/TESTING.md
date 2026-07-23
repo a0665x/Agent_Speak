@@ -2,6 +2,8 @@
 
 Docker-first regression is `./run.sh --test`. It starts a one-shot container from the production image with model bootstrap disabled, runs the complete pytest suite, syntax-checks `web/app.js`, `web/codex-recorder-core.js`, and `web/codex.js`, executes `tests/codex_recorder_core.test.js`, prints `TESTS_OK`, and removes the test container. `tests/test_model_bootstrap.py` covers fixed revisions, allow-listed artifacts, disk reserve, cache adoption, exact validation, and scoped partial cleanup. `tests/test_docker_runtime.py` guards the downloader/runtime target split, verify-only startup, `/dev/snd`, persistent mounts, and root lifecycle dispatch. Release verification must additionally execute `--models` once, verify its cached no-op, then exercise `--build`, `--up`, `--status`, `--logs`, `--down`, `--down_up`, `--restart`, `--test`, and `--rebuild` against the real Docker daemon.
 
+Structured diagnostic regressions verify JSON Lines formatting, stable one-way session references, payload allowlisting, bounded rotation, HTTP correlation IDs, ASR provider exception typing, and realtime retry records. Tests must assert that raw session IDs, audio, transcript text, credentials, request bodies, provider messages, and private paths never appear. `tests/test_docker_runtime.py` also guards the per-service `--logs` allowlist and persistent but independently owned Gateway/ASR runtime mounts.
+
 The regression container is intentionally CPU-only even on an NVIDIA host. GPU acceptance is a separate host integration check:
 
 ```bash

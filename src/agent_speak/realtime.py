@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import AsyncIterator
 from contextlib import suppress
 from inspect import signature
@@ -10,6 +11,7 @@ from typing import Any
 
 from .concurrency import run_sync
 from .config import Settings
+from .diagnostic_logging import log_event
 from .errors import PlatformError
 from .model_ids import (
     ASRModelId,
@@ -81,6 +83,7 @@ class RealtimeCoordinator:
         text: Any,
         broker: Any | None = None,
         model_control: Any | None = None,
+        logger: logging.Logger | None = None,
     ) -> None:
         self.settings = settings
         self.vad = vad
@@ -88,6 +91,7 @@ class RealtimeCoordinator:
         self.text = text
         self.broker = broker
         self.model_control = model_control
+        self.logger = logger or logging.getLogger("agent_speak.diagnostic.disabled")
         self.asr_queue = ASRScheduler(
             max_finals=settings.realtime_final_queue,
             max_partials=settings.realtime_partial_queue,
@@ -147,6 +151,15 @@ class RealtimeCoordinator:
             correction_model,
         )
         self._streams[session_id] = stream
+        log_event(
+            self.logger,
+            logging.INFO,
+            "realtime.session.opened",
+            session_id=session_id,
+            stage="asr",
+            model=asr_model,
+            state="listening",
+        )
         return stream
 
     async def release_lease(self, session_id: str) -> None:
@@ -157,6 +170,15 @@ class RealtimeCoordinator:
         stream = self._streams.pop(session_id, None)
         if stream is not None:
             await stream.stop(reason)
+            log_event(
+                self.logger,
+                logging.INFO,
+                "realtime.session.closed",
+                session_id=session_id,
+                stage="asr",
+                model=stream.asr_model,
+                state="stopped",
+            )
 
     async def close(self) -> None:
         if self._closed:
@@ -202,6 +224,19 @@ class RealtimeCoordinator:
                     break
                 except Exception as exc:
                     error = exc
+            if error is not None:
+                log_event(
+                    self.logger,
+                    logging.WARNING,
+                    "realtime.asr.failed",
+                    session_id=job.session_id,
+                    stage="asr",
+                    model=job.asr_model,
+                    mode=job.mode,
+                    error_code=getattr(error, "code", "asr_failed"),
+                    retry=attempts,
+                    error=error.__cause__ or error,
+                )
             try:
                 await stream._accept_asr_result(job, text, error)
             finally:

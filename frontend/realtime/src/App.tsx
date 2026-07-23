@@ -188,7 +188,7 @@ export function App({ forceReducedMotion = false }: AppProps) {
         setActive(false);
       }
       dispatch({ type: 'client.model_switched' });
-      for (let attempt = 0; attempt < 20; attempt += 1) {
+      for (let attempt = 0; attempt < 120; attempt += 1) {
         const released = await fetchModelCatalog();
         setModelCatalog(released);
         if (!released.active.leased_by) break;

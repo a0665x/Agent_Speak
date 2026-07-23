@@ -1,8 +1,11 @@
 import struct
+import json
 
 import pytest
 
 from agent_speak.realtime import RealtimeCoordinator
+from agent_speak.config import Settings
+from agent_speak.diagnostic_logging import configure_diagnostic_logging
 from agent_speak.realtime_queue import ASRJob, TextJob
 
 
@@ -28,6 +31,18 @@ class FakeASR:
     ) -> str:
         self.calls.append((mode, speech_language, asr_model, session_id))
         return "因為" if mode == "partial" else "因為需要測試"
+
+
+class FailingRealtimeASR(FakeASR):
+    def transcribe_mode(
+        self,
+        audio: bytes,
+        mode: str,
+        speech_language: str,
+        asr_model: str = "qwen3-asr-1.7b",
+        session_id: str = "session",
+    ) -> str:
+        raise RuntimeError("private speech provider detail")
 
 
 class FakeText:
@@ -92,6 +107,42 @@ async def test_stop_finalizes_active_audio_without_agent_or_tts() -> None:
     assert stream.history[-1].type == "stream.stopped"
     assert not any(event.type.startswith(("agent.", "tts.")) for event in stream.history)
     await coordinator.close()
+
+
+@pytest.mark.anyio
+async def test_coordinator_logs_asr_failure_without_session_or_provider_message(tmp_path) -> None:
+    settings = Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime")
+    logger = configure_diagnostic_logging(
+        service="realtime-test",
+        runtime_dir=settings.runtime_dir,
+        stream=False,
+    )
+    coordinator = RealtimeCoordinator(
+        settings,
+        vad=FakeVAD(),
+        asr=FailingRealtimeASR(),
+        text=FakeText(),
+        logger=logger,
+    )
+    stream = await coordinator.open("private-session", "zh-TW", "qwen3-asr-1.7b")
+    await stream.start()
+    voice = struct.pack("<320h", *([10_000] * 320))
+    for _ in range(50):
+        await stream.accept_pcm(voice)
+    await stream.wait_idle()
+    await coordinator.close()
+
+    records = [
+        json.loads(line)
+        for line in (settings.runtime_dir / "logs" / "realtime-test.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    failure = next(record for record in records if record["event"] == "realtime.asr.failed")
+    rendered = json.dumps(failure)
+    assert failure["model"] == "qwen3-asr-1.7b"
+    assert failure["mode"] == "final"
+    assert failure["exception_type"] == "RuntimeError"
+    assert "private-session" not in rendered
+    assert "private speech provider detail" not in rendered
 
 
 @pytest.mark.anyio

@@ -42,6 +42,29 @@ class FakeBreezeModel:
         return ["tokens"]
 
 
+class FakeTensor:
+    def __init__(self, *, floating: bool) -> None:
+        self.floating = floating
+        self.moves: list[tuple[tuple[object, ...], dict[str, object]]] = []
+
+    def is_floating_point(self) -> bool:
+        return self.floating
+
+    def to(self, *args: object, **kwargs: object) -> FakeTensor:
+        self.moves.append((args, kwargs))
+        return self
+
+
+class TensorBreezeProcessor(FakeBreezeProcessor):
+    def __init__(self, features: FakeTensor, attention_mask: FakeTensor) -> None:
+        super().__init__()
+        self.features = features
+        self.attention_mask = attention_mask
+
+    def __call__(self, samples: np.ndarray, *, sampling_rate: int, return_tensors: str) -> dict[str, object]:
+        return {"input_features": self.features, "attention_mask": self.attention_mask}
+
+
 class FakeQwenModel:
     def __init__(self, text: str = "請 review 這個 patch", *, failure: Exception | None = None) -> None:
         self.text = text
@@ -75,6 +98,26 @@ def test_breeze_adapter_decodes_resamples_pcm_wav_and_returns_text(tmp_path: Pat
     assert processor.samples.dtype == np.float32
     assert len(processor.samples) == 4_000
     assert model.generate_kwargs == {"input_features": "features", "language": "zh"}
+
+
+def test_breeze_adapter_matches_floating_inputs_to_cuda_model_dtype(tmp_path: Path) -> None:
+    features = FakeTensor(floating=True)
+    attention_mask = FakeTensor(floating=False)
+    processor = TensorBreezeProcessor(features, attention_mask)
+    model = FakeBreezeModel()
+    model.dtype = "float16"  # type: ignore[attr-defined]
+    provider = BreezeASR(
+        model_path=tmp_path / "breeze",
+        accelerator="nvidia",
+        cuda_probe=lambda: True,
+        processor_factory=lambda **_: processor,
+        model_factory=lambda **_: model,
+    )
+
+    provider.transcribe(wav_bytes(), language="zh")
+
+    assert features.moves == [(('cuda',), {"dtype": "float16"})]
+    assert attention_mask.moves == [(('cuda',), {})]
 
 
 @pytest.mark.parametrize(

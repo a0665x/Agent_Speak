@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 import httpx
 import pytest
@@ -6,6 +7,7 @@ import pytest
 from agent_speak.asr_model_manager import ASRModelManager
 from agent_speak.asr_worker import create_asr_worker
 from agent_speak.config import Settings
+from agent_speak.errors import PlatformError
 from agent_speak.model_ids import ASRModelId
 from tests.audio_fixtures import wav_bytes
 
@@ -29,6 +31,17 @@ class FakeASR:
         assert self.warmed
         self.languages.append(language)
         return "即時測試"
+
+
+class FailingASR(FakeASR):
+    def transcribe(self, audio: bytes, language: str | None = "configured") -> str:
+        raise PlatformError(
+            "asr_failed",
+            "ASR could not transcribe the audio",
+            status_code=500,
+            stage="asr",
+            retryable=True,
+        ) from RuntimeError("private provider details")
 
 
 def fake_manager() -> tuple[ASRModelManager, dict[ASRModelId, list[FakeASR]]]:
@@ -81,6 +94,42 @@ async def test_internal_worker_warms_and_transcribes_bounded_wav(tmp_path) -> No
         "mode": "final",
         "asr_model": "faster-whisper-small",
     }
+
+
+@pytest.mark.anyio
+async def test_internal_worker_logs_provider_failure_without_audio_or_error_message(tmp_path) -> None:
+    app = create_asr_worker(
+        provider=FailingASR(),
+        settings=Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"),
+    )
+    async with app.router.lifespan_context(app):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://worker"
+        ) as client:
+            await client.post(
+                "/internal/v1/models/lease/private-session",
+                params={"asr_model": "faster-whisper-small"},
+            )
+            response = await client.post(
+                "/internal/v1/asr",
+                params={"mode": "partial", "session_id": "private-session"},
+                content=wav_bytes(),
+                headers={"content-type": "audio/wav"},
+            )
+
+    records = [
+        json.loads(line)
+        for line in (tmp_path / "runtime" / "logs" / "asr-worker.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    failure = next(record for record in records if record["event"] == "asr.inference.failed")
+    rendered = json.dumps(failure)
+    assert response.status_code == 500
+    assert failure["model"] == "faster-whisper-small"
+    assert failure["mode"] == "partial"
+    assert failure["error_code"] == "asr_failed"
+    assert failure["exception_type"] == "RuntimeError"
+    assert "private-session" not in rendered
+    assert "private provider details" not in rendered
 
 
 @pytest.mark.anyio

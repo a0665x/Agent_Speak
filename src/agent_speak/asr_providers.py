@@ -88,12 +88,17 @@ def _decode_16k(audio: bytes, *, max_bytes: int, max_seconds: float) -> np.ndarr
     return resample_mono(decoded.samples, decoded.sample_rate)
 
 
-def _move_inputs_to_device(inputs: Any, device: str) -> dict[str, Any]:
-    if hasattr(inputs, "to"):
-        inputs = inputs.to(device)
+def _move_inputs_to_device(inputs: Any, device: str, *, floating_dtype: Any | None = None) -> dict[str, Any]:
     values = dict(inputs)
     if device == "cuda":
-        values = {key: value.to(device) if hasattr(value, "to") else value for key, value in values.items()}
+        moved: dict[str, Any] = {}
+        for key, value in values.items():
+            if not hasattr(value, "to"):
+                moved[key] = value
+                continue
+            is_floating = getattr(value, "is_floating_point", lambda: False)()
+            moved[key] = value.to(device, dtype=floating_dtype) if is_floating and floating_dtype is not None else value.to(device)
+        values = moved
     return values
 
 
@@ -178,7 +183,7 @@ class BreezeASR:
         processor, model = self._load_runtime()
         try:
             inputs = processor(samples, sampling_rate=TARGET_SAMPLE_RATE, return_tensors="pt")
-            generate_kwargs = _move_inputs_to_device(inputs, self.device)
+            generate_kwargs = _move_inputs_to_device(inputs, self.device, floating_dtype=getattr(model, "dtype", None))
             if language not in (None, "auto"):
                 generate_kwargs["language"] = language
             generated = model.generate(**generate_kwargs)

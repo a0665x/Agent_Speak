@@ -84,12 +84,16 @@ Expected success markers include `STATUS_HEALTHY`, `HEALTH_SMOKE_OK mode=docker`
 ./run.sh --rebuild    No-cache rebuild and start
 ./run.sh --models     Download and verify all pinned inference models
 ./run.sh --status     Container, API, and audio status
-./run.sh --logs       Latest gateway logs
+./run.sh --logs       Latest Gateway, ASR, and correction logs
+./run.sh --logs asr-worker
+                      Latest ASR worker logs only
 ./run.sh --test       Full test suite in Docker
 ./run.sh --help       Command reference
 ```
 
 Optional settings can be placed in an untracked `.env`; see [.env.example](.env.example). The default host publication is `127.0.0.1`, not a public interface. Persistent host paths can be changed with `AGENT_SPEAK_DATA_PATH`, `AGENT_SPEAK_RUNTIME_PATH`, and `AGENT_SPEAK_MODELS_PATH`.
+
+For troubleshooting, run `./run.sh --status`, then `./run.sh --logs asr-worker` for recognition failures or `./run.sh --logs gateway` for API/realtime failures. Agent Speak also writes rotating JSON Lines diagnostics under `runtime/logs/` and `runtime/asr-worker/logs/`. `INFO` records lifecycle, `WARNING` records recoverable failures and retries, `ERROR` records failed activation or unexpected service errors, and opt-in `DEBUG` adds timing and queue details. Logs include correlation IDs, anonymized session references, stage, model, device, latency, and error type; they never include audio, transcripts, device labels, credentials, request bodies, or raw session IDs. Configure `AGENT_SPEAK_LOG_LEVEL`, `AGENT_SPEAK_LOG_MAX_BYTES`, and `AGENT_SPEAK_LOG_BACKUP_COUNT` in `.env`.
 
 `AGENT_SPEAK_ACCELERATOR=auto` is the default. It selects the separate NVIDIA image only when `nvidia-smi` and Docker's NVIDIA runtime are both ready; otherwise it prints the reason and starts the CPU image. Use `cpu` to force the portable CPU/INT8 path or `nvidia` to require CUDA and fail instead of falling back. NVIDIA mode requires the NVIDIA Container Toolkit and builds `agent-speak:gpu-local` with CUDA 12 and cuDNN 9. `./run.sh --status` reports both the selected Compose accelerator and the ASR provider's actual device.
 

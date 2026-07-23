@@ -230,6 +230,41 @@ test('safely stops and resumes a ready active stream when the ASR model changes'
   );
 });
 
+test('keeps the first model selection pending until the previous lease is released', async () => {
+  let modelReads = 0;
+  vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url === '/api/v1/capabilities') {
+      return { ok: true, json: async () => ({ providers: [] }) } as Response;
+    }
+    if (url === '/api/v1/models') {
+      modelReads += 1;
+      const catalog = modelCatalog();
+      if (modelReads > 1 && modelReads <= 21) catalog.active.leased_by = 'previous-session';
+      return { ok: true, json: async () => catalog } as Response;
+    }
+    if (url === '/api/v1/models/active') {
+      if (modelReads <= 21) return { ok: false, json: async () => ({ code: 'model_lease_conflict' }) } as Response;
+      const selection = JSON.parse(String(init?.body)) as { asr_model: ASRModelId; correction_model: CorrectionModelId };
+      return { ok: true, json: async () => modelCatalog(selection.asr_model, selection.correction_model) } as Response;
+    }
+    return { ok: true, json: async () => ({ id: 'session-1', speech_language: 'en' }) } as Response;
+  });
+
+  renderApp();
+  const selector = await screen.findByRole('combobox', { name: 'ASR model' });
+  fireEvent.change(selector, { target: { value: 'breeze-asr-25' } });
+
+  expect(selector).toHaveValue('breeze-asr-25');
+  expect(selector).toBeDisabled();
+  await waitFor(() => expect(selector).toBeEnabled(), { timeout: 5_000 });
+  expect(selector).toHaveValue('breeze-asr-25');
+  const asrRow = screen.getByText('ASR').closest('div');
+  expect(asrRow).not.toBeNull();
+  expect(within(asrRow!).getByText('breeze-asr-25')).toBeInTheDocument();
+  expect(screen.getAllByText('Ready').length).toBeGreaterThan(0);
+});
+
 test('reduced motion keeps ambient status textual and static', () => {
   render(<I18nProvider initialLocale="en"><App forceReducedMotion /></I18nProvider>);
   expect(screen.getByTestId('particle-field')).toHaveAttribute('data-animated', 'false');

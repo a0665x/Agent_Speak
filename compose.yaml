@@ -41,11 +41,13 @@ services:
       dockerfile: Dockerfile
       target: asr-runtime
     image: agent-speak-asr:local
+    user: "${AGENT_SPEAK_UID:-1000}:${AGENT_SPEAK_GID:-1000}"
     init: true
     restart: unless-stopped
     command: ["python", "-m", "uvicorn", "agent_speak.asr_worker:create_asr_worker", "--factory", "--host", "0.0.0.0", "--port", "8771"]
     environment:
       AGENT_SPEAK_SKIP_MODEL_BOOTSTRAP: "1"
+      AGENT_SPEAK_DATA_DIR: /app/runtime/data
       AGENT_SPEAK_ACCELERATOR: "${AGENT_SPEAK_EFFECTIVE_ACCELERATOR:-cpu}"
       AGENT_SPEAK_EFFECTIVE_ACCELERATOR: "${AGENT_SPEAK_EFFECTIVE_ACCELERATOR:-cpu}"
       AGENT_SPEAK_ASR_MODEL: "${AGENT_SPEAK_ASR_MODEL:-small}"
@@ -53,10 +55,16 @@ services:
       AGENT_SPEAK_ASR_COMPUTE_TYPE: "${AGENT_SPEAK_ASR_COMPUTE_TYPE:-int8}"
       AGENT_SPEAK_ASR_CUDA_COMPUTE_TYPE: "${AGENT_SPEAK_ASR_CUDA_COMPUTE_TYPE:-float16}"
       AGENT_SPEAK_ASR_CPU_THREADS: "${AGENT_SPEAK_ASR_CPU_THREADS:-4}"
+      AGENT_SPEAK_RUNTIME_DIR: /app/runtime
+      AGENT_SPEAK_LOG_LEVEL: "${AGENT_SPEAK_LOG_LEVEL:-INFO}"
+      AGENT_SPEAK_LOG_MAX_BYTES: "${AGENT_SPEAK_LOG_MAX_BYTES:-5242880}"
+      AGENT_SPEAK_LOG_BACKUP_COUNT: "${AGENT_SPEAK_LOG_BACKUP_COUNT:-5}"
       HOME: /app/models/home
       HF_HOME: /app/models/huggingface
       XDG_CACHE_HOME: /app/models/cache
-    volumes: *model-volume
+    volumes:
+      - ${AGENT_SPEAK_MODELS_PATH:-./models}:/app/models
+      - ${AGENT_SPEAK_RUNTIME_PATH:-./runtime}/asr-worker:/app/runtime
     depends_on:
       model-bootstrap:
         condition: service_completed_successfully
@@ -118,6 +126,9 @@ services:
       AGENT_SPEAK_ASR_WORKER_URL: http://asr-worker:8771
       AGENT_SPEAK_CORRECTION_WORKER_URL: http://correction-worker:8080
       AGENT_SPEAK_CORRECTION_MODEL: "${AGENT_SPEAK_CORRECTION_MODEL:-Qwen2.5-1.5B-Instruct-Q4_K_M}"
+      AGENT_SPEAK_LOG_LEVEL: "${AGENT_SPEAK_LOG_LEVEL:-INFO}"
+      AGENT_SPEAK_LOG_MAX_BYTES: "${AGENT_SPEAK_LOG_MAX_BYTES:-5242880}"
+      AGENT_SPEAK_LOG_BACKUP_COUNT: "${AGENT_SPEAK_LOG_BACKUP_COUNT:-5}"
       AGENT_SPEAK_TTS_MODEL_PATH: "${AGENT_SPEAK_TTS_MODEL_PATH:-models/piper/zh_CN-huayan-medium.onnx}"
       HOME: /app/models/home
       HF_HOME: /app/models/huggingface

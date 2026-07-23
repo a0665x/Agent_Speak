@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import logging
+import time
+import uuid
 from pathlib import Path
 from collections.abc import Callable
 from typing import Any
@@ -16,6 +19,7 @@ from . import __version__
 from .audio import EnergyVAD, decode_wav
 from .concurrency import run_sync
 from .config import Settings
+from .diagnostic_logging import configure_diagnostic_logging, log_event
 from .errors import PlatformError
 from .locales import DOCS_UI_TEXT, localize_openapi, normalize_locale
 from .model_ids import (
@@ -164,6 +168,13 @@ def create_app(
 ) -> FastAPI:
     active = settings or Settings.from_env()
     active.prepare_directories()
+    diagnostic_logger = configure_diagnostic_logging(
+        service="gateway",
+        runtime_dir=active.runtime_dir,
+        level=active.log_level,
+        max_bytes=active.log_max_bytes,
+        backup_count=active.log_backup_count,
+    )
     app = FastAPI(
         title="Agent Speak",
         version=__version__,
@@ -176,6 +187,7 @@ def create_app(
     )
     app.add_middleware(SecurityHeadersMiddleware)
     app.state.settings = active
+    app.state.diagnostic_logger = diagnostic_logger
     app.state.localized_openapi = {}
     app.state.broker = SessionBroker(
         max_sessions=active.max_sessions,
@@ -218,6 +230,7 @@ def create_app(
         ),
         broker=app.state.broker,
         model_control=app.state.model_control,
+        logger=diagnostic_logger,
     )
     if app.state.realtime.broker is None:
         app.state.realtime.broker = app.state.broker
@@ -237,6 +250,25 @@ def create_app(
             StaticFiles(directory=asr_realtime_assets),
             name="asr-realtime-assets",
         )
+
+    @app.middleware("http")
+    async def diagnostic_request_log(request: Request, call_next: Callable[[Request], Any]) -> Response:
+        request_id = uuid.uuid4().hex
+        started = time.perf_counter()
+        response = await call_next(request)
+        route = getattr(request.scope.get("route"), "path", "<unmatched>")
+        log_event(
+            diagnostic_logger,
+            logging.INFO,
+            "http.request.completed",
+            request_id=request_id,
+            method=request.method,
+            route=route,
+            status_code=response.status_code,
+            duration_ms=round((time.perf_counter() - started) * 1_000, 3),
+        )
+        response.headers["X-Request-ID"] = request_id
+        return response
 
     @app.middleware("http")
     async def localized_openapi_document(request: Request, call_next: Callable[[Request], Any]) -> Response:

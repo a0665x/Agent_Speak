@@ -46,6 +46,9 @@ class Settings(BaseModel):
     correction_worker_url: str = ""
     correction_model: str = "Qwen2.5-1.5B-Instruct-Q4_K_M"
     effective_accelerator: Literal["cpu", "nvidia"] = "cpu"
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+    log_max_bytes: int = Field(default=5 * 1024 * 1024, ge=1_024, le=100 * 1024 * 1024)
+    log_backup_count: int = Field(default=5, ge=1, le=20)
 
     @model_validator(mode="after")
     def validate_realtime_contract(self) -> "Settings":

@@ -75,6 +75,18 @@ def test_test_services_have_no_audio_gpu_models_or_network() -> None:
         assert not service.get("volumes")
 
 
+def test_runtime_services_share_logging_configuration_and_persistent_runtime_mount() -> None:
+    config = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))
+    for name in ("gateway", "asr-worker"):
+        service = config["services"][name]
+        assert service["environment"]["AGENT_SPEAK_LOG_LEVEL"] == "${AGENT_SPEAK_LOG_LEVEL:-INFO}"
+        assert service["environment"]["AGENT_SPEAK_LOG_MAX_BYTES"] == "${AGENT_SPEAK_LOG_MAX_BYTES:-5242880}"
+        assert service["environment"]["AGENT_SPEAK_LOG_BACKUP_COUNT"] == "${AGENT_SPEAK_LOG_BACKUP_COUNT:-5}"
+        assert any("/app/runtime" in volume for volume in service["volumes"])
+    assert config["services"]["asr-worker"]["user"] == "${AGENT_SPEAK_UID:-1000}:${AGENT_SPEAK_GID:-1000}"
+    assert config["services"]["asr-worker"]["environment"]["AGENT_SPEAK_DATA_DIR"] == "/app/runtime/data"
+
+
 def test_root_run_script_exposes_single_docker_operator_interface() -> None:
     script = ROOT / "run.sh"
     source = script.read_text(encoding="utf-8")
@@ -240,6 +252,27 @@ def test_run_script_dispatches_expected_compose_commands(tmp_path: Path) -> None
         calls = log.read_text(encoding="utf-8")
         for fragment in fragments:
             assert fragment in calls, (option, fragment, calls)
+
+    log.write_text("", encoding="utf-8")
+    selected = subprocess.run(
+        [str(ROOT / "run.sh"), "--logs", "asr-worker"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert selected.returncode == 0
+    assert "logs --tail 100 asr-worker" in log.read_text(encoding="utf-8")
+
+    invalid = subprocess.run(
+        [str(ROOT / "run.sh"), "--logs", "database"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert invalid.returncode == 2
+    assert "logs target must be all, gateway, asr-worker, or correction-worker" in invalid.stderr
 
 
 def test_model_download_is_explicit_and_normal_start_is_verify_only() -> None:

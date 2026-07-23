@@ -15,6 +15,9 @@ def test_settings_load_typed_agent_speak_environment(monkeypatch: pytest.MonkeyP
     monkeypatch.setenv("AGENT_SPEAK_PORT", "9876")
     monkeypatch.setenv("AGENT_SPEAK_MAX_AUDIO_BYTES", "4096")
     monkeypatch.setenv("AGENT_SPEAK_DATA_DIR", str(tmp_path / "private"))
+    monkeypatch.setenv("AGENT_SPEAK_LOG_LEVEL", "DEBUG")
+    monkeypatch.setenv("AGENT_SPEAK_LOG_MAX_BYTES", "2048")
+    monkeypatch.setenv("AGENT_SPEAK_LOG_BACKUP_COUNT", "3")
 
     settings = Settings.from_env()
 
@@ -22,6 +25,9 @@ def test_settings_load_typed_agent_speak_environment(monkeypatch: pytest.MonkeyP
     assert settings.port == 9876
     assert settings.max_audio_bytes == 4096
     assert settings.data_dir == tmp_path / "private"
+    assert settings.log_level == "DEBUG"
+    assert settings.log_max_bytes == 2048
+    assert settings.log_backup_count == 3
 
 
 def test_settings_reject_invalid_port() -> None:

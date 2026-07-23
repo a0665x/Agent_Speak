@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+import time
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from typing import Any, AsyncIterator, Literal
@@ -16,6 +18,7 @@ from .asr_providers import BreezeASR, Qwen3ASR
 from .audio import decode_wav
 from .concurrency import run_sync
 from .config import Settings
+from .diagnostic_logging import configure_diagnostic_logging, log_event
 from .errors import PlatformError
 from .model_ids import ASRModelId, DEFAULT_ASR_MODEL
 from .production import FasterWhisperASR
@@ -89,6 +92,14 @@ def create_asr_worker(
     settings: Settings | None = None,
 ) -> FastAPI:
     active = settings or Settings.from_env()
+    active.prepare_directories()
+    diagnostic_logger = configure_diagnostic_logging(
+        service="asr-worker",
+        runtime_dir=active.runtime_dir,
+        level=active.log_level,
+        max_bytes=active.log_max_bytes,
+        backup_count=active.log_backup_count,
+    )
     if provider is not None and manager is not None:
         raise ValueError("provider and manager are mutually exclusive")
     if manager is not None:
@@ -125,11 +136,25 @@ def create_asr_worker(
         lifespan=lifespan,
     )
     app.state.manager = model_manager
+    app.state.diagnostic_logger = diagnostic_logger
     app.state.activation_task = None
     app.state.activation_error = None
 
     @app.exception_handler(PlatformError)
-    async def platform_error(_: Request, exc: PlatformError) -> JSONResponse:
+    async def platform_error(request: Request, exc: PlatformError) -> JSONResponse:
+        snapshot = model_manager.snapshot()
+        log_event(
+            diagnostic_logger,
+            logging.ERROR if exc.status_code >= 500 else logging.WARNING,
+            "asr.inference.failed" if request.url.path.endswith("/asr") else "asr.request.failed",
+            session_id=request.query_params.get("session_id"),
+            stage=exc.stage or "asr",
+            model=request.query_params.get("asr_model") or snapshot.active_asr_model,
+            mode=request.query_params.get("mode"),
+            error_code=exc.code,
+            status_code=exc.status_code,
+            error=exc.__cause__ or exc,
+        )
         return JSONResponse(
             status_code=exc.status_code,
             content={
@@ -160,11 +185,30 @@ def create_asr_worker(
         return asdict(model_manager.snapshot())
 
     async def activate_in_background(model_id: ASRModelId) -> None:
+        log_event(diagnostic_logger, logging.INFO, "model.activation.started", stage="asr", model=model_id)
         try:
             await run_sync(model_manager.activate, model_id)
             app.state.activation_error = None
+            log_event(
+                diagnostic_logger,
+                logging.INFO,
+                "model.activation.ready",
+                stage="asr",
+                model=model_id,
+                device=model_manager.snapshot().device,
+                state="ready",
+            )
         except PlatformError as exc:
             app.state.activation_error = exc
+            log_event(
+                diagnostic_logger,
+                logging.ERROR,
+                "model.activation.failed",
+                stage="asr",
+                model=model_id,
+                error_code=exc.code,
+                error=exc.__cause__ or exc,
+            )
 
     @app.put("/internal/v1/models/active")
     async def activate_model(request: ModelActivationRequest) -> JSONResponse:
@@ -215,12 +259,18 @@ def create_asr_worker(
             )
         audio = await _read_wav(request, active)
         language = active.asr_language if speech_language is None else whisper_language(speech_language)
-        text = await run_sync(
-            model_manager.transcribe,
-            session_id,
-            selected_model,
-            audio,
-            language=language,
+        started = time.perf_counter()
+        text = await run_sync(model_manager.transcribe, session_id, selected_model, audio, language=language)
+        log_event(
+            diagnostic_logger,
+            logging.DEBUG,
+            "asr.inference.completed",
+            session_id=session_id,
+            stage="asr",
+            model=selected_model,
+            mode=mode,
+            device=model_manager.snapshot().device,
+            duration_ms=round((time.perf_counter() - started) * 1_000, 3),
         )
         return {
             "text": text,
