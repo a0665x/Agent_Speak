@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   createEphemeralAudioStore,
+  createPlaybackAnalyser,
   createReferenceRecorder,
   encodePcm16Wav,
 } from './audio';
@@ -102,5 +103,47 @@ describe('ephemeral browser audio', () => {
 
     expect(listener).toHaveBeenLastCalledWith(0.4, true);
     await recorder.discard();
+  });
+
+  it('plays only from the explicit method and reports ended cleanup', async () => {
+    const listeners = new Map<string, EventListener>();
+    const audio = {
+      src: '',
+      play: vi.fn().mockResolvedValue(undefined),
+      pause: vi.fn(),
+      load: vi.fn(),
+      addEventListener: vi.fn((name: string, listener: EventListener) => listeners.set(name, listener)),
+      removeEventListener: vi.fn(),
+      removeAttribute: vi.fn(),
+    };
+    const analyser = {
+      fftSize: 0,
+      connect: vi.fn(),
+      getByteTimeDomainData: vi.fn(),
+    };
+    const source = { connect: vi.fn() };
+    const context = {
+      destination: {},
+      createAnalyser: vi.fn(() => analyser),
+      createMediaElementSource: vi.fn(() => source),
+      resume: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const playback = createPlaybackAnalyser({
+      audioFactory: () => audio as unknown as HTMLAudioElement,
+      contextFactory: () => context as unknown as AudioContext,
+      requestFrame: () => 1,
+      cancelFrame: vi.fn(),
+    });
+    const ended = vi.fn();
+    playback.subscribeEnded(ended);
+
+    playback.setSource('blob:generated');
+    expect(audio.play).not.toHaveBeenCalled();
+    await playback.play();
+    expect(audio.play).toHaveBeenCalledTimes(1);
+    listeners.get('ended')?.(new Event('ended'));
+    expect(ended).toHaveBeenCalledTimes(1);
+    expect(playback.playing).toBe(false);
   });
 });

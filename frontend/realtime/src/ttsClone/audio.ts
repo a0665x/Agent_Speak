@@ -9,6 +9,7 @@ export type EphemeralAudioStore = {
   readonly referenceUrl?: string;
   readonly generatedUrl?: string;
   setReference(blob: Blob): void;
+  clearReference(): void;
   setGenerated(blob: Blob): void;
   clearGenerated(): void;
   dispose(): void;
@@ -35,6 +36,11 @@ export function createEphemeralAudioStore(
       revoke(referenceUrl);
       reference = blob;
       referenceUrl = urls.createObjectURL(blob);
+    },
+    clearReference() {
+      revoke(referenceUrl);
+      reference = undefined;
+      referenceUrl = undefined;
     },
     setGenerated(blob) {
       revoke(generatedUrl);
@@ -234,6 +240,7 @@ export type PlaybackAnalyser = {
   play(): Promise<void>;
   stop(): void;
   subscribeAmplitude(listener: (value: number) => void): () => void;
+  subscribeEnded(listener: () => void): () => void;
   dispose(): void;
 };
 
@@ -245,6 +252,7 @@ export function createPlaybackAnalyser(
   const requestFrame = options.requestFrame ?? requestAnimationFrame;
   const cancelFrame = options.cancelFrame ?? cancelAnimationFrame;
   const listeners = new Set<(value: number) => void>();
+  const endedListeners = new Set<() => void>();
   let context: AudioContext | undefined;
   let analyser: AnalyserNode | undefined;
   let frame = 0;
@@ -267,7 +275,11 @@ export function createPlaybackAnalyser(
     audio.pause();
     listeners.forEach(listener => listener(0));
   };
-  audio.addEventListener('ended', stop);
+  const ended = () => {
+    stop();
+    endedListeners.forEach(listener => listener());
+  };
+  audio.addEventListener('ended', ended);
 
   return {
     get playing() { return playing; },
@@ -295,15 +307,20 @@ export function createPlaybackAnalyser(
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
+    subscribeEnded(listener) {
+      endedListeners.add(listener);
+      return () => endedListeners.delete(listener);
+    },
     dispose() {
       stop();
-      audio.removeEventListener('ended', stop);
+      audio.removeEventListener('ended', ended);
       audio.removeAttribute('src');
       audio.load();
       void context?.close();
       context = undefined;
       analyser = undefined;
       listeners.clear();
+      endedListeners.clear();
     },
   };
 }

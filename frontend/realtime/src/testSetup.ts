@@ -5,7 +5,7 @@ import { afterEach } from 'vitest';
 afterEach(cleanup);
 
 HTMLCanvasElement.prototype.getContext = (() => ({
-  beginPath() {}, clearRect() {}, closePath() {}, fill() {}, lineTo() {}, moveTo() {}, quadraticCurveTo() {},
+  arc() {}, beginPath() {}, clearRect() {}, closePath() {}, fill() {}, lineTo() {}, moveTo() {}, quadraticCurveTo() {},
   restore() {}, save() {}, scale() {}, setTransform() {}, stroke() {},
   createLinearGradient: () => ({ addColorStop() {} }),
   fillStyle: '', globalAlpha: 1, lineWidth: 1, shadowBlur: 0, shadowColor: '', strokeStyle: '',
