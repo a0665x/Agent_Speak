@@ -14,4 +14,9 @@ External Agent support now includes a repository-portable Traditional Chinese Sk
 
 Known MVP boundary: active correction and endpoint behavior depends on runtime capabilities and may use the shared Qwen worker or development fallbacks. The built-in Agent is always a dev echo, not external-Agent reasoning, so a `full_pipeline` resource profile is intentionally unavailable. ASR and TTS use replaceable local inference providers; the intended future flow is ASR → external Agent → TTS without moving reasoning into the Resource Orchestrator. Browser formats are converted to PCM WAV before upload. Speaker similarity is deterministic convenience identification and never authentication. Presentation locale, frozen speech language, and TTS voice are independent controls.
 
-The session-language contract and verification baseline are in [`references/lesson-20260721-session-language-routing.md`](references/lesson-20260721-session-language-routing.md). Use Git history and `./run.sh --status` as live truth.
+The session-language contract and verification baseline are in
+[`references/lesson-20260721-session-language-routing.md`](references/lesson-20260721-session-language-routing.md).
+Resource reset latency, the supervisor startup incident, 32 GB concurrency
+planning, stale-image checks, and the exact diagnostic order are in
+[`references/lesson-20260723-resource-orchestrator-troubleshooting.md`](references/lesson-20260723-resource-orchestrator-troubleshooting.md).
+Use Git history and `./run.sh --status` as live truth.

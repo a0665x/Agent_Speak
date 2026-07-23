@@ -58,6 +58,15 @@ Troubleshooting order is:
 
 `AGENT_SPEAK_RESOURCE_POLICY=auto` is the safe default. It resolves to `exclusive` unless detected VRAM exceeds the configured reserve plus all workload budgets. Set `exclusive` for low-VRAM hosts, `concurrent` when ASR/correction and TTS fit one GPU, or `multi_gpu` when Compose device visibility is explicitly mapped per service. Budget and timeout settings are documented in `.env.example`. Reconciliation phases are bounded and observable at `/api/v1/resources`; a failed reset exposes a stable error code and operator hint rather than a raw subprocess error.
 
+With current defaults, `auto` requires 18,500 MB before selecting
+`concurrent`, so a 32 GB AGX Orin is a candidate but is not yet an accepted
+hardware target. A ready concurrent worker can stay resident while its peer is
+used, but pressing Reset deliberately restarts the target and still incurs its
+warm-up. Exact `--asr-up` and `--tts-up` profiles may still stop excluded
+workers. For the capacity caveat, supervisor startup incident, stale-image
+checks, sandbox pitfalls, and exact diagnostic order, read
+[Resource Orchestrator Runtime and Reset Troubleshooting](references/lesson-20260723-resource-orchestrator-troubleshooting.md).
+
 `./run.sh --models` prepares every pinned artifact, including roughly 9.6 GB for VoxCPM2, only after the shared preflight preserves an 8 GiB safety reserve. The 40 GB free-space observation made during design was a point-in-time preflight, not a promise of future capacity. Use `./run.sh --status` to see `resource_policy`, `profile`, `asr_state`, and `tts_state`, and `./run.sh --logs tts-worker` for private worker startup/model failures. CPU-only systems report TTS unavailable rather than silently attempting a slow fallback.
 
 The pinned TTS image installs `voxcpm==2.0.3` in addition to vLLM-Omni. On
