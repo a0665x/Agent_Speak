@@ -11,6 +11,11 @@ from AI_Avatar.tools.avatar_assets.manifest import (
     parse_manifest,
     validate_manifest,
 )
+from AI_Avatar.tools.avatar_assets.builder import (
+    PublishError,
+    publish_candidates,
+    write_review_report,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -131,3 +136,68 @@ def test_manifest_schema_is_strict_json() -> None:
         "happy_loop",
         "error_loop",
     }
+
+
+def _candidate_set(candidate_root: Path) -> dict[str, str]:
+    s0 = candidate_root / "shared/henry_s0.png"
+    _write_png(s0, (20, 30, 40, 255))
+    approvals: dict[str, str] = {}
+    for index, state in enumerate(
+        ("idle", "listening", "thinking", "speaking", "happy", "error"),
+        start=1,
+    ):
+        frame = candidate_root / f"clips/{state}/{state}_001.png"
+        _write_png(frame, (20 + index, 40, 60, 255))
+        approvals[f"{state}_loop"] = write_review_report(
+            candidate_root=candidate_root,
+            clip_id=f"{state}_loop",
+            state=state,
+            frame_paths=(s0, frame, s0),
+            quality_status="needs_review",
+            metrics={"max_adjacent_delta": 0.08},
+            failed_rules=(),
+        )
+    return approvals
+
+
+def test_publish_candidates_builds_valid_six_clip_runtime(tmp_path: Path) -> None:
+    candidates = tmp_path / "candidates"
+    public = tmp_path / "public"
+    approvals = _candidate_set(candidates)
+
+    result = publish_candidates(candidates, public, approvals)
+
+    assert result.published == (
+        "idle_loop",
+        "listening_loop",
+        "thinking_loop",
+        "speaking_loop",
+        "happy_loop",
+        "error_loop",
+    )
+    manifest = load_manifest(public / "manifest.json")
+    validate_manifest(manifest, public)
+    assert (
+        manifest.frames["henry_s0"].src
+        == "assets/clips/shared/henry_s0.png"
+    )
+
+
+def test_publish_candidates_rejects_stale_review_hash(tmp_path: Path) -> None:
+    candidates = tmp_path / "candidates"
+    approvals = _candidate_set(candidates)
+    approvals["idle_loop"] = "0" * 64
+
+    with pytest.raises(PublishError, match="review hash"):
+        publish_candidates(candidates, tmp_path / "public", approvals)
+
+    assert not (tmp_path / "public/manifest.json").exists()
+
+
+def test_publish_candidates_requires_all_six_clips(tmp_path: Path) -> None:
+    candidates = tmp_path / "candidates"
+    approvals = _candidate_set(candidates)
+    approvals.pop("error_loop")
+
+    with pytest.raises(PublishError, match="exactly six"):
+        publish_candidates(candidates, tmp_path / "public", approvals)
