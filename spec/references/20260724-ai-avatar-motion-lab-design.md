@@ -12,7 +12,7 @@ Build a renderer-independent minimum AI Avatar demo for the Henry rabbit assets.
 The first release must:
 
 - turn the existing sprite sheets into verified animation clips;
-- keep the character scale, canvas, and foot anchor stable;
+- keep the character scale, canvas, and visible-body baseline stable;
 - switch states only at a completed loop boundary;
 - expose the six core states in `http://127.0.0.1:8765/ai_avatar`;
 - keep image generation and interpolation offline from the playback runtime;
@@ -113,11 +113,14 @@ new order when confidence is low.
 - one fixed canvas size;
 - one character scale policy;
 - a fixed horizontal center;
-- a fixed foot anchor;
+- a fixed visible-body baseline at the configured anchor;
 - a preserved alpha channel;
 - deterministic filenames and hashes.
 
 Playback must not resize the canvas or move the anchor when the state changes.
+Because the named status sheet is waist-up while the continuous source loops
+are full-body, the six-state MVP uses one reviewed waist-up composition. This
+avoids scaling jumps and does not require a model to invent missing legs.
 
 ### 4.3 Export
 
@@ -128,9 +131,12 @@ Playback must not resize the canvas or move the anchor when the state changes.
 - GIF as a portable review artifact;
 - a machine-readable validation report.
 
-Generated frames, model weights, runtime logs, and bulk previews are local
-artifacts and must not be committed. Git may contain configuration, code,
-tests, small fixtures, and explicitly selected representative previews.
+Candidate frames, rejected interpolation output, model weights, runtime logs,
+and bulk previews are local artifacts and must not be committed. The finite set
+of human-approved frames required for the distributable MVP is published under
+`AI_Avatar/public/` and may be committed as product artwork. Git may also
+contain configuration, code, tests, small fixtures, and explicitly selected
+representative previews.
 
 ## 5. Shared transition-frame contract
 
@@ -210,7 +216,7 @@ A failed model result must never be silently substituted into a ready clip.
 - shared `S0` identity and pixel hash;
 - file existence and frame count;
 - fixed canvas dimensions and alpha format;
-- fixed foot anchor and bounded center/scale drift;
+- fixed visible-body baseline and bounded center/scale drift;
 - unexpected transparent-boundary growth;
 - excessive difference between adjacent frames;
 - duplicate, missing, or reordered frames;
