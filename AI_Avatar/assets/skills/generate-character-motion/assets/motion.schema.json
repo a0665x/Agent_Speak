@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "motion_id",
+    "character_id",
+    "fps",
+    "duration_seconds",
+    "s0_sha256",
+    "poses"
+  ],
+  "properties": {
+    "version": {"const": "1.0"},
+    "motion_id": {"type": "string", "minLength": 1},
+    "character_id": {"type": "string", "minLength": 1},
+    "fps": {"type": "integer", "minimum": 1, "maximum": 60},
+    "duration_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 30},
+    "s0_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "poses": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "frame", "joints"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "frame": {"type": "integer", "minimum": 0},
+          "joints": {
+            "type": "object",
+            "additionalProperties": {"$ref": "#/$defs/point"}
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": {"type": "number", "minimum": 0, "maximum": 1},
+        "y": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    }
+  }
+}

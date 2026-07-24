@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "source_type",
+    "character_id",
+    "motion_id",
+    "transition_frame_id",
+    "transition_frame_sha256",
+    "first_frame_sha256",
+    "last_frame_sha256",
+    "fps",
+    "frame_count",
+    "canvas",
+    "frames_dir",
+    "preview_media",
+    "source_metadata",
+    "approval_record"
+  ],
+  "properties": {
+    "version": {"const": "1.0"},
+    "source_type": {"enum": ["gpt_image_keyframes", "comfyui_flf2v"]},
+    "character_id": {"type": "string", "minLength": 1},
+    "motion_id": {"type": "string", "minLength": 1},
+    "transition_frame_id": {"const": "S0"},
+    "transition_frame_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "first_frame_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "last_frame_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "fps": {"type": "integer", "minimum": 1, "maximum": 60},
+    "frame_count": {"type": "integer", "minimum": 3},
+    "canvas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": {"type": "integer", "minimum": 64},
+        "height": {"type": "integer", "minimum": 64}
+      }
+    },
+    "frames_dir": {"type": "string", "minLength": 1},
+    "preview_media": {"type": ["string", "null"]},
+    "source_metadata": {"type": "string", "minLength": 1},
+    "approval_record": {"type": "string", "minLength": 1}
+  }
+}
