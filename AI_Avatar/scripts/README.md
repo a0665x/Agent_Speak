@@ -1,9 +1,25 @@
-# Scripts
+# AI Avatar tooling
 
-The local agent should implement:
+The implemented entry point is:
 
-- `extract_frames.py`: crop rows/cells from source sheets using manifest crop metadata
-- `build_animations.py`: export PNG sequences to GIF or Animated WebP
-- `validate_assets.py`: verify expected clips and frame counts
+```bash
+python AI_Avatar/tools/build_avatar_assets.py --help
+```
 
-The current package provides the architecture and source sheets; crop coordinates may need one manual calibration pass per sheet.
+Phases:
+
+- `inspect`: write a normalized source contact sheet;
+- `extract`: write ignored shared/core candidate frames;
+- `review --provider auto|film|rife|none`: interpolate, score, and preview;
+- `publish --approve CLIP_ID:REPORT_SHA256`: copy only current approved clips;
+- `validate`: verify paths, hashes, RGBA dimensions, quality, and shared `S0`.
+
+Provider checkout verification:
+
+```bash
+AI_Avatar/tools/setup_interpolation_models.sh
+```
+
+Do not restore the obsolete `extract_frames.py`/`build_animations.py` design or
+write directly into `public/`. Candidate generation and approval are separate
+on purpose.

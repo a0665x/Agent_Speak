@@ -18,12 +18,14 @@ def test_docker_image_copies_the_canonical_asr_realtime_build() -> None:
 
 def test_docker_image_builds_and_copies_the_ai_avatar_application() -> None:
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
 
     assert "COPY AI_Avatar /workspace/AI_Avatar" in dockerfile
     assert (
         "COPY --from=realtime-frontend-build /workspace/web/ai_avatar "
         "/app/web/ai_avatar"
     ) in dockerfile
+    assert '"scipy>=1.14,<2"' in pyproject.split("avatar =", maxsplit=1)[0]
 
 
 def test_docker_first_files_and_audio_mapping_exist() -> None:
@@ -162,9 +164,12 @@ def test_root_run_script_exposes_single_docker_operator_interface() -> None:
     assert "arecord -l" in source and "aplay -l" in source
     assert "gateway-test" in source
     assert "frontend-test" in source
+    assert "compose build gateway-test frontend-test" in source
     assert "AGENT_SPEAK_EFFECTIVE_ACCELERATOR" in source
     assert "correction_device=" in source
     assert "/asr_realtime" in source
+    assert "avatar=http://" in source
+    assert "/ai_avatar" in source
     assert "node --check web/codex-recorder-core.js" in source
     assert "node --check web/codex.js" in source
     assert "node tests/codex_recorder_core.test.js" in source

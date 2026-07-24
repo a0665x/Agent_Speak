@@ -45,3 +45,22 @@ Recording stays disabled until an explicit device check gives the browser microp
 The page uses separate Start and Stop buttons. Recording stops automatically at 30 seconds. The browser converts bounded audio to mono 16-bit PCM WAV, calls `/api/v1/audio/asr` followed by `/api/v1/text/correct`, displays raw and corrected text, and attempts `navigator.clipboard.writeText`. Clipboard denial keeps the text visible and exposes a manual copy control.
 
 External Agents continue to use the host-owned interaction `listen_once → external reasoning/tools → speak`; no webpage replaces that contract.
+
+## AI Avatar Motion Lab
+
+`/ai_avatar` is an English-first, audio-free Henry animation preview. It loads
+the approved v4 manifest and all 164 unique 512 × 512 RGBA PNG frames before
+enabling Idle, Listening, Thinking, Speaking, Happy, or Error. It never requests
+devices, captures audio, invokes ASR/Agent/TTS, or plays sound.
+
+Every clip starts and ends on byte-identical `henry_s0`. A click changes only
+the latest queued state while the current loop continues. The final shared S0
+is displayed before the queued state becomes active, so switching does not cut
+a gesture or require a crossfade. Playing and Queued text duplicate the visual
+button state.
+
+The fixed Canvas stage uses a dark ice-blue/violet liquid-glass presentation,
+subtle local particles, semantic state buttons, Pause/Resume, Restart, and a
+collapsible runtime panel. Controls stay disabled until Assets Ready, have
+visible keyboard focus and at least 44 px targets, collapse to one column below
+900 px, and remove continuous decorative animation for reduced motion.
