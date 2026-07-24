@@ -3,6 +3,11 @@
 Asset generation is offline and review-gated. Gateway or WebUI startup must
 never download a provider or generate frames.
 
+The current six published loops are sheet-derived and use FILM/RIFE for
+interpolation. New semantic motions follow the approved
+[ComfyUI FLF2V-first architecture](../../spec/references/20260724-comfyui-avatar-motion-design.md).
+There is no GPT Image fallback.
+
 ## 1. Verified source inventory
 
 `config/verified_asset_inventory.json` records visually checked crop boxes.
@@ -37,7 +42,7 @@ the white shirt, both sleeves, hands, and trousers while removing sheet UI.
 python AI_Avatar/tools/build_avatar_assets.py extract
 ```
 
-## 3. FILM and RIFE
+## 3. Current FILM and RIFE post-processing
 
 Provider repositories are pinned by commit in
 `config/interpolation_providers.json`. Official weights live below ignored
@@ -61,6 +66,10 @@ Frame interpolation cannot invent a reliable missing pose between unrelated
 images. If a hand jumps from 0° to 90° without valid source structure, add
 reviewed keyframes or keep the clip in `needs_keyframe`; do not approve a
 deformed result.
+
+For new continuous actions, generate semantic motion with a reviewed ComfyUI
+FLF2V workflow using the same S0 at both boundaries. Use FILM/RIFE afterward
+only for fixed-FPS resampling or a short, already-correct transition.
 
 ## 4. Interpolate every segment
 

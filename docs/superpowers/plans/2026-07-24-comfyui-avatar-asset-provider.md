@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a provider-independent `comfyui_assets` path that submits reviewed FLF2V workflows, preserves original animated previews, and normalizes approved results into exact-S0 PNG sequences accepted by the existing avatar scheduler.
+**Goal:** Add the sole generative `comfyui_assets` path that submits reviewed FLF2V workflows, preserves original animated previews, and normalizes approved results into exact-S0 PNG sequences accepted by the existing avatar scheduler.
 
-**Architecture:** A sanitized workflow template and motion preset become an ignored ComfyUI job. The provider adapter talks to an external ComfyUI service but has no runtime or publication authority. A deterministic FFmpeg normalizer extracts fixed-FPS frames, replaces both boundaries with the exact approved S0, checks the neighboring frames for visible jumps, and emits the same candidate clip contract used by the GPT Image path.
+**Architecture:** A sanitized workflow template and motion preset become an ignored ComfyUI job. The provider adapter talks to an external ComfyUI service but has no runtime or publication authority. A deterministic FFmpeg normalizer extracts fixed-FPS frames, replaces both boundaries with the exact approved S0, checks the neighboring frames for visible jumps, and emits the existing runtime candidate clip contract. FILM/RIFE remain optional bounded post-processing providers.
 
 **Tech Stack:** Python 3.11, `httpx`, JSON Schema, Pillow, NumPy, FFmpeg/FFprobe subprocesses, pytest; external ComfyUI with a reviewed FLF2V workflow.
 
@@ -15,6 +15,7 @@
 This plan commits schemas, sanitized workflow/preset metadata, provider code,
 offline fixtures, and normalization tests. It does not download Wan/FLF2V
 weights, start ComfyUI, or add a live ComfyUI dependency to `/ai_avatar`.
+There is no GPT Image fallback or per-keyframe paid-generation task.
 
 ### Task 1: ComfyUI motion preset and workflow sanitizer
 

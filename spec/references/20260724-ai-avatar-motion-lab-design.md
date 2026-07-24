@@ -49,15 +49,20 @@ them.
 Use a reproducible crop-and-normalize pipeline with per-sheet configuration and
 manual overrides.
 
-Rejected as the primary approach:
+Rejected as the primary sheet-MVP approach:
 
 - fixed-grid-only cropping, because it is brittle when sheet layouts differ;
 - VLM generation for every transition, because it can drift from Henry's
   identity and produces nondeterministic assets.
 
-The selected pipeline may detect candidate cells and character bounds
+The selected MVP pipeline may detect candidate cells and character bounds
 automatically, but committed configuration is the final source of truth. Model
 outputs never become runtime assets until they pass validation.
+
+For new semantic motions after the sheet-derived MVP, ComfyUI FLF2V is the only
+planned generative path. It conditions the same S0 as both first and last
+frames. GPT Image per-keyframe generation is explicitly abandoned. FILM/RIFE
+remain bounded post-processing providers.
 
 ## 4. Asset build pipeline
 
@@ -167,6 +172,9 @@ frame of the next loop.
 ## 6. Transition interpolation
 
 Interpolation is an offline asset-build step, not part of the browser runtime.
+For the existing six sheet-derived loops it remains the current production
+path. For future new motions, semantic generation belongs to ComfyUI FLF2V and
+FILM/RIFE may only resample or repair approved neighboring frames.
 
 ### 6.1 Model routing
 

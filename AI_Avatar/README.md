@@ -73,6 +73,21 @@ The report hash prevents stale approval after any source, crop, segmentation,
 provider, or frame change. Long interpolation runs are resumable: each pair is
 cached only when its input hashes, provider, and exponent still match.
 
+## Planned motion authoring
+
+New semantic motions use ComfyUI FLF2V as the only planned generative path.
+The same reviewed `S0` is supplied as both the first and last frame while a
+prompt describes the middle action. Generated GIF/WebP/video remains an
+ignored review preview; approved output is normalized to the current RGBA PNG
+sequence contract before publication.
+
+FILM and RIFE remain available for frame-rate conversion and bounded repair
+between approved neighboring frames. They are not expected to invent a missing
+large pose. There is no GPT Image or per-keyframe paid-generation fallback.
+
+See the
+[ComfyUI FLF2V design](../spec/references/20260724-comfyui-avatar-motion-design.md).
+
 ## Build and verify the page
 
 ```bash
