@@ -2,7 +2,8 @@
 
 **Date:** 2026-07-24
 **Branch:** `feature/ai-avatar-motion-lab`
-**Status:** Approved design; implementation not started
+**Status:** Approved design with dual asset-generation amendment;
+implementation not started
 
 ## Goal
 
@@ -13,6 +14,12 @@ scratch-head loop without replacing the six existing runtime loops.
 
 The skill must generalize from `AI_Avatar/assets/reference/*.png`; it must not
 hard-code Henry's anatomy, identity, or motion into the runner.
+
+The asset pipeline must also reserve a second provider path named
+`comfyui_assets`. That path accepts first-last-frame video workflows such as
+ComfyUI FLF2V, with the exact same approved S0 supplied at both boundaries and
+a motion prompt describing the middle of the loop. Both paths converge on one
+review, normalization, and publication contract.
 
 ## Selected decisions
 
@@ -28,6 +35,14 @@ hard-code Henry's anatomy, identity, or motion into the runner.
 - Preserve an exact shared S0 file at the beginning and end of every loop.
 - Keep all generated outputs as ignored candidates until their exact hashes
   pass automatic gates and human review.
+- Keep two independent candidate-generation paths:
+  `gpt_image_assets` for reviewed pose/keyframe generation and
+  `comfyui_assets` for first-last-frame video generation.
+- Preserve the original ComfyUI GIF, Animated WebP, or video as a review
+  preview, but normalize approved output into a deterministic PNG frame
+  sequence before connecting it to the precise runtime scheduler.
+- Require both generation paths to publish through the same manifest,
+  shared-S0, geometry, temporal, identity, and approval gates.
 
 ## OpenAI capability boundary
 
@@ -47,6 +62,82 @@ Source:
 
 The implementation must not claim that a visual skeleton reference is
 equivalent to ControlNet.
+
+## Dual asset-generation architecture
+
+The two paths solve different motion-authoring problems.
+
+### `gpt_image_assets`
+
+Use this path when the motion needs explicit reviewed semantic poses or a
+stable character rig. It creates deterministic pose maps and advances one
+flesh keyframe at a time through the anchored-neighbor review topology.
+
+This remains the selected path for the first Henry scratch-head proof because
+the proof is intended to validate rig stability, stage gating, and identity
+review.
+
+### `comfyui_assets`
+
+Use this path when the approved S0 already exists and the desired motion is
+best described as a continuous short loop, such as breathing, scratching the
+head, looking around, nodding, or shaking the head.
+
+The adapter supplies the exact approved S0 as both the first and last input
+frame, together with the motion prompt and reproducibility parameters.
+ComfyUI's official Wan FLF2V workflows are designed to generate intermediate
+frames between start and end images. The provider is deliberately generic so
+a reviewed FLF2V workflow can be upgraded without coupling the avatar runtime
+to one model implementation.
+
+Sources:
+
+- [ComfyUI Wan2.1 First-Last-Frame to Video](https://docs.comfy.org/tutorials/video/wan/wan-flf)
+- [ComfyUI Wan2.2 First-Last-Frame to Video](https://docs.comfy.org/tutorials/video/wan/wan2_2)
+- [ComfyUI `WanFirstLastFrameToVideo` node](https://docs.comfy.org/built-in-nodes/WanFirstLastFrameToVideo)
+
+FLF2V is a candidate generator, not a publication authority. Supplying S0 at
+both inputs improves loop conditioning but does not prove a seamless boundary.
+The extracted second and penultimate frames must still pass temporal checks
+against exact S0.
+
+### Converged output contract
+
+Both paths produce a candidate clip package with:
+
+```json
+{
+  "source_type": "gpt_image_keyframes | comfyui_flf2v",
+  "character_id": "<safe-id>",
+  "motion_id": "<safe-id>",
+  "transition_frame_id": "S0",
+  "transition_frame_sha256": "<sha256>",
+  "fps": 12,
+  "frame_count": 37,
+  "canvas": {"width": 0, "height": 0},
+  "frames_dir": "frames/",
+  "preview_media": "preview/<optional-file>",
+  "source_metadata": "source.json",
+  "approval_record": "approvals.json"
+}
+```
+
+The production renderer consumes the normalized PNG frame sequence. Original
+GIF, Animated WebP, WebM, or MP4 output may be retained in the ignored
+candidate workspace for review, but is not the default precise-transition
+runtime source. This avoids browser GIF timing and completion ambiguity while
+retaining the generated animation for visual comparison.
+
+Normalization must:
+
+1. decode source media at the configured fixed FPS and canvas;
+2. preserve alpha when present or apply the approved matte pipeline;
+3. replace decoded frame zero and the final frame with the exact approved S0
+   bytes rather than visually similar regenerated copies;
+4. validate the second and penultimate frames against S0 to reject or repair a
+   visible boundary jump;
+5. emit the same manifest fields used by the current `ClipScheduler`;
+6. require human identity and motion approval before publication.
 
 ## Package layout
 
@@ -75,27 +166,76 @@ Character-owned reviewed artifacts:
 AI_Avatar/assets/
 ├── reference/
 │   └── <character>.png
-├── rigs/
-│   └── <character>.rig.json
-└── pose-maps/
-    └── <character>/<motion>/*.png
+├── gpt_image_assets/
+│   ├── rigs/
+│   │   └── <character>.rig.json
+│   └── pose-maps/
+│       └── <character>/<motion>/*.png
+└── comfyui_assets/
+    ├── workflows/
+    │   └── <reviewed-flf2v-workflow>.json
+    ├── motion-presets/
+    │   └── <motion>.json
+    └── schemas/
+        └── comfyui-motion.schema.json
 ```
 
 Ignored job workspace:
 
 ```text
-AI_Avatar/.candidates/generative/
-└── <character>/<motion>/<job-id>/
-    ├── job.json
-    ├── prompts.jsonl
-    ├── opaque/
-    ├── rgba/
-    ├── reports/
-    └── approvals.json
+AI_Avatar/.candidates/
+├── gpt_image/
+│   └── <character>/<motion>/<job-id>/
+│       ├── job.json
+│       ├── prompts.jsonl
+│       ├── opaque/
+│       ├── rgba/
+│       ├── frames/
+│       ├── reports/
+│       └── approvals.json
+└── comfyui/
+    └── <character>/<motion>/<job-id>/
+        ├── job.json
+        ├── source.json
+        ├── preview/
+        ├── decoded/
+        ├── frames/
+        ├── reports/
+        └── approvals.json
 ```
 
 The skill prepares reviewed assets. The existing Avatar publication pipeline
 remains the only route into `AI_Avatar/public/`.
+
+Reviewed ComfyUI workflow JSON and motion-preset metadata may be committed only
+after absolute paths, credentials, machine-specific queue data, and private
+outputs are removed. ComfyUI model weights, generated media, decoded frames,
+logs, and API history must never enter Git.
+
+## ComfyUI provider boundary
+
+The avatar project does not import ComfyUI nodes into the runtime and does not
+make `/ai_avatar` depend on a live ComfyUI server. A `comfyui_flf2v` provider
+adapter owns submission, polling, result retrieval, and bounded cancellation.
+
+Its request contains:
+
+1. a reviewed and sanitized workflow identifier plus workflow hash;
+2. the exact approved S0 input for both first and last frame;
+3. a bounded motion prompt and optional negative prompt;
+4. width, height, FPS, duration, seed, and sampler settings;
+5. expected output node and supported media type;
+6. character, motion, and job IDs that already passed safe-path validation.
+
+Its result contains only the source media path, reproducibility metadata,
+workflow hash, seed, and bounded provider diagnostics. The adapter has no
+publication authority and must not leak ComfyUI credentials, absolute
+machine paths, full queue history, or raw server responses into reports.
+
+The first implementation reserves this provider contract and committed folder
+structure. Downloading large FLF2V model weights or starting a ComfyUI server
+is a separate opt-in operation because hardware, storage, and workflow choice
+vary by deployment.
 
 ## Provider contract
 
@@ -321,6 +461,13 @@ Agent follows the staged workflow and capability boundaries.
 - exact shared S0 at both boundaries;
 - reports and logs contain no API key or raw provider response;
 - publication is impossible from the candidate runner.
+- both provider paths validate against the same candidate clip schema;
+- ComfyUI workflow sanitization rejects credentials, absolute paths, and
+  unsupported output nodes;
+- ComfyUI normalization uses the exact S0 bytes at both boundaries;
+- fixed-FPS decode is deterministic from golden source media;
+- second-to-S0 and penultimate-to-S0 temporal gates reject visible loop jumps;
+- source preview media cannot be published directly by the candidate runner.
 
 ### Integration and live acceptance
 
@@ -339,6 +486,11 @@ contract.
   are reviewed.
 - One full-body scratch-head proof loop passes all automatic and human gates.
 - Its first and final frames reference the same exact candidate S0.
+- `gpt_image_assets` and `comfyui_assets` remain interchangeable candidate
+  sources behind one normalized clip and publication contract.
+- The ComfyUI path can retain generated GIF/video previews while producing a
+  deterministic frame sequence that the existing scheduler can switch only at
+  the shared S0 boundary.
 - Existing six runtime loops and `/ai_avatar` remain unchanged in this phase.
 - No credentials, private job cache, rejected candidates, or provider traces
   enter Git.
@@ -350,3 +502,7 @@ contract.
 - Automatically replacing all six current runtime loops.
 - Automatically approving identity or semantic anatomy.
 - Publishing a new shared runtime S0 before every state is migrated.
+- Downloading ComfyUI FLF2V model weights or requiring ComfyUI at runtime.
+- Treating the presence of identical first/last conditioning images as proof
+  of a seamless generated loop without temporal validation.
+- Using native GIF completion events as the precise state-transition clock.
