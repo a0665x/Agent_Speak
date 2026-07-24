@@ -16,6 +16,16 @@ def test_docker_image_copies_the_canonical_asr_realtime_build() -> None:
     assert "/workspace/web/realtime /app/web/realtime" not in dockerfile
 
 
+def test_docker_image_builds_and_copies_the_ai_avatar_application() -> None:
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+
+    assert "COPY AI_Avatar /workspace/AI_Avatar" in dockerfile
+    assert (
+        "COPY --from=realtime-frontend-build /workspace/web/ai_avatar "
+        "/app/web/ai_avatar"
+    ) in dockerfile
+
+
 def test_docker_first_files_and_audio_mapping_exist() -> None:
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     compose = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))

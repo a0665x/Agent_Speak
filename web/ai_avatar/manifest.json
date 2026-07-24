@@ -1,0 +1,889 @@
+{
+  "version": "4.0",
+  "character": "Henry",
+  "viewport": {
+    "width": 512,
+    "height": 512,
+    "anchor_x": 0.5,
+    "anchor_y": 0.92
+  },
+  "transition_frame_id": "henry_s0",
+  "frames": {
+    "henry_s0": {
+      "src": "assets/clips/shared/henry_s0.png",
+      "sha256": "a3eb59e3388a79f9776954b9a727cba54a11515adf055189129ec89b7dbad24b"
+    },
+    "idle_entry_001": {
+      "src": "assets/clips/idle/idle_entry_001.png",
+      "sha256": "3f6f90afc913dc2693d842d06f5430b42c558685741a76e13bd92c16976e6af2"
+    },
+    "idle_entry_002": {
+      "src": "assets/clips/idle/idle_entry_002.png",
+      "sha256": "64af42b87046614707f5bd4b6b557716c2a45ad8b0c988ae98d57b5eb3f99e2a"
+    },
+    "idle_entry_003": {
+      "src": "assets/clips/idle/idle_entry_003.png",
+      "sha256": "279093ab7eed189c41c538da449970ec11c74b244dfe23e390599a98fc036eb5"
+    },
+    "idle_001": {
+      "src": "assets/clips/idle/idle_001.png",
+      "sha256": "e7ae5ab5c4ceaf9b526eb1d6de2713aef3a8057d788c17ece861206f50c33b60"
+    },
+    "idle_core_001_001": {
+      "src": "assets/clips/idle/idle_core_001_001.png",
+      "sha256": "81601a2d65316a01566472db5d1d169bb1b6f8b249d927bcf82bf80c3aaa98a3"
+    },
+    "idle_core_001_002": {
+      "src": "assets/clips/idle/idle_core_001_002.png",
+      "sha256": "95a1d3dbe6129cce776edf2ee28d5b2ab03c85d3af35e96e6237a4610a7ee469"
+    },
+    "idle_core_001_003": {
+      "src": "assets/clips/idle/idle_core_001_003.png",
+      "sha256": "808f2bed610a088375a04d04f6d2c25e304aaea2741245cfc5b15a9071382615"
+    },
+    "idle_002": {
+      "src": "assets/clips/idle/idle_002.png",
+      "sha256": "4ff75ef520b5351f352347bc607ee96790f5a6ffd88891fb68837d071cd67857"
+    },
+    "idle_core_002_001": {
+      "src": "assets/clips/idle/idle_core_002_001.png",
+      "sha256": "7106d0b9b92029b1c8064b9b5a5f2c53b820103a70d30ffbea7e2c93d38f91f7"
+    },
+    "idle_core_002_002": {
+      "src": "assets/clips/idle/idle_core_002_002.png",
+      "sha256": "5a101424b6a8a92470cae04e406777520fa88fdffc3796ccfdbf8789fdead854"
+    },
+    "idle_core_002_003": {
+      "src": "assets/clips/idle/idle_core_002_003.png",
+      "sha256": "d9455e6db42d5399bfad5265649f81d8487fdda3de1d40b5a176424de53d1fda"
+    },
+    "idle_003": {
+      "src": "assets/clips/idle/idle_003.png",
+      "sha256": "31e5e1d0041474622fa612d25bbdc3d3338c7c40078a7c4d61fa3a507e4a2281"
+    },
+    "idle_core_003_001": {
+      "src": "assets/clips/idle/idle_core_003_001.png",
+      "sha256": "9c724661db149e9773ea8ec273863c0b727a15c7ee95e5e976fa3e15dc36e9bd"
+    },
+    "idle_core_003_002": {
+      "src": "assets/clips/idle/idle_core_003_002.png",
+      "sha256": "29cd0040db6bfcd294b4a587e1e8609924766906fd46d32087e57cdc459b3193"
+    },
+    "idle_core_003_003": {
+      "src": "assets/clips/idle/idle_core_003_003.png",
+      "sha256": "9a06172bf0d6aa8a5d420f3e7341d3a2bf480e13d90b65a0debffa86dca10e3a"
+    },
+    "idle_004": {
+      "src": "assets/clips/idle/idle_004.png",
+      "sha256": "820268ccd54ea1f3b9c696992063ada21f48469dafbcc4be251582d539ca0559"
+    },
+    "idle_core_004_001": {
+      "src": "assets/clips/idle/idle_core_004_001.png",
+      "sha256": "d831a2a2111c044c92eeadd90a7f69469cf6b9f74536575591b085622237e52e"
+    },
+    "idle_core_004_002": {
+      "src": "assets/clips/idle/idle_core_004_002.png",
+      "sha256": "d184f0d4633b99b14418fb536fac1239b2ef0d762196a3a747bc6713e86076b2"
+    },
+    "idle_core_004_003": {
+      "src": "assets/clips/idle/idle_core_004_003.png",
+      "sha256": "5e502cd1702cfe733c297edc03d732fe3636181ae0de903b96f96ceb71b0a60b"
+    },
+    "idle_005": {
+      "src": "assets/clips/idle/idle_005.png",
+      "sha256": "9ffc6c2830d8d41c0c8a200ab8d9868c5f443a1a4e1d20112078ed2741dd5b3f"
+    },
+    "idle_core_005_001": {
+      "src": "assets/clips/idle/idle_core_005_001.png",
+      "sha256": "7846883caabfc7002b8f001c5ef78cc05efc5e787bde50c67955990f83e2de55"
+    },
+    "idle_core_005_002": {
+      "src": "assets/clips/idle/idle_core_005_002.png",
+      "sha256": "512ef3745e9737fcc917922897edac5c0bf6f832a534bfbaccc6fc58ba557a10"
+    },
+    "idle_core_005_003": {
+      "src": "assets/clips/idle/idle_core_005_003.png",
+      "sha256": "929d63c00b9553e30f4e69c28b639d2fb26c76ce7bc49a7f1864e78475a85304"
+    },
+    "idle_006": {
+      "src": "assets/clips/idle/idle_006.png",
+      "sha256": "058ba0ea5b3e52ede622685107c7c23be611e0a6e49b18b8fff80fd5fc3b55e3"
+    },
+    "idle_core_006_001": {
+      "src": "assets/clips/idle/idle_core_006_001.png",
+      "sha256": "6dcbd256cc35f5cb4b4dee514a47091ccf53a2a5f726888a4f1d6e1571831b97"
+    },
+    "idle_core_006_002": {
+      "src": "assets/clips/idle/idle_core_006_002.png",
+      "sha256": "06d612494b956c908d27dc154a9d1bd12cc8237fb400f403a90c0fd434e666a0"
+    },
+    "idle_core_006_003": {
+      "src": "assets/clips/idle/idle_core_006_003.png",
+      "sha256": "89b91dcbbffe8040c1c1805fc98bf7e4eca371ecf61b0fc045baa562f68335e9"
+    },
+    "idle_007": {
+      "src": "assets/clips/idle/idle_007.png",
+      "sha256": "784e8abe9431a770b3309eeea025e250c1a44c31cec331feec129b97cda70e75"
+    },
+    "idle_core_007_001": {
+      "src": "assets/clips/idle/idle_core_007_001.png",
+      "sha256": "711e38d7bf31752a475fd256e5da03ba465aafd059cf534c6ee88d61a9d4d067"
+    },
+    "idle_core_007_002": {
+      "src": "assets/clips/idle/idle_core_007_002.png",
+      "sha256": "3dd76a875d1b37307ebdfbf4d3fcb4aa7af9b3ca3b0674eecfdacb28f78121db"
+    },
+    "idle_core_007_003": {
+      "src": "assets/clips/idle/idle_core_007_003.png",
+      "sha256": "faf777d955925cb403e8b3d1342068c36bfb287d4b357b5288cea249828830ab"
+    },
+    "idle_008": {
+      "src": "assets/clips/idle/idle_008.png",
+      "sha256": "d9a1840a51d2ad43119fa7ee7899c9b7512104c3af138cf3748d7cf409d6029a"
+    },
+    "idle_exit_001": {
+      "src": "assets/clips/idle/idle_exit_001.png",
+      "sha256": "30d959ca9a982f12d145356ef229b2f3f85aa8b6619ee9fa7bc31a96e955fa9e"
+    },
+    "idle_exit_002": {
+      "src": "assets/clips/idle/idle_exit_002.png",
+      "sha256": "a7453a0d1d95943364097f610750a7ebb3634c57d8f2f4608c3be321a2b97653"
+    },
+    "idle_exit_003": {
+      "src": "assets/clips/idle/idle_exit_003.png",
+      "sha256": "657cfe94e0066053c94da736a2dfc306e29f32c4d4e03d33c4e12f023895d221"
+    },
+    "listening_entry_001": {
+      "src": "assets/clips/listening/listening_entry_001.png",
+      "sha256": "2e835aa1a703dc98fb90f70d9a5f4549ea4bd3b8743c93c4cf42f98cda5fc4cc"
+    },
+    "listening_entry_002": {
+      "src": "assets/clips/listening/listening_entry_002.png",
+      "sha256": "3f9547a624cdb1ac366147dbe3b7102d5eea71a2d19478b92311c8d5dbc9426c"
+    },
+    "listening_entry_003": {
+      "src": "assets/clips/listening/listening_entry_003.png",
+      "sha256": "c915b512f4d0404d175280e8fb56f8391566ed3d999783be853b7c07ea5f7cd6"
+    },
+    "listening_001": {
+      "src": "assets/clips/listening/listening_001.png",
+      "sha256": "945c0d0ef1337b2b1976d13114a7f2108301995b81c8234cae05e0ce41b0fd5c"
+    },
+    "listening_core_001_001": {
+      "src": "assets/clips/listening/listening_core_001_001.png",
+      "sha256": "8e46108c6c800edf2e5a569f49766045a88d6f286ed03a0f41f74a78922988bc"
+    },
+    "listening_core_001_002": {
+      "src": "assets/clips/listening/listening_core_001_002.png",
+      "sha256": "7933c452d6345405e9ca10e90f9cdcff767a20328a58bcd7cc3d0fc7462bf76e"
+    },
+    "listening_core_001_003": {
+      "src": "assets/clips/listening/listening_core_001_003.png",
+      "sha256": "1bff2e9aba5e67f573940b51693e479e13a835c43ba7b5144cff30d9972c0b25"
+    },
+    "listening_002": {
+      "src": "assets/clips/listening/listening_002.png",
+      "sha256": "de7ff768fdc894c9f860cfaeb9eb7dc28ffb5d26d757d5b36c8daade17111789"
+    },
+    "listening_core_002_001": {
+      "src": "assets/clips/listening/listening_core_002_001.png",
+      "sha256": "26ef2e4741d985801f7c0d1b76daa0d90aedea9d9e7eec7133c4bbe8517f4153"
+    },
+    "listening_core_002_002": {
+      "src": "assets/clips/listening/listening_core_002_002.png",
+      "sha256": "d0ab414644e36b6b665bb1153d4703237bdb0fcebc6270fabaf0358ab503972d"
+    },
+    "listening_core_002_003": {
+      "src": "assets/clips/listening/listening_core_002_003.png",
+      "sha256": "6990ca6fd38d2f827de8a045bbf559713c4f0d6b6c4403785770fd094ebdb0af"
+    },
+    "listening_003": {
+      "src": "assets/clips/listening/listening_003.png",
+      "sha256": "3994e8d99d1ae6a26bb5d8371802f042539578149e96469fe068c00380fe0c8d"
+    },
+    "listening_core_003_001": {
+      "src": "assets/clips/listening/listening_core_003_001.png",
+      "sha256": "23f53df6bede0dc7adb9b4b9255012a11fc5bb1a67c99780064b53b3f70722d3"
+    },
+    "listening_core_003_002": {
+      "src": "assets/clips/listening/listening_core_003_002.png",
+      "sha256": "9b5c6cbb8f441511dd60b992c7efc2ff9e20e6b0cd1461901a94606634d4af3f"
+    },
+    "listening_core_003_003": {
+      "src": "assets/clips/listening/listening_core_003_003.png",
+      "sha256": "c581e050f27b9124dc171178ec841b3fe562b743b1da2288a31964b3b41f3db0"
+    },
+    "listening_004": {
+      "src": "assets/clips/listening/listening_004.png",
+      "sha256": "8205442b0563c7c8452c75b349bc48c50047c553449e9f81381e1e90b6492bc0"
+    },
+    "listening_core_004_001": {
+      "src": "assets/clips/listening/listening_core_004_001.png",
+      "sha256": "23f610f3d6ecf7542d4e10386b457895f990853a525b309202a01ee2b8f77dd9"
+    },
+    "listening_core_004_002": {
+      "src": "assets/clips/listening/listening_core_004_002.png",
+      "sha256": "ecdeb7a673508fec3b50f566421165eb517c9f801495f6e85a1580d8f2c94c1d"
+    },
+    "listening_core_004_003": {
+      "src": "assets/clips/listening/listening_core_004_003.png",
+      "sha256": "df93c0c00524b5b40179e98a797903d352cd5814fcc1cc93e24ee64f1de41b56"
+    },
+    "listening_005": {
+      "src": "assets/clips/listening/listening_005.png",
+      "sha256": "ca1fb2ce641f402c48067bbebab384f57c941afcc8275905913a83303d98469b"
+    },
+    "listening_core_005_001": {
+      "src": "assets/clips/listening/listening_core_005_001.png",
+      "sha256": "4f2e8c17ed60eaf17677d2735a3aa160456a8f35602f3741b41ff28d7839d9b2"
+    },
+    "listening_core_005_002": {
+      "src": "assets/clips/listening/listening_core_005_002.png",
+      "sha256": "f647e451706dfeccd0aaa2733867ab86866bc573f957fb25d21ec3f11f9beab5"
+    },
+    "listening_core_005_003": {
+      "src": "assets/clips/listening/listening_core_005_003.png",
+      "sha256": "a76f5f8fa8e62cfcec3128ddb2267b9ff79410aad46f1105a2032b36759b8dad"
+    },
+    "listening_006": {
+      "src": "assets/clips/listening/listening_006.png",
+      "sha256": "fef605b6d226a0c95aed627f3ea4571d87d07f3e04f8312073b414ad953f3636"
+    },
+    "listening_core_006_001": {
+      "src": "assets/clips/listening/listening_core_006_001.png",
+      "sha256": "ae25c96bb0a74e177801823233ca887c170976b35592a169bd88b6d9f7ab5e86"
+    },
+    "listening_core_006_002": {
+      "src": "assets/clips/listening/listening_core_006_002.png",
+      "sha256": "e6f1ae7a94902c36fe3ca2159c0f31e4e15bfbda43bb382af1cc61c6fc68a0ce"
+    },
+    "listening_core_006_003": {
+      "src": "assets/clips/listening/listening_core_006_003.png",
+      "sha256": "e1c7ff49fe4a2e385065dba77343249d5529c39c3692f6ec7213197de5c9f12e"
+    },
+    "listening_007": {
+      "src": "assets/clips/listening/listening_007.png",
+      "sha256": "b8864c84cddc48ca9fdc7a45f00dbf662e24a8e7832ae52879639aa880b4c914"
+    },
+    "listening_core_007_001": {
+      "src": "assets/clips/listening/listening_core_007_001.png",
+      "sha256": "cc49ebc4daf395a2f864af37bbf1c3ff692b7927ad74d64271edd28af590b26b"
+    },
+    "listening_core_007_002": {
+      "src": "assets/clips/listening/listening_core_007_002.png",
+      "sha256": "363e48b096beb70e348c04e3a941911e39ad2b73a7746517acccc0392065017e"
+    },
+    "listening_core_007_003": {
+      "src": "assets/clips/listening/listening_core_007_003.png",
+      "sha256": "c25a993a5ffddf373cf1ff6175cdc8c66fac3d44864d375c571724581bbfb343"
+    },
+    "listening_008": {
+      "src": "assets/clips/listening/listening_008.png",
+      "sha256": "f79cc605085251a524761d90cbfd7fd2f72daf6e3930fb22283f56bf6cef5986"
+    },
+    "listening_exit_001": {
+      "src": "assets/clips/listening/listening_exit_001.png",
+      "sha256": "f40e0934780c825966112672680fae62e62f4a0d2085a5fa059dcc9f49f12c58"
+    },
+    "listening_exit_002": {
+      "src": "assets/clips/listening/listening_exit_002.png",
+      "sha256": "52bee62e644090d27d6d416d0a5ecbb83ac1ecfad70bb119c0b2e030427f4579"
+    },
+    "listening_exit_003": {
+      "src": "assets/clips/listening/listening_exit_003.png",
+      "sha256": "5321616830b0bbe96418250d9f8a91e6f48bd6802bc9c27343eff79421abcf56"
+    },
+    "thinking_entry_001": {
+      "src": "assets/clips/thinking/thinking_entry_001.png",
+      "sha256": "00958f63043aa49158b6960edc21efedbaa41052de44e359afa99ec4257d5c3d"
+    },
+    "thinking_entry_002": {
+      "src": "assets/clips/thinking/thinking_entry_002.png",
+      "sha256": "0727905038cc7f669e4f5b24146300c7cfc3da492283ac068a6951b45c336a85"
+    },
+    "thinking_entry_003": {
+      "src": "assets/clips/thinking/thinking_entry_003.png",
+      "sha256": "98fe51edfae5569542da5889c0813c7fd0d1f5e9004d5b327f475540bf2f52c5"
+    },
+    "thinking_001": {
+      "src": "assets/clips/thinking/thinking_001.png",
+      "sha256": "f9ab171ccd9157be6d8d761dd94093ac64aa800e741c9903978fbc64ed399bbd"
+    },
+    "thinking_core_001_001": {
+      "src": "assets/clips/thinking/thinking_core_001_001.png",
+      "sha256": "d601844b4dd471bfe4498d64b28da33684dd9257c02686a81862da0348a89a0a"
+    },
+    "thinking_core_001_002": {
+      "src": "assets/clips/thinking/thinking_core_001_002.png",
+      "sha256": "07b73b10b0443e8812df0d439de9ba22078a8f64c9aac04263723bfae9fc8db0"
+    },
+    "thinking_core_001_003": {
+      "src": "assets/clips/thinking/thinking_core_001_003.png",
+      "sha256": "505a666257dc156fbd811997fe5d2dd73437012988c46a27fc07691bb4541365"
+    },
+    "thinking_002": {
+      "src": "assets/clips/thinking/thinking_002.png",
+      "sha256": "ff0d18a0dd49bafa8e07d4faaa8a9ab00dba89face20b454bfe1ac1f7007ba9a"
+    },
+    "thinking_core_002_001": {
+      "src": "assets/clips/thinking/thinking_core_002_001.png",
+      "sha256": "2073e2c38cb5b6f11932a29226023305eb120d0aa502ae30e32f3b9cfe0300a2"
+    },
+    "thinking_core_002_002": {
+      "src": "assets/clips/thinking/thinking_core_002_002.png",
+      "sha256": "534fdece7893a316f33bc66d63d6aa94e55820fb78d5c7e237736d0488a1e276"
+    },
+    "thinking_core_002_003": {
+      "src": "assets/clips/thinking/thinking_core_002_003.png",
+      "sha256": "b9ee00d6bddc582c5d71c256ec8f3f86b5f7d2b52fdaa5ca047cc91c5339df90"
+    },
+    "thinking_003": {
+      "src": "assets/clips/thinking/thinking_003.png",
+      "sha256": "0e9eab5faecc59590da9ea771ca28d57dd6f2f2cf0a3dd73c6cb1cf7bc8185db"
+    },
+    "thinking_core_003_001": {
+      "src": "assets/clips/thinking/thinking_core_003_001.png",
+      "sha256": "0bb790b43ae005f829b08099aeea7008aa16861e7d27f730eff49b112d9aeac2"
+    },
+    "thinking_core_003_002": {
+      "src": "assets/clips/thinking/thinking_core_003_002.png",
+      "sha256": "7863807ea5422abe5a1c217cdd2b24eace4b7ddc1866a8be12ef13fb12256a0c"
+    },
+    "thinking_core_003_003": {
+      "src": "assets/clips/thinking/thinking_core_003_003.png",
+      "sha256": "df84a79fca992d864949fd5b696763b0bef084707ab05491e6b3741c1238ea39"
+    },
+    "thinking_004": {
+      "src": "assets/clips/thinking/thinking_004.png",
+      "sha256": "1eac3b73cc8f2cbc96a6ddfbdfe4cb9478ab73f5f4f3de57b7fa3728f8a70cda"
+    },
+    "thinking_core_004_001": {
+      "src": "assets/clips/thinking/thinking_core_004_001.png",
+      "sha256": "abcc6730a789414ef658929e5dd6820689201fe60fbaa4ef0e85c94361f3a225"
+    },
+    "thinking_core_004_002": {
+      "src": "assets/clips/thinking/thinking_core_004_002.png",
+      "sha256": "c9b151b20f0dcb8e068a9fff302cfcc8faea29e564f9a85981b2362b66bdaf89"
+    },
+    "thinking_core_004_003": {
+      "src": "assets/clips/thinking/thinking_core_004_003.png",
+      "sha256": "f8d48484be43ba0116f8631f65568842486207934f29fe11ddcfae630f015a0b"
+    },
+    "thinking_005": {
+      "src": "assets/clips/thinking/thinking_005.png",
+      "sha256": "e24df25253f21e21794e06b1cb7ef67ce94ee57d3834bd5454874afb21889648"
+    },
+    "thinking_core_005_001": {
+      "src": "assets/clips/thinking/thinking_core_005_001.png",
+      "sha256": "a457165344c597a07a51501996780a323f8f3288e69e58f7798e8787f23f92ad"
+    },
+    "thinking_core_005_002": {
+      "src": "assets/clips/thinking/thinking_core_005_002.png",
+      "sha256": "15db069b88a406f377ed7a4844db1964f3802331000de1b8f017c835b79974bc"
+    },
+    "thinking_core_005_003": {
+      "src": "assets/clips/thinking/thinking_core_005_003.png",
+      "sha256": "af7beaab55b31cfa2963da08082d0b67979c95585124535ab999d0b698c62007"
+    },
+    "thinking_006": {
+      "src": "assets/clips/thinking/thinking_006.png",
+      "sha256": "4593e090b8ba701848134390a82a273f7e2de8737928f650c9f2c8b0d35a5c18"
+    },
+    "thinking_core_006_001": {
+      "src": "assets/clips/thinking/thinking_core_006_001.png",
+      "sha256": "69399ec3fa5ccfd41d8819428566d3a302a24ae795b0f1b015983e9dc1382573"
+    },
+    "thinking_core_006_002": {
+      "src": "assets/clips/thinking/thinking_core_006_002.png",
+      "sha256": "7281f3383dbefc821bac6d692f10bf4916f68ff4d1cec9255078944ec4b34469"
+    },
+    "thinking_core_006_003": {
+      "src": "assets/clips/thinking/thinking_core_006_003.png",
+      "sha256": "82967ee182aacd0546dc3796efd3dd3196509dd20ffc8cc2d39aaf6e7826f970"
+    },
+    "thinking_007": {
+      "src": "assets/clips/thinking/thinking_007.png",
+      "sha256": "447b6824215d866191992e12f0b5f99830308addc6f073017cd38d81b8fe62d8"
+    },
+    "thinking_core_007_001": {
+      "src": "assets/clips/thinking/thinking_core_007_001.png",
+      "sha256": "bcd14f07ee7b0468d5669b520ee8199e6ec5b58ec68211eda43fa6aa6b92df60"
+    },
+    "thinking_core_007_002": {
+      "src": "assets/clips/thinking/thinking_core_007_002.png",
+      "sha256": "1dcaa6197b6991aa5ae9a9b4f6cc23272a00d63f23821fa3721efb0505ac4acb"
+    },
+    "thinking_core_007_003": {
+      "src": "assets/clips/thinking/thinking_core_007_003.png",
+      "sha256": "2cc451713af8e8319c7ba7dae13ac444840845ddd7b68996dafa62c341857e03"
+    },
+    "thinking_008": {
+      "src": "assets/clips/thinking/thinking_008.png",
+      "sha256": "af209eed9691ed4dae9a8d31a0bdb805a3ed40f7975b7d67c93bc0670580f0e6"
+    },
+    "thinking_exit_001": {
+      "src": "assets/clips/thinking/thinking_exit_001.png",
+      "sha256": "21cc0f2e7862e75b67567be29558bf3be436ba132b6988ed9035b2358cea7508"
+    },
+    "thinking_exit_002": {
+      "src": "assets/clips/thinking/thinking_exit_002.png",
+      "sha256": "e5a87bd3c481a74d19a6de2c4ccf51ff5e8496537745327f8e0d027aca69210c"
+    },
+    "thinking_exit_003": {
+      "src": "assets/clips/thinking/thinking_exit_003.png",
+      "sha256": "3c6085aab892ce876019ebeae6691fdc26ad9f08a8735fbde2813c8beb12e056"
+    },
+    "speaking_entry_001": {
+      "src": "assets/clips/speaking/speaking_entry_001.png",
+      "sha256": "0db7d0e9f05636ad19906de466093adb748e41b3887388cec7eac5569a2590a2"
+    },
+    "speaking_entry_002": {
+      "src": "assets/clips/speaking/speaking_entry_002.png",
+      "sha256": "121251cd5946fd47c579141335c62c97c51645f24d89cacf6ddd85715a73de9a"
+    },
+    "speaking_entry_003": {
+      "src": "assets/clips/speaking/speaking_entry_003.png",
+      "sha256": "12a50740dc6094a56208ef257b79dd6d5b27d10a464fe299aae6d4ecb77d985e"
+    },
+    "speaking_001": {
+      "src": "assets/clips/speaking/speaking_001.png",
+      "sha256": "9cab362a10efc6efd45e58d18b8e39a60adc668d1393fe783e9cdf3db2dafa06"
+    },
+    "speaking_core_001_001": {
+      "src": "assets/clips/speaking/speaking_core_001_001.png",
+      "sha256": "9db765ec37928448f1ee47d48a5e633333f4a904ef630ed1d7c22d960212ea88"
+    },
+    "speaking_core_001_002": {
+      "src": "assets/clips/speaking/speaking_core_001_002.png",
+      "sha256": "8eac103bc3c0b723d9bd5c0dab537dc672de094497df8529674068bc2a5c6e7c"
+    },
+    "speaking_core_001_003": {
+      "src": "assets/clips/speaking/speaking_core_001_003.png",
+      "sha256": "baab9573fc1b065d4acf50be575f155530f26cdc6550b87d6f5e55b98c1c334b"
+    },
+    "speaking_002": {
+      "src": "assets/clips/speaking/speaking_002.png",
+      "sha256": "dc570843309a5906a39fa22ffa45d8e3e4b0902105477d93bf822cd69610f27e"
+    },
+    "speaking_core_002_001": {
+      "src": "assets/clips/speaking/speaking_core_002_001.png",
+      "sha256": "a43e09f4bdee8f04dd9e88f850e8fafee4990b49ace710a135fe6bebc092f7c3"
+    },
+    "speaking_core_002_002": {
+      "src": "assets/clips/speaking/speaking_core_002_002.png",
+      "sha256": "47b47604428c7fea87b2c6a0d4eb81c2ae1da42b8280c708a7c03f01f83927b3"
+    },
+    "speaking_core_002_003": {
+      "src": "assets/clips/speaking/speaking_core_002_003.png",
+      "sha256": "315c66684ca0b408e6a44e6a6871c8d3a1ad6c7e2b28c6973144c853b8543d39"
+    },
+    "speaking_003": {
+      "src": "assets/clips/speaking/speaking_003.png",
+      "sha256": "63ac4500dc0418d29b7159ab9c6fcf38c09cb29912c933c25eb0f02b9fcc9525"
+    },
+    "speaking_core_003_001": {
+      "src": "assets/clips/speaking/speaking_core_003_001.png",
+      "sha256": "4e146ccd1eb1d8e18d5afc82a66e29b78bfa9f02f94417ff704d81d6495a01e0"
+    },
+    "speaking_core_003_002": {
+      "src": "assets/clips/speaking/speaking_core_003_002.png",
+      "sha256": "4b8de137599572718c6237d9a561962265bea475af446ed341719e8c78844a13"
+    },
+    "speaking_core_003_003": {
+      "src": "assets/clips/speaking/speaking_core_003_003.png",
+      "sha256": "e1d7876acdd2b41670cea21fa5635ba7eee1653e962fb20222271e595b875060"
+    },
+    "speaking_004": {
+      "src": "assets/clips/speaking/speaking_004.png",
+      "sha256": "b6bfcf621f7d5b713e2a2f216ae072ea2125eab8d2ff16948764b5380842c6ce"
+    },
+    "speaking_core_004_001": {
+      "src": "assets/clips/speaking/speaking_core_004_001.png",
+      "sha256": "c729f403f5eb2f7be0d8ece462339d521f40f65feaa9f09f76163c00ba747a79"
+    },
+    "speaking_core_004_002": {
+      "src": "assets/clips/speaking/speaking_core_004_002.png",
+      "sha256": "a8a9b3a44f849220ce11c31b3cbc24d302532e3358c04ab7ed43fec513d72342"
+    },
+    "speaking_core_004_003": {
+      "src": "assets/clips/speaking/speaking_core_004_003.png",
+      "sha256": "376b72975b4547990da89cf6799f7712bb142eaa342c461d57a84d037e5fa237"
+    },
+    "speaking_005": {
+      "src": "assets/clips/speaking/speaking_005.png",
+      "sha256": "9c21121379121cc4a7f808a16f2c0580bae471ae6d3a5ddd0ff275a83b20a828"
+    },
+    "speaking_core_005_001": {
+      "src": "assets/clips/speaking/speaking_core_005_001.png",
+      "sha256": "4811cd3838a3dd498d0cc66352b468aba41e4861e82747218e4408f459352d34"
+    },
+    "speaking_core_005_002": {
+      "src": "assets/clips/speaking/speaking_core_005_002.png",
+      "sha256": "91d6320e71c5be0a3ed04c1cd15656764149378c7a7004cb3093d58d4f3d2995"
+    },
+    "speaking_core_005_003": {
+      "src": "assets/clips/speaking/speaking_core_005_003.png",
+      "sha256": "89d2b9545378995fe45cbe5c1d3443e320f3c612ff655de81a457ed0a55ebeea"
+    },
+    "speaking_006": {
+      "src": "assets/clips/speaking/speaking_006.png",
+      "sha256": "9d597e2996623503a8cf39f7f59ea14496b655377fd5eeb8ca8342ce194f5ec4"
+    },
+    "speaking_core_006_001": {
+      "src": "assets/clips/speaking/speaking_core_006_001.png",
+      "sha256": "e84ba989b60241f0e3e8c565ab23fed963936eecf88ee5fc41c01a0f6dc2ef16"
+    },
+    "speaking_core_006_002": {
+      "src": "assets/clips/speaking/speaking_core_006_002.png",
+      "sha256": "25fe7e6f9aabd0b8dc656c774c1d3ab9fdc6e840fe4e1ba87dca955096e4ab52"
+    },
+    "speaking_core_006_003": {
+      "src": "assets/clips/speaking/speaking_core_006_003.png",
+      "sha256": "b151f01c1c6daa6411a1ee894f32cc5a5cea2c81738444f2957361d0c51d45a8"
+    },
+    "speaking_007": {
+      "src": "assets/clips/speaking/speaking_007.png",
+      "sha256": "c3065c55ebb38d130b0bcfb17bfeeccaa57b5a18eee101181b0d6ab92e2dfa36"
+    },
+    "speaking_core_007_001": {
+      "src": "assets/clips/speaking/speaking_core_007_001.png",
+      "sha256": "e0b7a90e089b4fd33a29bb27620b1fb242a0326585901eb18eeb5133dfdd914d"
+    },
+    "speaking_core_007_002": {
+      "src": "assets/clips/speaking/speaking_core_007_002.png",
+      "sha256": "49c143d76e2caff55392eba3910bba3766b19b68dd431d8d8e4a561c8d88f048"
+    },
+    "speaking_core_007_003": {
+      "src": "assets/clips/speaking/speaking_core_007_003.png",
+      "sha256": "88f806221e302a6d8f04acfbb301aa7e106a807ded73758a820c62465993a798"
+    },
+    "speaking_008": {
+      "src": "assets/clips/speaking/speaking_008.png",
+      "sha256": "41ddcb6ae850eabe658d9efc4b1528a0162a609a0e2ffd470318d39ddcd4e7ce"
+    },
+    "speaking_core_008_001": {
+      "src": "assets/clips/speaking/speaking_core_008_001.png",
+      "sha256": "f26b8094d095252accd76a9de09cff8850a39d027b151d5e69e24e3ff84dcc15"
+    },
+    "speaking_core_008_002": {
+      "src": "assets/clips/speaking/speaking_core_008_002.png",
+      "sha256": "a8d19bd99607617520cb04f70adeacb7a51b32ba653c3a613a10ec67653f18c7"
+    },
+    "speaking_core_008_003": {
+      "src": "assets/clips/speaking/speaking_core_008_003.png",
+      "sha256": "b1c7aa087c0fa53efabff3a7834d2aa018f9dfc94988f0662974b2e5ebe92e61"
+    },
+    "speaking_009": {
+      "src": "assets/clips/speaking/speaking_009.png",
+      "sha256": "be482467da11b1ff7e79cdee4c32705a710b44f772ac5690420386550d94174b"
+    },
+    "speaking_core_009_001": {
+      "src": "assets/clips/speaking/speaking_core_009_001.png",
+      "sha256": "d7bf0d6dc1f767f45483c13990375f1af206665edc24658a451af84d72c00977"
+    },
+    "speaking_core_009_002": {
+      "src": "assets/clips/speaking/speaking_core_009_002.png",
+      "sha256": "818a599034731bce56f69dddc84693dd40bd157d1f5d866540b079378003aa0b"
+    },
+    "speaking_core_009_003": {
+      "src": "assets/clips/speaking/speaking_core_009_003.png",
+      "sha256": "3a8caf3760f71d00336c2641046f6c24b69bc0953ddf73ae9c6249f5e8fb8ab6"
+    },
+    "speaking_010": {
+      "src": "assets/clips/speaking/speaking_010.png",
+      "sha256": "2fe840ae429244ed4e1d6e68c2f9d307d6a3dd1f82a8a188b6606f6a286506c1"
+    },
+    "speaking_exit_001": {
+      "src": "assets/clips/speaking/speaking_exit_001.png",
+      "sha256": "1343f539ee28b8a7793126981f9b190c1074294ebd4a8340ba218f5c0da6fefc"
+    },
+    "speaking_exit_002": {
+      "src": "assets/clips/speaking/speaking_exit_002.png",
+      "sha256": "8a89127f38675475e859766a4f3eab13f41536622c2bdbf89fdfdbff99499049"
+    },
+    "speaking_exit_003": {
+      "src": "assets/clips/speaking/speaking_exit_003.png",
+      "sha256": "2448a81aaad74b05a19ff4ca1aad1655c48031bb714fb6d873071b4130306f44"
+    },
+    "happy_entry_001": {
+      "src": "assets/clips/happy/happy_entry_001.png",
+      "sha256": "971c692211b3cd77be80acd98b281b76b8317aeb8f16180273698df952dd1f2f"
+    },
+    "happy_entry_002": {
+      "src": "assets/clips/happy/happy_entry_002.png",
+      "sha256": "c5a3998c8f30490182cf541c57f9b5125c2fa4d2248460f7c97d484d553920b5"
+    },
+    "happy_entry_003": {
+      "src": "assets/clips/happy/happy_entry_003.png",
+      "sha256": "f2650d93046db9f24fa76e20929d29f0ed5eb2cf2fbabdaa8bdbcc78f9e0f02d"
+    },
+    "happy_001": {
+      "src": "assets/clips/happy/happy_001.png",
+      "sha256": "2468a4152ea3f947686743d18dbc7422e9e637b5e9d8371c284b421eef062be2"
+    },
+    "happy_exit_001": {
+      "src": "assets/clips/happy/happy_exit_001.png",
+      "sha256": "17fb3051066c35160d086975efb6d2c9c85c5e0760d457f6a70b775b072af58c"
+    },
+    "happy_exit_002": {
+      "src": "assets/clips/happy/happy_exit_002.png",
+      "sha256": "fada921f101157731ea6b2d0c51cea937f9d390486341546429cdf3578c5a400"
+    },
+    "happy_exit_003": {
+      "src": "assets/clips/happy/happy_exit_003.png",
+      "sha256": "c6b3abe58667d95a8f625b406ee3a48ed496cd9a80f1848b2e68ea18e269f945"
+    },
+    "error_entry_001": {
+      "src": "assets/clips/error/error_entry_001.png",
+      "sha256": "d490bcef271d7c9aee26d64ca8cdd0886a8e7031be398bac01037e027f04b7fc"
+    },
+    "error_entry_002": {
+      "src": "assets/clips/error/error_entry_002.png",
+      "sha256": "ee96877fa06e0103fae5fc6ec0d27a7a69af6acd122e51a9f49baab0df9f3490"
+    },
+    "error_entry_003": {
+      "src": "assets/clips/error/error_entry_003.png",
+      "sha256": "9ef928594a0eb357eda4eaca7d827bf637358a1dae6bb75b86bb24e3a2a4b1a0"
+    },
+    "error_001": {
+      "src": "assets/clips/error/error_001.png",
+      "sha256": "681ba7952b58d7dc5aea3d505b882b8a9154dbe51ebc9009b6d746ce33bba29a"
+    },
+    "error_exit_001": {
+      "src": "assets/clips/error/error_exit_001.png",
+      "sha256": "0a9af99fc379e57287ead32f9b9037d087d80f49c2be47af0d377d4f9b37142d"
+    },
+    "error_exit_002": {
+      "src": "assets/clips/error/error_exit_002.png",
+      "sha256": "63879c47bb2968c5055a6afac0b97418d3a57c2ce94ad8f916a8a89887224db1"
+    },
+    "error_exit_003": {
+      "src": "assets/clips/error/error_exit_003.png",
+      "sha256": "9f9b3f350ba6b9b9b801d80ccc55b1e624a447d2b189d9e9070627379ae11ee4"
+    }
+  },
+  "clips": {
+    "idle_loop": {
+      "state": "idle",
+      "fps": 12,
+      "loop": true,
+      "quality_status": "approved",
+      "frames": [
+        "henry_s0",
+        "idle_entry_001",
+        "idle_entry_002",
+        "idle_entry_003",
+        "idle_001",
+        "idle_core_001_001",
+        "idle_core_001_002",
+        "idle_core_001_003",
+        "idle_002",
+        "idle_core_002_001",
+        "idle_core_002_002",
+        "idle_core_002_003",
+        "idle_003",
+        "idle_core_003_001",
+        "idle_core_003_002",
+        "idle_core_003_003",
+        "idle_004",
+        "idle_core_004_001",
+        "idle_core_004_002",
+        "idle_core_004_003",
+        "idle_005",
+        "idle_core_005_001",
+        "idle_core_005_002",
+        "idle_core_005_003",
+        "idle_006",
+        "idle_core_006_001",
+        "idle_core_006_002",
+        "idle_core_006_003",
+        "idle_007",
+        "idle_core_007_001",
+        "idle_core_007_002",
+        "idle_core_007_003",
+        "idle_008",
+        "idle_exit_001",
+        "idle_exit_002",
+        "idle_exit_003",
+        "henry_s0"
+      ]
+    },
+    "listening_loop": {
+      "state": "listening",
+      "fps": 12,
+      "loop": true,
+      "quality_status": "approved",
+      "frames": [
+        "henry_s0",
+        "listening_entry_001",
+        "listening_entry_002",
+        "listening_entry_003",
+        "listening_001",
+        "listening_core_001_001",
+        "listening_core_001_002",
+        "listening_core_001_003",
+        "listening_002",
+        "listening_core_002_001",
+        "listening_core_002_002",
+        "listening_core_002_003",
+        "listening_003",
+        "listening_core_003_001",
+        "listening_core_003_002",
+        "listening_core_003_003",
+        "listening_004",
+        "listening_core_004_001",
+        "listening_core_004_002",
+        "listening_core_004_003",
+        "listening_005",
+        "listening_core_005_001",
+        "listening_core_005_002",
+        "listening_core_005_003",
+        "listening_006",
+        "listening_core_006_001",
+        "listening_core_006_002",
+        "listening_core_006_003",
+        "listening_007",
+        "listening_core_007_001",
+        "listening_core_007_002",
+        "listening_core_007_003",
+        "listening_008",
+        "listening_exit_001",
+        "listening_exit_002",
+        "listening_exit_003",
+        "henry_s0"
+      ]
+    },
+    "thinking_loop": {
+      "state": "thinking",
+      "fps": 12,
+      "loop": true,
+      "quality_status": "approved",
+      "frames": [
+        "henry_s0",
+        "thinking_entry_001",
+        "thinking_entry_002",
+        "thinking_entry_003",
+        "thinking_001",
+        "thinking_core_001_001",
+        "thinking_core_001_002",
+        "thinking_core_001_003",
+        "thinking_002",
+        "thinking_core_002_001",
+        "thinking_core_002_002",
+        "thinking_core_002_003",
+        "thinking_003",
+        "thinking_core_003_001",
+        "thinking_core_003_002",
+        "thinking_core_003_003",
+        "thinking_004",
+        "thinking_core_004_001",
+        "thinking_core_004_002",
+        "thinking_core_004_003",
+        "thinking_005",
+        "thinking_core_005_001",
+        "thinking_core_005_002",
+        "thinking_core_005_003",
+        "thinking_006",
+        "thinking_core_006_001",
+        "thinking_core_006_002",
+        "thinking_core_006_003",
+        "thinking_007",
+        "thinking_core_007_001",
+        "thinking_core_007_002",
+        "thinking_core_007_003",
+        "thinking_008",
+        "thinking_exit_001",
+        "thinking_exit_002",
+        "thinking_exit_003",
+        "henry_s0"
+      ]
+    },
+    "speaking_loop": {
+      "state": "speaking",
+      "fps": 12,
+      "loop": true,
+      "quality_status": "approved",
+      "frames": [
+        "henry_s0",
+        "speaking_entry_001",
+        "speaking_entry_002",
+        "speaking_entry_003",
+        "speaking_001",
+        "speaking_core_001_001",
+        "speaking_core_001_002",
+        "speaking_core_001_003",
+        "speaking_002",
+        "speaking_core_002_001",
+        "speaking_core_002_002",
+        "speaking_core_002_003",
+        "speaking_003",
+        "speaking_core_003_001",
+        "speaking_core_003_002",
+        "speaking_core_003_003",
+        "speaking_004",
+        "speaking_core_004_001",
+        "speaking_core_004_002",
+        "speaking_core_004_003",
+        "speaking_005",
+        "speaking_core_005_001",
+        "speaking_core_005_002",
+        "speaking_core_005_003",
+        "speaking_006",
+        "speaking_core_006_001",
+        "speaking_core_006_002",
+        "speaking_core_006_003",
+        "speaking_007",
+        "speaking_core_007_001",
+        "speaking_core_007_002",
+        "speaking_core_007_003",
+        "speaking_008",
+        "speaking_core_008_001",
+        "speaking_core_008_002",
+        "speaking_core_008_003",
+        "speaking_009",
+        "speaking_core_009_001",
+        "speaking_core_009_002",
+        "speaking_core_009_003",
+        "speaking_010",
+        "speaking_exit_001",
+        "speaking_exit_002",
+        "speaking_exit_003",
+        "henry_s0"
+      ]
+    },
+    "happy_loop": {
+      "state": "happy",
+      "fps": 12,
+      "loop": true,
+      "quality_status": "approved",
+      "frames": [
+        "henry_s0",
+        "happy_entry_001",
+        "happy_entry_002",
+        "happy_entry_003",
+        "happy_001",
+        "happy_exit_001",
+        "happy_exit_002",
+        "happy_exit_003",
+        "henry_s0"
+      ]
+    },
+    "error_loop": {
+      "state": "error",
+      "fps": 12,
+      "loop": true,
+      "quality_status": "approved",
+      "frames": [
+        "henry_s0",
+        "error_entry_001",
+        "error_entry_002",
+        "error_entry_003",
+        "error_001",
+        "error_exit_001",
+        "error_exit_002",
+        "error_exit_003",
+        "henry_s0"
+      ]
+    }
+  }
+}

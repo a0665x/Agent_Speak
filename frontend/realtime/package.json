@@ -4,9 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build": "tsc -b && vite build && vite build --config vite.tts-clone.config.ts",
+    "build": "tsc -b && vite build && vite build --config vite.tts-clone.config.ts && vite build --config vite.avatar.config.ts",
     "build:asr": "tsc -b && vite build",
     "build:tts-clone": "tsc -b && vite build --config vite.tts-clone.config.ts",
+    "build:avatar": "tsc -b && vite build --config vite.avatar.config.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
