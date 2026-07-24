@@ -23,7 +23,6 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-  "jsonschema>=4.23,<5",
   "pytest>=8.3,<10",
   "pyyaml>=6,<7",
   "Pillow>=11,<13",
@@ -31,7 +30,6 @@ test = [
   "scipy>=1.14,<2",
 ]
 avatar = [
-  "jsonschema>=4.23,<5",
   "Pillow>=11,<13",
   "opencv-python-headless>=4.10,<5",
   "scipy>=1.14,<2",

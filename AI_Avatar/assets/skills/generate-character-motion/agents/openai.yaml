@@ -1,5 +1,0 @@
-interface:
-  display_name: "Generate Character Motion"
-  short_description: "Build reviewed, seamless avatar motion candidates"
-  default_prompt: "Create a stage-gated character motion candidate from the reviewed full-body reference."
-
