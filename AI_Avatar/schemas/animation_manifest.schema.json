@@ -1,20 +1,90 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-speak.local/schemas/animation_manifest.schema.json",
+  "title": "Henry Runtime Animation Manifest",
   "type": "object",
+  "additionalProperties": false,
   "required": [
     "version",
     "character",
+    "viewport",
+    "transition_frame_id",
+    "frames",
     "clips"
   ],
   "properties": {
-    "version": {
-      "type": "string"
+    "version": {"const": "4.0"},
+    "character": {"const": "Henry"},
+    "viewport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "anchor_x", "anchor_y"],
+      "properties": {
+        "width": {"type": "integer", "minimum": 1},
+        "height": {"type": "integer", "minimum": 1},
+        "anchor_x": {"type": "number", "minimum": 0, "maximum": 1},
+        "anchor_y": {"type": "number", "minimum": 0, "maximum": 1}
+      }
     },
-    "character": {
-      "type": "string"
+    "transition_frame_id": {"type": "string", "minLength": 1},
+    "frames": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/frame"}
     },
     "clips": {
-      "type": "object"
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idle_loop",
+        "listening_loop",
+        "thinking_loop",
+        "speaking_loop",
+        "happy_loop",
+        "error_loop"
+      ],
+      "properties": {
+        "idle_loop": {"$ref": "#/$defs/clip"},
+        "listening_loop": {"$ref": "#/$defs/clip"},
+        "thinking_loop": {"$ref": "#/$defs/clip"},
+        "speaking_loop": {"$ref": "#/$defs/clip"},
+        "happy_loop": {"$ref": "#/$defs/clip"},
+        "error_loop": {"$ref": "#/$defs/clip"}
+      }
+    }
+  },
+  "$defs": {
+    "frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["src", "sha256"],
+      "properties": {
+        "src": {"type": "string", "minLength": 1},
+        "sha256": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "clip": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "fps", "loop", "quality_status", "frames"],
+      "properties": {
+        "state": {
+          "enum": ["idle", "listening", "thinking", "speaking", "happy", "error"]
+        },
+        "fps": {"type": "integer", "minimum": 1, "maximum": 60},
+        "loop": {"const": true},
+        "quality_status": {
+          "enum": ["approved", "needs_review", "needs_keyframe"]
+        },
+        "frames": {
+          "type": "array",
+          "minItems": 3,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
     }
   }
 }
