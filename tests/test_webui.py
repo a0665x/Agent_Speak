@@ -44,6 +44,29 @@ async def test_tts_clone_test_route_and_home_card_are_localized(tmp_path: Path) 
 
 
 @pytest.mark.anyio
+async def test_ai_avatar_route_serves_shared_s0_demo_without_audio(
+    tmp_path: Path,
+) -> None:
+    app = create_app(
+        Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime")
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        page = await client.get("/ai_avatar")
+        manifest = await client.get("/ai_avatar/manifest.json")
+
+    assert page.status_code == 200
+    assert '<div id="root"></div>' in page.text
+    assert manifest.status_code == 200
+    payload = manifest.json()
+    assert payload["transition_frame_id"] == "henry_s0"
+    assert len(payload["clips"]) == 6
+    assert "getUserMedia" not in page.text
+
+
+@pytest.mark.anyio
 async def test_legacy_realtime_worklet_redirects_to_canonical_path(tmp_path: Path) -> None:
     app = create_app(Settings(data_dir=tmp_path / "data", runtime_dir=tmp_path / "runtime"))
     async with httpx.AsyncClient(

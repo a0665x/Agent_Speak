@@ -320,6 +320,14 @@ def create_app(
             StaticFiles(directory=tts_clone_assets),
             name="tts-clone-assets",
         )
+    ai_avatar_web_dir = web_dir / "ai_avatar"
+    ai_avatar_assets = ai_avatar_web_dir / "assets"
+    if ai_avatar_assets.is_dir():
+        app.mount(
+            "/ai_avatar/assets",
+            StaticFiles(directory=ai_avatar_assets),
+            name="ai-avatar-assets",
+        )
 
     @app.middleware("http")
     async def diagnostic_request_log(request: Request, call_next: Callable[[Request], Any]) -> Response:
@@ -505,6 +513,37 @@ def create_app(
                 status_code=503,
             )
         return Response(content=worklet.read_text(encoding="utf-8"), media_type="text/javascript")
+
+    @app.get("/ai_avatar", include_in_schema=False)
+    @app.get("/ai_avatar/", include_in_schema=False)
+    async def ai_avatar_motion_lab() -> Response:
+        index = ai_avatar_web_dir / "avatar.html"
+        if not index.is_file():
+            index = ai_avatar_web_dir / "index.html"
+        if not index.is_file():
+            raise PlatformError(
+                "ai_avatar_ui_unavailable",
+                "AI Avatar Motion Lab has not been built",
+                status_code=503,
+            )
+        return Response(
+            content=index.read_text(encoding="utf-8"),
+            media_type="text/html",
+        )
+
+    @app.get("/ai_avatar/manifest.json", include_in_schema=False)
+    async def ai_avatar_manifest() -> Response:
+        manifest = ai_avatar_web_dir / "manifest.json"
+        if not manifest.is_file():
+            raise PlatformError(
+                "ai_avatar_ui_unavailable",
+                "AI Avatar Motion Lab has not been built",
+                status_code=503,
+            )
+        return Response(
+            content=manifest.read_text(encoding="utf-8"),
+            media_type="application/json",
+        )
 
     @app.get("/realtime", include_in_schema=False)
     async def legacy_realtime_studio() -> RedirectResponse:

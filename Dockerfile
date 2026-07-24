@@ -4,6 +4,7 @@ WORKDIR /workspace/frontend/realtime
 COPY frontend/realtime/package.json frontend/realtime/package-lock.json ./
 RUN npm ci
 COPY frontend/realtime ./
+COPY AI_Avatar /workspace/AI_Avatar
 
 FROM realtime-frontend-deps AS frontend-test
 CMD ["npm", "test"]
@@ -49,6 +50,7 @@ FROM python-base AS runtime
 COPY . .
 COPY --from=realtime-frontend-build /workspace/web/asr_realtime /app/web/asr_realtime
 COPY --from=realtime-frontend-build /workspace/web/tts_clone_test /app/web/tts_clone_test
+COPY --from=realtime-frontend-build /workspace/web/ai_avatar /app/web/ai_avatar
 COPY docker/entrypoint.sh /usr/local/bin/agent-speak-entrypoint
 RUN chmod 0755 /usr/local/bin/agent-speak-entrypoint
 

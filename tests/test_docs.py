@@ -181,3 +181,24 @@ def test_readme_presents_the_multilingual_visual_product_tour() -> None:
     assert "http://127.0.0.1:8765/docs?lang=en" in readme
     for language in ("English", "Traditional Chinese", "Japanese", "Korean"):
         assert language in readme
+
+
+def test_ai_avatar_motion_lab_contract_and_lessons_are_documented() -> None:
+    project_map = (ROOT / "spec" / "PROJECT_MAP.md").read_text(encoding="utf-8")
+    ui = (ROOT / "spec" / "UI.md").read_text(encoding="utf-8")
+    testing = (ROOT / "spec" / "TESTING.md").read_text(encoding="utf-8")
+    avatar_readme = (ROOT / "AI_Avatar" / "README.md").read_text(encoding="utf-8")
+    workflow = (
+        ROOT / "AI_Avatar" / "docs" / "resource_generation_workflow.md"
+    ).read_text(encoding="utf-8")
+
+    assert "/ai_avatar" in project_map
+    assert "shared `S0`" in avatar_readme
+    assert "latest selection" in avatar_readme
+    assert "FILM" in workflow and "RIFE" in workflow
+    assert "must not activate" in avatar_readme
+    assert "GrabCut" in workflow
+    assert "core keyframe" in workflow
+    assert "AI Avatar" in ui
+    assert "164" in testing
+    assert "lesson-20260724-ai-avatar-asset-pipeline.md" in project_map

@@ -66,3 +66,23 @@ one default-voice synthesis, one synthetic-reference clone synthesis, and
 256 MiB KV limit, executable Triton cache location, pinned VoxCPM dependency,
 fail-closed FP16 adapter patch, and suppression of upstream request/access INFO
 logs that would otherwise reveal synthesis text.
+
+## AI Avatar acceptance
+
+`python -m pytest tests/avatar -q` covers verified sheet geometry, GrabCut
+white-shirt regression points, fixed normalization, FILM/RIFE routing,
+resumable input-hash caches, quality reports, approval hashes, the v4 manifest,
+and exact shared-S0 boundaries. `npm test -- --run src/avatarLab` covers all 164
+unique frame preloads, latest-selection scheduling, unavailable targets,
+fixed-viewport Canvas behavior, draw failure retention, responsive control
+gating, and the absence of device requests. Gateway and Docker delivery remain
+in `tests/test_webui.py` and `tests/test_docker_runtime.py`.
+
+Visual acceptance is separate from unit metrics. Watch all six loops at 12 FPS,
+confirm clothing/ears/paws/glasses remain intact, and select Listening,
+Thinking, then Speaking during one Idle loop. Only Speaking may remain queued;
+Idle must finish at `henry_s0`, and Speaking must start from the identical
+frame. Repeat Happy and Error, inspect desktop/mobile layouts, keyboard focus,
+reduced motion, horizontal overflow, browser console, and fixed 512 × 512
+anchor behavior. The smoke must not grant microphone permission, activate a
+speaker, run ASR/TTS, or click any audio control.

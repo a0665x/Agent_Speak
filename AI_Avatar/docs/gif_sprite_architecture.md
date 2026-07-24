@@ -1,82 +1,57 @@
-# Henry GIF / Sprite Architecture
+# Henry PNG Sequence Architecture
 
-## 1. Why use clips instead of arbitrary GIF switching
+The filename is retained for compatibility, but the approved runtime does not
+switch raw GIF files. It renders deterministic RGBA PNG sequences.
 
-Every animation is treated as a clip with metadata:
-
-- clip ID
-- source sheet
-- frame count
-- FPS
-- loop flag
-- duration
-- return state
-- transition policy
-
-## 2. Clip categories
-
-### Persistent loops
-
-- idle_loop
-- listening_loop
-- thinking_loop
-- speaking_neutral_loop
-- speaking_happy_loop
-- sleepy_doze_loop
-- ear_sway_loop
-
-### One-shot reactions
-
-- happy_once
-- laugh_once
-- pout_once
-- surprised_once
-- sorry_once
-- head_nod_once
-- head_shake_once
-- ear_twitch_once
-- paw_wave_once
-- point_left_once
-- point_right_once
-- hands_together_once
-- thumbs_up_once
-
-## 3. Anchor pose
-
-All clips should render into a fixed viewport and align to one anchor:
+## Portable boundaries
 
 ```text
-viewport: 512 × 512
-anchor_x: 0.5
-anchor_y: 0.92
-fit: contain
+UI state button
+    ↓
+StateTransitionController
+    ↓
+AvatarStateMachine (playingState + pendingState)
+    ↓
+ClipScheduler (FPS + loop boundary)
+    ↓
+PngSequenceRenderer (fixed 512 × 512 Canvas)
 ```
 
-## 4. Transition algorithm
+`EventBus` carries typed selection, loop-complete, and renderer-failure
+notifications. `VisemeController` is a deliberately disabled port in this MVP;
+the motion lab is not coupled to ASR or TTS.
 
-```text
-current persistent clip
-    ↓
-optional transition clip
-    ↓
-new persistent clip
-```
+## Manifest v4
 
-For one-shot reactions:
+`public/manifest.json` owns:
 
-```text
-persistent clip
-    ↓
-one-shot reaction
-    ↓
-return to persistent clip
-```
+- one immutable `transition_frame_id`;
+- a SHA-256 and project-relative source for each approved frame;
+- exactly six approved loop clips;
+- fixed viewport and anchor metadata;
+- per-clip FPS and ordered frame IDs.
 
-## 5. React recommendation
+Browser parsing rejects unknown states, traversal paths, missing frames,
+unapproved clips, and any clip whose first or final frame is not shared `S0`.
+All unique images decode before the UI reports **Assets Ready**.
 
-For exact control, use PNG sequences rather than raw GIF completion events.
-A requestAnimationFrame or timer loop advances frames according to FPS.
+## Boundary scheduling
 
-## 6. Preloading
+The scheduler never cuts a gesture mid-loop. A state click only replaces the
+pending state. The old clip displays its final shared `S0`, emits
+`loop.completed`, and then promotes the latest pending state. Because the new
+clip begins with the byte-identical `S0`, no crossfade is needed.
 
-Preload all persistent clips at startup and preload one-shot clips on first use.
+If a target clip cannot preload, that state becomes unavailable without
+interrupting the active loop. Selecting the active state is a no-op.
+
+## Rendering
+
+`PngSequenceRenderer` accepts only preloaded frame IDs. Canvas size never
+changes between clips. A frame is drawn with copy compositing so transparent
+pixels replace the previous image atomically. A failed draw retains the last
+successful frame and emits `renderer.failed`.
+
+Pause stops animation scheduling. Resume preserves the current frame. Restart
+returns the active clip to its first `S0` and clears pending selection.
+Disposal cancels `requestAnimationFrame` and releases image references.

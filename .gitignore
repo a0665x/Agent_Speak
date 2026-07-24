@@ -73,6 +73,8 @@ id_ed25519.pub
 .hermes/
 .DS_Store
 .gstack/
+.worktrees/
+worktrees/
 *.swp
 *.swo
 *~
@@ -84,3 +86,8 @@ id_ed25519.pub
 frontend/realtime/node_modules/
 web/realtime/
 *.tsbuildinfo
+
+# AI Avatar interpolation providers and review artifacts.
+AI_Avatar/.providers/
+AI_Avatar/.candidates/
+runtime/avatar-review/

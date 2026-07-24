@@ -6,7 +6,7 @@ afterEach(cleanup);
 
 HTMLCanvasElement.prototype.getContext = (() => ({
   arc() {}, beginPath() {}, clearRect() {}, closePath() {}, fill() {}, lineTo() {}, moveTo() {}, quadraticCurveTo() {},
-  restore() {}, save() {}, scale() {}, setTransform() {}, stroke() {},
+  drawImage() {}, restore() {}, save() {}, scale() {}, setTransform() {}, stroke() {},
   createLinearGradient: () => ({ addColorStop() {} }),
-  fillStyle: '', globalAlpha: 1, lineWidth: 1, shadowBlur: 0, shadowColor: '', strokeStyle: '',
+  fillStyle: '', globalAlpha: 1, globalCompositeOperation: 'source-over', lineWidth: 1, shadowBlur: 0, shadowColor: '', strokeStyle: '',
 })) as unknown as typeof HTMLCanvasElement.prototype.getContext;

@@ -142,7 +142,7 @@ wait_for_health() {
     if [[ -n "$container_id" ]]; then
       health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container_id" 2>/dev/null || true)
       if [[ "$health" == "healthy" ]]; then
-        echo "GATEWAY_READY web=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765} realtime=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/asr_realtime tts_clone=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/tts_clone_test docs=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/docs"
+        echo "GATEWAY_READY web=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765} realtime=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/asr_realtime tts_clone=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/tts_clone_test avatar=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/ai_avatar docs=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/docs"
         return 0
       fi
       if [[ "$health" == "unhealthy" || "$health" == "exited" ]]; then
@@ -333,7 +333,7 @@ print("|".join((
       asr_state=unavailable
       tts_state=unavailable
     fi
-    echo "STATUS_${health^^} web=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765} realtime=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/asr_realtime tts_clone=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/tts_clone_test docs=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/docs capture=$capture playback=$playback accelerator=$ACCELERATOR_SELECTED resource_policy=$resource_policy profile=$resource_profile asr_state=$asr_state tts_state=$tts_state asr_device=$asr_device correction_device=$correction_device"
+    echo "STATUS_${health^^} web=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765} realtime=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/asr_realtime tts_clone=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/tts_clone_test avatar=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/ai_avatar docs=http://${AGENT_SPEAK_PUBLISH_HOST:-127.0.0.1}:${AGENT_SPEAK_PORT:-8765}/docs capture=$capture playback=$playback accelerator=$ACCELERATOR_SELECTED resource_policy=$resource_policy profile=$resource_profile asr_state=$asr_state tts_state=$tts_state asr_device=$asr_device correction_device=$correction_device"
     [[ "$health" == "healthy" ]]
     ;;
   --logs)
@@ -353,6 +353,7 @@ print("|".join((
     esac
     ;;
   --test)
+    compose build gateway-test frontend-test
     compose run --rm --no-deps gateway-test bash -lc '
       python -m pytest -q -p no:cacheprovider &&
       node --check web/app.js &&
