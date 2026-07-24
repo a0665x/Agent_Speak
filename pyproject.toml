@@ -26,9 +26,12 @@ test = [
   "pytest>=8.3,<10",
   "pyyaml>=6,<7",
   "Pillow>=11,<13",
+  "opencv-python-headless>=4.10,<5",
 ]
 avatar = [
   "Pillow>=11,<13",
+  "opencv-python-headless>=4.10,<5",
+  "scipy>=1.14,<2",
 ]
 gpu = [
   "nvidia-cublas-cu12>=12,<13",

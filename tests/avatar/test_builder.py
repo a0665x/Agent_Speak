@@ -1,4 +1,6 @@
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -10,6 +12,9 @@ from AI_Avatar.tools.avatar_assets.builder import (
     write_contact_sheet,
 )
 from AI_Avatar.tools.build_avatar_assets import main
+
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def _sheet(path: Path) -> None:
@@ -103,6 +108,43 @@ def test_assemble_candidate_loop_inserts_entry_and_exit_frames(
     assert frames == (s0, entry, core, exit_frame, s0)
 
 
+def test_assemble_candidate_loop_interpolates_each_core_keyframe_pair(
+    tmp_path: Path,
+) -> None:
+    paths = {
+        name: tmp_path / f"{name}.png"
+        for name in ("s0", "core1", "core2", "entry", "between", "exit")
+    }
+    for index, path in enumerate(paths.values()):
+        Image.new("RGBA", (32, 32), (index, 20, 30, 255)).save(path)
+    phases: list[str] = []
+
+    def interpolate(_start: Path, _end: Path, phase: str) -> tuple[Path, ...]:
+        phases.append(phase)
+        return {
+            "entry": (paths["entry"],),
+            "core_001": (paths["between"],),
+            "exit": (paths["exit"],),
+        }[phase]
+
+    frames = assemble_candidate_loop(
+        paths["s0"],
+        (paths["core1"], paths["core2"]),
+        interpolate,
+    )
+
+    assert phases == ["entry", "core_001", "exit"]
+    assert frames == (
+        paths["s0"],
+        paths["entry"],
+        paths["core1"],
+        paths["between"],
+        paths["core2"],
+        paths["exit"],
+        paths["s0"],
+    )
+
+
 def test_review_candidate_loops_writes_reports_and_previews(tmp_path: Path) -> None:
     inventory, sheets = _inventory(tmp_path)
     candidates = tmp_path / "candidates"
@@ -161,6 +203,32 @@ def test_cli_extract_reports_candidate_location(
         capsys.readouterr().out.strip()
         == f"AVATAR_EXTRACTED states=6 candidates={candidates}"
     )
+
+
+def test_build_script_supports_direct_cli_invocation() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "AI_Avatar/tools/build_avatar_assets.py"),
+            "--help",
+        ],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Inspect, build, review, and publish" in result.stdout
+
+
+def test_setup_script_reuses_an_already_pinned_checkout_offline() -> None:
+    source = (
+        ROOT / "AI_Avatar/tools/setup_interpolation_models.sh"
+    ).read_text(encoding="utf-8")
+
+    assert 'current_commit=$(git -C "$target" rev-parse HEAD)' in source
+    assert 'if [[ "$current_commit" != "$commit" ]]; then' in source
 
 
 def test_cli_review_publish_and_validate_flow(tmp_path: Path, capsys) -> None:

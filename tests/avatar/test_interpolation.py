@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 
+import numpy as np
 import pytest
 from PIL import Image
 
@@ -15,6 +16,7 @@ from AI_Avatar.tools.avatar_assets.interpolation import (
     RoutedInterpolator,
     ordered_timestamps,
 )
+from AI_Avatar.tools.film_pair_cli import _morph_alpha
 
 
 def test_large_motion_routes_to_film() -> None:
@@ -36,7 +38,7 @@ def test_router_rejects_unbounded_motion_score() -> None:
         router.select(normalized_motion=1.4)
 
 
-def test_film_builds_official_cli_shape(tmp_path: Path) -> None:
+def test_film_uses_local_pair_adapter_without_apache_beam(tmp_path: Path) -> None:
     provider = FilmProvider(
         repo=tmp_path / "film",
         model=tmp_path / "saved_model",
@@ -44,9 +46,16 @@ def test_film_builds_official_cli_shape(tmp_path: Path) -> None:
 
     command = provider.command(tmp_path / "pair", times=2)
 
-    assert command[:3] == [sys.executable, "-m", "eval.interpolator_cli"]
+    assert command[:2] == [
+        sys.executable,
+        str(
+            Path(__file__).resolve().parents[2]
+            / "AI_Avatar/tools/film_pair_cli.py"
+        ),
+    ]
+    assert "--repo" in command
     assert command[command.index("--times_to_interpolate") + 1] == "2"
-    assert command[command.index("--pattern") + 1] == str(tmp_path / "pair")
+    assert command[command.index("--pair") + 1] == str(tmp_path / "pair")
 
 
 def test_rife_requests_four_way_interpolation(tmp_path: Path) -> None:
@@ -121,6 +130,19 @@ def test_copy_intermediate_frames_removes_source_endpoints(tmp_path: Path) -> No
     assert Image.open(copied[0]).getpixel((0, 0))[0] == 1
 
 
+def test_film_signed_distance_alpha_keeps_silhouette_solid() -> None:
+    first = np.zeros((24, 24, 1), dtype=np.float32)
+    second = np.zeros((24, 24, 1), dtype=np.float32)
+    first[4:20, 3:15] = 1.0
+    second[4:20, 9:21] = 1.0
+
+    midpoint = _morph_alpha(first, second, 0.5)
+
+    assert np.max(midpoint[:, :3]) == 0
+    assert np.min(midpoint[6:18, 9:15]) == 1
+    assert np.count_nonzero(midpoint > 0.5) >= 16 * 10
+
+
 def test_routed_interpolator_uses_film_for_large_motion(tmp_path: Path) -> None:
     start = tmp_path / "start.png"
     end = tmp_path / "end.png"
@@ -168,6 +190,50 @@ def test_routed_interpolator_uses_film_for_large_motion(tmp_path: Path) -> None:
         "listening_entry_002.png",
         "listening_entry_003.png",
     ]
+
+
+def test_routed_interpolator_reuses_matching_completed_transition(
+    tmp_path: Path,
+) -> None:
+    start = tmp_path / "start.png"
+    end = tmp_path / "end.png"
+    Image.new("RGBA", (16, 16), (20, 30, 40, 255)).save(start)
+    Image.new("RGBA", (16, 16), (40, 30, 20, 255)).save(end)
+    calls = 0
+
+    class FakeProvider:
+        name = "film"
+
+        def generate(
+            self,
+            first: Path,
+            second: Path,
+            work_dir: Path,
+            exponent: int,
+        ) -> tuple[Path, ...]:
+            nonlocal calls
+            calls += 1
+            work_dir.mkdir(parents=True, exist_ok=True)
+            output = []
+            for index, source in enumerate((first, first, first, second, second)):
+                path = work_dir / f"img{index}.png"
+                path.write_bytes(source.read_bytes())
+                output.append(path)
+            return tuple(output)
+
+    routed = RoutedInterpolator(
+        router=InterpolationRouter(large_motion_threshold=0),
+        film=FakeProvider(),
+        rife=FakeProvider(),
+        candidate_root=tmp_path / "candidates",
+        exponent=2,
+    )
+
+    first = routed(start, end, "idle_entry")
+    second = routed(start, end, "idle_entry")
+
+    assert first == second
+    assert calls == 1
 
 
 def test_build_routed_interpolator_uses_pinned_project_paths(tmp_path: Path) -> None:

@@ -6,6 +6,7 @@ from AI_Avatar.tools.avatar_assets.images import (
     normalize_frame,
     remove_border_background,
     retain_largest_component,
+    segment_character,
 )
 
 
@@ -120,3 +121,17 @@ def test_normalize_uses_reference_height_instead_of_gesture_width() -> None:
     assert narrow_box is not None and wide_box is not None
     assert narrow_box[3] - narrow_box[1] == 320
     assert wide_box[3] - wide_box[1] == 320
+
+
+def test_character_segmentation_preserves_white_shirt_and_right_sleeve() -> None:
+    root = Path(__file__).resolve().parents[2]
+    with Image.open(
+        root / "AI_Avatar/assets/sheets/04_gesture_keyframes.png"
+    ) as sheet:
+        source = crop_source(sheet, (18, 230, 159, 430))
+
+    segmented = segment_character(source)
+
+    assert segmented.getpixel((110, 150))[3] > 0
+    assert segmented.getpixel((72, 184))[3] > 0
+    assert segmented.getpixel((70, 8))[3] == 0

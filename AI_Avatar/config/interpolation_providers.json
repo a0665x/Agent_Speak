@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "large_motion_threshold": 0.22,
+  "large_motion_threshold": 0.12,
   "candidate_exponent": 2,
   "timeout_seconds": 300,
   "providers": {

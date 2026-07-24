@@ -1,21 +1,25 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 from typing import Sequence
 
-from .avatar_assets.builder import (
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from AI_Avatar.tools.avatar_assets.builder import (
     ExtractionResult,
     extract_inventory,
     publish_candidates,
     review_candidate_loops,
     write_contact_sheet,
 )
-from .avatar_assets.interpolation import build_routed_interpolator
-from .avatar_assets.manifest import load_manifest, validate_manifest
+from AI_Avatar.tools.avatar_assets.interpolation import build_routed_interpolator
+from AI_Avatar.tools.avatar_assets.manifest import load_manifest, validate_manifest
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_INVENTORY = PROJECT_ROOT / "AI_Avatar/config/verified_asset_inventory.json"
 DEFAULT_SHEETS = PROJECT_ROOT / "AI_Avatar/assets/sheets"
 DEFAULT_CANDIDATES = PROJECT_ROOT / "AI_Avatar/.candidates"

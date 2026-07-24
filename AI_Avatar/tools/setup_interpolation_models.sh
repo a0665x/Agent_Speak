@@ -20,8 +20,12 @@ clone_at_commit() {
   if [[ ! -d "$target/.git" ]]; then
     git clone "$url" "$target"
   fi
-  git -C "$target" fetch --depth 1 origin "$commit"
-  git -C "$target" checkout --detach "$commit"
+  local current_commit
+  current_commit=$(git -C "$target" rev-parse HEAD)
+  if [[ "$current_commit" != "$commit" ]]; then
+    git -C "$target" fetch --depth 1 origin "$commit"
+    git -C "$target" checkout --detach "$commit"
+  fi
 }
 
 mkdir -p "$providers_dir" "$model_root"

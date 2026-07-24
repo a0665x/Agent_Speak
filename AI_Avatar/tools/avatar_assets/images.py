@@ -4,6 +4,7 @@ from collections import deque
 from collections.abc import Iterable
 
 import numpy as np
+import cv2
 from PIL import Image
 
 from .inventory import Box
@@ -91,6 +92,57 @@ def retain_largest_component(image: Image.Image) -> Image.Image:
     return Image.fromarray(rgba, "RGBA")
 
 
+def segment_character(
+    image: Image.Image,
+    *,
+    background_tolerance: int = 18,
+    iterations: int = 8,
+) -> Image.Image:
+    if background_tolerance < 0:
+        raise ValueError("background tolerance cannot be negative")
+    if iterations <= 0:
+        raise ValueError("segmentation iterations must be positive")
+    rgba = np.asarray(image.convert("RGBA")).copy()
+    rgb = rgba[:, :, :3]
+    height, width = rgb.shape[:2]
+    if height < 8 or width < 8:
+        raise ValueError("character source is too small to segment")
+    margin = max(2, min(height, width) // 30)
+    mask = np.full((height, width), cv2.GC_PR_BGD, dtype=np.uint8)
+    mask[margin : height - margin, margin : width - margin] = cv2.GC_PR_FGD
+    mask[:margin, :] = cv2.GC_BGD
+    mask[height - margin :, :] = cv2.GC_BGD
+    mask[:, :margin] = cv2.GC_BGD
+    mask[:, width - margin :] = cv2.GC_BGD
+
+    values = rgb.astype(np.int16)
+    minimum = values.min(axis=2)
+    chroma = values.max(axis=2) - minimum
+    strong_foreground = np.logical_or(
+        minimum < max(120, 210 - background_tolerance * 2),
+        chroma > 40 + background_tolerance * 2,
+    )
+    inner = np.zeros((height, width), dtype=bool)
+    inner[margin : height - margin, margin : width - margin] = True
+    mask[np.logical_and(strong_foreground, inner)] = cv2.GC_FGD
+
+    background_model = np.zeros((1, 65), dtype=np.float64)
+    foreground_model = np.zeros((1, 65), dtype=np.float64)
+    cv2.setRNGSeed(0)
+    cv2.grabCut(
+        cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR),
+        mask,
+        None,
+        background_model,
+        foreground_model,
+        iterations,
+        cv2.GC_INIT_WITH_MASK,
+    )
+    foreground = np.logical_or(mask == cv2.GC_FGD, mask == cv2.GC_PR_FGD)
+    rgba[:, :, 3] = np.where(foreground, rgba[:, :, 3], 0)
+    return retain_largest_component(Image.fromarray(rgba, "RGBA"))
+
+
 def normalize_frame(
     image: Image.Image,
     canvas_size: tuple[int, int],
@@ -109,8 +161,9 @@ def normalize_frame(
     if not 0 <= anchor[0] <= 1 or not 0 <= anchor[1] <= 1:
         raise ValueError("anchor values must be between zero and one")
 
-    foreground = retain_largest_component(
-        remove_border_background(image, background_tolerance)
+    foreground = segment_character(
+        image,
+        background_tolerance=background_tolerance,
     )
     bounds = foreground.getchannel("A").getbbox()
     if bounds is None:

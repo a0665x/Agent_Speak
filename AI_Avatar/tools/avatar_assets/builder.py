@@ -125,11 +125,22 @@ def assemble_candidate_loop(
     if not core_frames:
         raise ValueError("candidate loop requires at least one core frame")
     entry = interpolator(transition_frame, core_frames[0], "entry")
+    continuous_core: list[Path] = []
+    for index, frame in enumerate(core_frames):
+        continuous_core.append(frame)
+        if index + 1 < len(core_frames):
+            continuous_core.extend(
+                interpolator(
+                    frame,
+                    core_frames[index + 1],
+                    f"core_{index + 1:03d}",
+                )
+            )
     exit_frames = interpolator(core_frames[-1], transition_frame, "exit")
     return (
         transition_frame,
         *entry,
-        *core_frames,
+        *continuous_core,
         *exit_frames,
         transition_frame,
     )

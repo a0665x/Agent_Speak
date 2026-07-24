@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import subprocess
 import sys
 import shutil
@@ -66,11 +67,13 @@ class FilmProvider:
     def command(self, pair_dir: Path, times: int) -> list[str]:
         if times <= 0:
             raise ValueError("FILM interpolation count must be positive")
+        adapter = Path(__file__).resolve().parents[1] / "film_pair_cli.py"
         return [
             sys.executable,
-            "-m",
-            "eval.interpolator_cli",
-            "--pattern",
+            str(adapter),
+            "--repo",
+            str(self.repo),
+            "--pair",
             str(pair_dir),
             "--model_path",
             str(self.model),
@@ -239,17 +242,42 @@ class RoutedInterpolator:
         else:
             selected = self.preferred
         provider = self.film if selected == "film" else self.rife
+        destination = self.candidate_root / "transitions" / label
+        expected = tuple(
+            destination / f"{label}_{index:03d}.png"
+            for index in range(1, 2**self.exponent)
+        )
+        metadata_path = destination / "transition.json"
+        metadata = {
+            "version": "1.0",
+            "provider": selected,
+            "exponent": self.exponent,
+            "start_sha256": _sha256(start),
+            "end_sha256": _sha256(end),
+        }
+        if metadata_path.is_file() and all(path.is_file() for path in expected):
+            try:
+                cached = json.loads(metadata_path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                cached = None
+            if cached == metadata:
+                return expected
         generated = provider.generate(
             start,
             end,
             self.candidate_root / "work" / label,
             self.exponent,
         )
-        return copy_intermediate_frames(
+        copied = copy_intermediate_frames(
             generated,
-            self.candidate_root / "transitions" / label,
+            destination,
             prefix=label,
         )
+        metadata_path.write_text(
+            json.dumps(metadata, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return copied
 
 
 def build_routed_interpolator(
@@ -329,3 +357,11 @@ def _run(
     except subprocess.CalledProcessError as exc:
         detail = (exc.stderr or exc.stdout or "provider failed").strip()
         raise InterpolationError(detail) from exc
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
