@@ -1,4 +1,5 @@
 from PIL import Image, ImageDraw
+from pathlib import Path
 
 from AI_Avatar.tools.avatar_assets.images import (
     crop_source,
@@ -70,3 +71,52 @@ def test_crop_source_uses_inventory_box_without_mutating_sheet() -> None:
 
     assert cropped.size == (20, 30)
     assert source.size == (64, 64)
+
+
+def test_status_card_background_and_number_are_removed() -> None:
+    root = Path(__file__).resolve().parents[2]
+    with Image.open(
+        root / "AI_Avatar/assets/sheets/01_loop_core_idle_listening_thinking.png"
+    ) as sheet:
+        card = crop_source(sheet, (34, 127, 300, 423))
+
+    cleaned = retain_largest_component(
+        remove_border_background(card, tolerance=18)
+    )
+    bounds = cleaned.getchannel("A").getbbox()
+
+    assert bounds is not None
+    assert cleaned.getpixel((28, 28))[3] == 0
+    assert cleaned.getpixel((0, 0))[3] == 0
+    assert bounds[2] < card.width - 8
+    assert bounds[3] < card.height - 8
+
+
+def test_normalize_uses_reference_height_instead_of_gesture_width() -> None:
+    narrow = Image.new("RGBA", (120, 120), "white")
+    wide = Image.new("RGBA", (120, 120), "white")
+    ImageDraw.Draw(narrow).rectangle((45, 20, 74, 99), fill=(30, 40, 50, 255))
+    ImageDraw.Draw(wide).rectangle((20, 20, 99, 99), fill=(30, 40, 50, 255))
+
+    narrow_result = normalize_frame(
+        narrow,
+        canvas_size=(512, 512),
+        anchor=(0.5, 0.92),
+        background_tolerance=12,
+        reference_width=380,
+        reference_height=320,
+    )
+    wide_result = normalize_frame(
+        wide,
+        canvas_size=(512, 512),
+        anchor=(0.5, 0.92),
+        background_tolerance=12,
+        reference_width=380,
+        reference_height=320,
+    )
+
+    narrow_box = narrow_result.getchannel("A").getbbox()
+    wide_box = wide_result.getchannel("A").getbbox()
+    assert narrow_box is not None and wide_box is not None
+    assert narrow_box[3] - narrow_box[1] == 320
+    assert wide_box[3] - wide_box[1] == 320

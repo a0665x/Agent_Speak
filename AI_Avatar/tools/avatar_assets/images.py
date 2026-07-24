@@ -17,13 +17,33 @@ def remove_border_background(image: Image.Image, tolerance: int) -> Image.Image:
     if tolerance < 0:
         raise ValueError("background tolerance cannot be negative")
     rgba = np.asarray(image.convert("RGBA")).copy()
-    border = np.concatenate((rgba[0], rgba[-1], rgba[:, 0], rgba[:, -1]))
-    background = np.median(border[:, :3], axis=0)
-    distance = np.max(
-        np.abs(rgba[:, :, :3].astype(np.int16) - background.astype(np.int16)),
-        axis=2,
+    rgb = rgba[:, :, :3].astype(np.int16)
+    minimum = rgb.min(axis=2)
+    chroma = rgb.max(axis=2) - minimum
+    background_candidate = np.logical_and(
+        minimum >= max(150, 210 - tolerance * 2),
+        chroma <= 40 + tolerance * 2,
     )
-    rgba[:, :, 3] = np.where(distance <= tolerance, 0, rgba[:, :, 3])
+    height, width = background_candidate.shape
+    background = np.zeros_like(background_candidate, dtype=bool)
+    queue: deque[tuple[int, int]] = deque()
+    for x in range(width):
+        if background_candidate[0, x]:
+            queue.append((x, 0))
+        if background_candidate[height - 1, x]:
+            queue.append((x, height - 1))
+    for y in range(height):
+        if background_candidate[y, 0]:
+            queue.append((0, y))
+        if background_candidate[y, width - 1]:
+            queue.append((width - 1, y))
+    while queue:
+        x, y = queue.popleft()
+        if background[y, x] or not background_candidate[y, x]:
+            continue
+        background[y, x] = True
+        queue.extend(_neighbors(x, y, width, height))
+    rgba[:, :, 3] = np.where(background, 0, rgba[:, :, 3])
     return Image.fromarray(rgba, "RGBA")
 
 
@@ -77,12 +97,15 @@ def normalize_frame(
     anchor: tuple[float, float],
     background_tolerance: int,
     reference_width: int,
+    reference_height: int | None = None,
 ) -> Image.Image:
     canvas_width, canvas_height = canvas_size
     if canvas_width <= 0 or canvas_height <= 0:
         raise ValueError("canvas dimensions must be positive")
     if reference_width <= 0:
         raise ValueError("reference width must be positive")
+    if reference_height is not None and reference_height <= 0:
+        raise ValueError("reference height must be positive")
     if not 0 <= anchor[0] <= 1 or not 0 <= anchor[1] <= 1:
         raise ValueError("anchor values must be between zero and one")
 
@@ -93,7 +116,12 @@ def normalize_frame(
     if bounds is None:
         raise ValueError("frame contains no foreground")
     character = foreground.crop(bounds)
-    scale = reference_width / character.width
+    scale = (
+        reference_height / character.height
+        if reference_height is not None
+        else reference_width / character.width
+    )
+    scale = min(scale, reference_width / character.width)
     max_height = max(1, round(canvas_height * anchor[1]))
     scale = min(scale, max_height / character.height)
     target_size = (
