@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "large_motion_threshold": 0.22,
+  "candidate_exponent": 2,
+  "timeout_seconds": 300,
+  "providers": {
+    "film": {
+      "repository": "https://github.com/google-research/frame-interpolation.git",
+      "commit": "69f8708f08e62c2edf46a27616a4bfcf083e2076",
+      "repo_path": "AI_Avatar/.providers/film",
+      "model_path": "models/avatar_interpolation/film/film_net/Style/saved_model"
+    },
+    "rife": {
+      "repository": "https://github.com/hzwer/ECCV2022-RIFE.git",
+      "commit": "5d8adbdd40e12c2c8f91930eff838aebe561c086",
+      "repo_path": "AI_Avatar/.providers/rife",
+      "model_path": "models/avatar_interpolation/rife/train_log"
+    }
+  }
+}
